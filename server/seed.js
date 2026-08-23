@@ -128,6 +128,9 @@ async function run() {
   await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 })
   console.log('✅ Connected. Seeding pawradar…')
 
+  // Ensure geospatial (2dsphere) indexes exist before inserting.
+  await Promise.all([Pet.createIndexes(), Sighting.createIndexes()])
+
   await Promise.all([Pet.deleteMany({}), Sighting.deleteMany({})])
 
   const docs = seed.map(({ hoursAgo, coordinates, ...rest }) => ({
