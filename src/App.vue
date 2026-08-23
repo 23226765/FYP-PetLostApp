@@ -13,7 +13,20 @@
     </Transition>
 
     <main>
-      <RadarScreen v-show="tab === 'radar'" :pets="pets" :loading="loading" :error="error" @open="openPet" @found="openSighting" @retry="loadPets" />
+      <RadarScreen
+        v-show="tab === 'radar'"
+        :pets="pets"
+        :loading="loading"
+        :error="error"
+        :radius-km="radiusKm"
+        :species="species"
+        :user-location="userLocation"
+        @open="openPet"
+        @found="openSighting"
+        @retry="loadPets"
+        @radius-change="onRadiusChange"
+        @species-change="onSpeciesChange"
+      />
       <PostPetScreen v-if="tab === 'post'" @done="onPosted" />
       <ProfileScreen v-if="tab === 'profile'" />
     </main>
@@ -116,13 +129,18 @@ import PetDetail from './components/PetDetail.vue'
 
 type Tab = 'radar' | 'post' | 'profile'
 
-// Mong Kok, Hong Kong — used when geolocation is unavailable/denied.
-const DEFAULT_CENTER = { lat: 22.3193, lng: 114.1694 }
+// Hong Kong centre — fallback when geolocation is unavailable/denied.
+const DEFAULT_CENTER = { lat: 22.2825, lng: 114.1897 }
+
+type SpeciesFilter = 'All' | 'Dogs' | 'Cats' | 'Other'
 
 const tab = ref<Tab>('radar')
 const pets = ref<Pet[]>([])
 const loading = ref(true)
 const error = ref('')
+const radiusKm = ref(3)
+const species = ref<SpeciesFilter>('All')
+const userLocation = ref<{ lat: number; lng: number } | null>(null)
 const selectedPet = ref<Pet | null>(null)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
@@ -146,13 +164,32 @@ async function loadPets() {
   error.value = ''
   try {
     const { lat, lng } = await getUserLocation()
-    pets.value = await getNearbyPets({ lat, lng, radiusKm: 3 })
+    userLocation.value = { lat, lng }
+    const speciesParam =
+      species.value === 'All'
+        ? undefined
+        : species.value === 'Dogs'
+          ? 'Dog'
+          : species.value === 'Cats'
+            ? 'Cat'
+            : 'Other'
+    pets.value = await getNearbyPets({ lat, lng, radiusKm: radiusKm.value, species: speciesParam })
     scheduleToast()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load nearby pets'
   } finally {
     loading.value = false
   }
+}
+
+function onRadiusChange(value: number) {
+  radiusKm.value = value
+  loadPets()
+}
+
+function onSpeciesChange(value: SpeciesFilter) {
+  species.value = value
+  loadPets()
 }
 
 function scheduleToast() {

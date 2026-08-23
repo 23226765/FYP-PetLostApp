@@ -5,7 +5,7 @@
         <p class="greeting">Community Radar</p>
         <h1>
           <AppIcon name="pin" :size="18" />
-          Maplewood, 3 km radius
+          Maplewood, {{ radiusKm }} km radius
         </h1>
       </div>
       <button class="bell" aria-label="Notifications, 2 unread">
@@ -40,14 +40,31 @@
         v-for="chip in chips"
         :key="chip"
         class="chip"
-        :class="{ active: filter === chip }"
-        @click="filter = chip"
+        :class="{ active: species === chip }"
+        @click="handleSpecies(chip)"
       >
         {{ chip }}
       </button>
     </div>
 
-    <p class="count">{{ filtered.length }} pets missing nearby</p>
+    <div class="radius">
+      <div class="radius-head">
+        <span>Search radius</span>
+        <span class="radius-value">{{ radiusKm }} km</span>
+      </div>
+      <input
+        type="range"
+        min="1"
+        max="20"
+        step="1"
+        :value="radiusKm"
+        aria-label="Search radius in kilometers"
+        @change="handleRadius"
+      />
+      <div class="radius-labels"><span>1 km</span><span>20 km</span></div>
+    </div>
+
+    <p class="count">{{ pets.length }} pets missing nearby</p>
 
     <div v-if="loading" class="state">
       <span class="spinner" />
@@ -57,43 +74,64 @@
       <p>{{ error }}</p>
       <button class="retry-btn" @click="emit('retry')">Retry</button>
     </div>
-    <div v-else-if="filtered.length === 0" class="state">
+    <div v-else-if="pets.length === 0" class="state">
       No pets reported nearby yet. Be the first to post one!
     </div>
     <template v-else>
       <div v-if="view === 'list'" class="feed">
         <PetCard
-          v-for="pet in filtered"
+          v-for="pet in pets"
           :key="pet.id"
           :pet="pet"
           @open="emit('open', pet)"
           @found="emit('found', pet)"
         />
       </div>
-      <MapView v-else :pets="filtered" @open="(p) => emit('open', p)" />
+      <MapView
+        v-else
+        :pets="pets"
+        :center="userLocation"
+        :radius-km="radiusKm"
+        @open="(p) => emit('open', p)"
+      />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import type { Pet } from '../data/pets'
 import AppIcon from './AppIcon.vue'
 import PetCard from './PetCard.vue'
 import MapView from './MapView.vue'
 
-const props = defineProps<{ pets: Pet[]; loading?: boolean; error?: string }>()
-const emit = defineEmits<{ open: [pet: Pet]; found: [pet: Pet]; retry: [] }>()
+defineProps<{
+  pets: Pet[]
+  loading?: boolean
+  error?: string
+  radiusKm: number
+  species: 'All' | 'Dogs' | 'Cats' | 'Other'
+  userLocation: { lat: number; lng: number } | null
+}>()
+
+const emit = defineEmits<{
+  open: [pet: Pet]
+  found: [pet: Pet]
+  retry: []
+  'radius-change': [value: number]
+  'species-change': [value: 'All' | 'Dogs' | 'Cats' | 'Other']
+}>()
 
 const view = ref<'list' | 'map'>('list')
 const chips = ['All', 'Dogs', 'Cats', 'Other'] as const
-const filter = ref<(typeof chips)[number]>('All')
 
-const filtered = computed(() => {
-  if (filter.value === 'All') return props.pets
-  const species = filter.value === 'Dogs' ? 'Dog' : filter.value === 'Cats' ? 'Cat' : 'Other'
-  return props.pets.filter((p) => p.species === species)
-})
+function handleRadius(e: Event) {
+  emit('radius-change', Number((e.target as HTMLInputElement).value))
+}
+
+function handleSpecies(chip: (typeof chips)[number]) {
+  emit('species-change', chip)
+}
 </script>
 
 <style scoped>
@@ -217,6 +255,43 @@ h1 svg {
   font-weight: 700;
   color: var(--ink-muted);
   margin-bottom: 12px;
+}
+
+.radius {
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.radius-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.radius-value {
+  color: var(--teal);
+  font-weight: 800;
+}
+
+.radius input[type='range'] {
+  width: 100%;
+  accent-color: var(--teal);
+}
+
+.radius-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  margin-top: 2px;
 }
 
 .feed {
