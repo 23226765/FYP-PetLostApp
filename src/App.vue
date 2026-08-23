@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { Pet } from './types/pet'
-import { getNearbyPets, reportSighting } from './api/pets'
+import { getNearbyPets, reportSighting } from './services/api'
 import AppIcon from './components/AppIcon.vue'
 import RadarScreen from './components/RadarScreen.vue'
 import PostPetScreen from './components/PostPetScreen.vue'

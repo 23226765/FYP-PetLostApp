@@ -1,9 +1,16 @@
-import { http } from './http'
+import axios from 'axios'
 import type { Pet, Sighting } from '../types/pet'
 
+// Direct backend base URL (CORS is enabled on the Express server).
+// Override via VITE_API_BASE_URL for native/Capacitor or deployed builds.
+const http = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api',
+  headers: { 'Content-Type': 'application/json' },
+})
+
 export interface NearbyParams {
-  lat: number
   lng: number
+  lat: number
   radiusKm?: number
   species?: 'Dog' | 'Cat' | 'Other'
   status?: 'lost' | 'sighted' | 'reunited'
@@ -35,7 +42,7 @@ export interface ReportPetPayload {
   mapY?: number
 }
 
-export async function reportPet(payload: ReportPetPayload): Promise<Pet> {
+export async function reportLostPet(payload: ReportPetPayload): Promise<Pet> {
   const { data } = await http.post<{ pet: Pet }>('/pets/report', payload)
   return data.pet
 }
@@ -47,8 +54,14 @@ export interface SightingPayload {
   photo?: string
 }
 
-export async function reportSighting(petId: string, payload: SightingPayload): Promise<Sighting> {
-  const { data } = await http.post<{ sighting: Sighting }>(`/pets/${petId}/sighting`, payload)
+export async function reportSighting(
+  petId: string,
+  sightingData: SightingPayload,
+): Promise<Sighting> {
+  const { data } = await http.post<{ sighting: Sighting }>(
+    `/pets/${petId}/sighting`,
+    sightingData,
+  )
   return data.sighting
 }
 

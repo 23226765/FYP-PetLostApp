@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
-import { reportPet } from '../api/pets'
+import { reportLostPet } from '../services/api'
 
 const emit = defineEmits<{ done: [] }>()
 
@@ -115,7 +115,7 @@ async function submit() {
   error.value = ''
   try {
     const coordinates = await currentCoordinates()
-    await reportPet({
+    await reportLostPet({
       name: form.name,
       species: form.species,
       breed: form.breed,
