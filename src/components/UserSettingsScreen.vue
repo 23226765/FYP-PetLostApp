@@ -26,15 +26,19 @@
     <!-- ── Avatar + name ── -->
     <div class="profile-row">
       <div class="avatar-wrap">
-        <img src="/avatar.svg" alt="Profile photo of Emma Carter" class="avatar" />
+        <img
+          :src="user?.avatar || '/avatar.svg'"
+          :alt="user ? `Profile photo of ${user.name}` : 'Guest profile'"
+          class="avatar"
+        />
         <!-- Teal camera badge overlaid on avatar -->
         <button class="avatar-edit" aria-label="Change profile photo">
           <AppIcon name="camera" :size="14" />
         </button>
       </div>
       <div class="profile-info">
-        <span class="profile-name">Emma Carter</span>
-        <span class="profile-email">emma@example.com</span>
+        <span class="profile-name">{{ user ? user.name : 'Guest' }}</span>
+        <span class="profile-email">{{ user ? user.email : 'Not signed in' }}</span>
       </div>
       <button class="edit-btn" aria-label="Edit profile" @click="editingProfile = !editingProfile">
         <AppIcon name="chevron" :size="16" />
@@ -231,15 +235,17 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
+import type { User } from '../types/user'
 
-/* ── Emits ── */
-const emit = defineEmits<{ close: [] }>()
+/* ── Props & Emits ── */
+defineProps<{ user: User | null }>()
+const emit = defineEmits<{ close: []; logout: [] }>()
 
 /* ── Local state: profile edit form ── */
 const editingProfile = ref(false)
 const form = reactive({
-  name: 'Emma Carter',
-  email: 'emma@example.com',
+  name: '',
+  email: '',
   phone: '',
 })
 
@@ -262,10 +268,9 @@ const prefs = reactive({
   preciseLocation: false,
 })
 
-/* ── Sign-out placeholder ── */
+/* ── Sign out ── */
 function confirmSignOut() {
-  // TODO: wire up to auth provider; for now just a console log
-  console.log('Sign out requested')
+  emit('logout')
 }
 </script>
 

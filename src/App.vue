@@ -28,7 +28,13 @@
         @species-change="onSpeciesChange"
       />
       <PostPetScreen v-if="tab === 'post'" @done="onPosted" />
-      <ProfileScreen v-if="tab === 'profile'" />
+      <ProfileScreen
+        v-if="tab === 'profile'"
+        :user="currentUser"
+        @login="authOpen = true"
+        @logout="logout"
+        @open-settings="showSettings = true"
+      />
     </main>
 
     <!-- Pet detail overlay -->
@@ -92,6 +98,26 @@
       </div>
     </Transition>
 
+    <!-- Auth screen overlay -->
+    <Transition name="page">
+      <AuthScreen
+        v-if="authOpen"
+        @close="authOpen = false"
+        @guest="authOpen = false"
+        @authenticated="handleAuth"
+      />
+    </Transition>
+
+    <!-- Settings overlay -->
+    <Transition name="page">
+      <UserSettingsScreen
+        v-if="showSettings"
+        :user="currentUser"
+        @close="showSettings = false"
+        @logout="logout"
+      />
+    </Transition>
+
     <!-- Bottom tab bar -->
     <nav class="tabbar" aria-label="Main navigation">
       <button
@@ -120,12 +146,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { Pet } from './types/pet'
-import { getNearbyPets, reportSighting } from './services/api'
+import type { User } from './types/user'
+import { getNearbyPets, reportSighting, getProfile } from './services/api'
 import AppIcon from './components/AppIcon.vue'
 import RadarScreen from './components/RadarScreen.vue'
 import PostPetScreen from './components/PostPetScreen.vue'
 import ProfileScreen from './components/ProfileScreen.vue'
 import PetDetail from './components/PetDetail.vue'
+import AuthScreen from './components/AuthScreen.vue'
+import UserSettingsScreen from './components/UserSettingsScreen.vue'
 
 type Tab = 'radar' | 'post' | 'profile'
 
@@ -141,6 +170,9 @@ const error = ref('')
 const radiusKm = ref(3)
 const species = ref<SpeciesFilter>('All')
 const userLocation = ref<{ lat: number; lng: number } | null>(null)
+const currentUser = ref<User | null>(null)
+const authOpen = ref(false)
+const showSettings = ref(false)
 const selectedPet = ref<Pet | null>(null)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
@@ -190,6 +222,31 @@ function onRadiusChange(value: number) {
 function onSpeciesChange(value: SpeciesFilter) {
   species.value = value
   loadPets()
+}
+
+async function restoreSession() {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    authOpen.value = true
+    return
+  }
+  try {
+    currentUser.value = await getProfile()
+  } catch {
+    localStorage.removeItem('token')
+    authOpen.value = true
+  }
+}
+
+function handleAuth(user: User) {
+  currentUser.value = user
+  authOpen.value = false
+}
+
+function logout() {
+  localStorage.removeItem('token')
+  currentUser.value = null
+  authOpen.value = true
 }
 
 function scheduleToast() {
@@ -260,7 +317,10 @@ function openFromToast() {
   }
 }
 
-onMounted(loadPets)
+onMounted(() => {
+  loadPets()
+  restoreSession()
+})
 </script>
 
 <style scoped>

@@ -1,12 +1,21 @@
 <template>
   <div class="profile">
     <header class="head">
-      <img class="avatar" src="/avatar.svg" alt="Profile photo of Emma Carter" />
-      <h1>Emma Carter</h1>
+      <img
+        class="avatar"
+        :src="user?.avatar || '/avatar.svg'"
+        :alt="user ? `Profile photo of ${user.name}` : 'Guest profile'"
+      />
+      <h1>{{ user ? user.name : 'Guest' }}</h1>
       <p class="area">
         <AppIcon name="pin" :size="14" />
-        Maplewood neighborhood
+        {{ user ? user.email : 'Sign in to sync your alerts across devices' }}
       </p>
+      <p v-if="user?.phone" class="area phone">{{ user.phone }}</p>
+      <button v-if="!user" class="auth-btn primary" @click="emit('login')">
+        Sign in / Create account
+      </button>
+      <button v-else class="auth-btn" @click="emit('logout')">Log out</button>
     </header>
 
     <div class="stats">
@@ -59,7 +68,7 @@
           <span class="knob" />
         </button>
       </li>
-      <li>
+      <li class="row-link" @click="emit('open-settings')">
         <div class="setting-label">
           <AppIcon name="user" :size="19" />
           <span>Account &amp; privacy</span>
@@ -73,6 +82,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppIcon from './AppIcon.vue'
+import type { User } from '../types/user'
+
+defineProps<{ user: User | null }>()
+const emit = defineEmits<{ login: []; logout: []; 'open-settings': [] }>()
 
 const alerts = ref(true)
 </script>
@@ -117,6 +130,31 @@ h1 {
 
 .area svg {
   color: var(--teal);
+}
+
+.area.phone {
+  margin-top: 2px;
+  font-size: 12.5px;
+}
+
+.auth-btn {
+  margin-top: 14px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.auth-btn.primary {
+  background: var(--teal);
+  color: #fff;
+  box-shadow: var(--shadow-float);
+}
+
+.auth-btn:not(.primary) {
+  background: var(--surface);
+  color: var(--coral);
+  border: 1.5px solid var(--line);
 }
 
 .stats {
@@ -247,6 +285,15 @@ h2 {
   color: var(--ink-muted);
   font-weight: 700;
   font-size: 14px;
+}
+
+.row-link {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.row-link:active {
+  background: var(--teal-soft) !important;
 }
 
 .switch {
