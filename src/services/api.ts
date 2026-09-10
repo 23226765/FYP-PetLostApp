@@ -16,6 +16,20 @@ http.interceptors.request.use((config) => {
   return config
 })
 
+// Auto sign-out when a protected request returns 401 (expired/invalid token).
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const url = error?.config?.url || ''
+    const status = error?.response?.status
+    if (status === 401 && !url.startsWith('/auth/')) {
+      localStorage.removeItem('token')
+      window.dispatchEvent(new Event('auth:unauthorized'))
+    }
+    return Promise.reject(error)
+  },
+)
+
 export interface NearbyParams {
   lng: number
   lat: number

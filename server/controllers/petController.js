@@ -143,6 +143,10 @@ export async function reportPet(req, res, next) {
       return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
     }
 
+    // Prefer the authenticated user's identity as the owner.
+    const resolvedOwnerName = req.user?.name || ownerName || 'Anonymous'
+    const resolvedOwnerPhone = req.user?.phone || ownerPhone || ''
+
     const pet = await Pet.create({
       name,
       species,
@@ -151,14 +155,15 @@ export async function reportPet(req, res, next) {
       description: description || '',
       details: details || '',
       reward: reward || '',
-      ownerName: ownerName || '',
-      ownerPhone: ownerPhone || '',
+      ownerName: resolvedOwnerName,
+      ownerPhone: resolvedOwnerPhone,
       locationName: locationName || '',
       location: { type: 'Point', coordinates },
       lastSeen: lastSeen ? new Date(lastSeen) : new Date(),
       mapX: Number.isFinite(Number(mapX)) ? Number(mapX) : 50,
       mapY: Number.isFinite(Number(mapY)) ? Number(mapY) : 50,
       status: 'lost',
+      reportedBy: req.user?._id || undefined,
     })
 
     res.status(201).json({ pet: serializePet(pet) })

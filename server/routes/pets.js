@@ -7,13 +7,14 @@ import {
   submitSighting,
   updateStatus,
 } from '../controllers/petController.js'
+import { optionalAuth } from '../middleware/auth.js'
 
 const router = Router()
 
 // Static path segments first so they don't collide with `/:id`.
 router.get('/', listPets)
 router.get('/nearby', getNearbyPets)
-router.post('/report', reportPet)
+router.post('/report', optionalAuth, reportPet)
 
 router.get('/:id', getPet)
 router.post('/:id/sighting', submitSighting)

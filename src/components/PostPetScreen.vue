@@ -122,8 +122,6 @@ async function submit() {
       description: form.details,
       details: form.details,
       reward: form.reward,
-      ownerName: 'You',
-      ownerPhone: '',
       locationName: form.location || 'Current location',
       coordinates,
     })

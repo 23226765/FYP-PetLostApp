@@ -19,3 +19,19 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Invalid or expired token' })
   }
 }
+
+// Like requireAuth, but never rejects — treats unauthenticated requests as guests.
+export async function optionalAuth(req, _res, next) {
+  try {
+    const header = req.headers.authorization || ''
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null
+    if (token) {
+      const payload = jwt.verify(token, JWT_SECRET)
+      const user = await User.findById(payload.id)
+      if (user) req.user = user
+    }
+  } catch {
+    // ignore — proceed as guest
+  }
+  next()
+}

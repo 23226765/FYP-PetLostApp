@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Pet } from './types/pet'
 import type { User } from './types/user'
 import { getNearbyPets, reportSighting, getProfile } from './services/api'
@@ -317,9 +317,19 @@ function openFromToast() {
   }
 }
 
+function handleUnauthorized() {
+  currentUser.value = null
+  authOpen.value = true
+}
+
 onMounted(() => {
   loadPets()
   restoreSession()
+  window.addEventListener('auth:unauthorized', handleUnauthorized)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('auth:unauthorized', handleUnauthorized)
 })
 </script>
 
