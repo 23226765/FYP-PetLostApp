@@ -8,10 +8,20 @@
           Maplewood, {{ radiusKm }} km radius
         </h1>
       </div>
-      <button class="bell" aria-label="Notifications, 2 unread">
-        <AppIcon name="bell" :size="21" />
-        <span class="dot" />
-      </button>
+      <div class="header-actions">
+        <button class="smart-match" type="button" @click="emit('smart-match')">
+          Smart Match
+        </button>
+        <button
+          class="bell"
+          type="button"
+          aria-label="Notifications, 2 unread"
+          @click="emit('notifications')"
+        >
+          <AppIcon name="bell" :size="21" />
+          <span class="dot" />
+        </button>
+      </div>
     </header>
 
     <div class="toggle" role="tablist" aria-label="Feed view">
@@ -118,6 +128,8 @@ const emit = defineEmits<{
   open: [pet: Pet]
   found: [pet: Pet]
   retry: []
+  'smart-match': []
+  notifications: []
   'radius-change': [value: number]
   'species-change': [value: 'All' | 'Dogs' | 'Cats' | 'Other']
 }>()
@@ -179,6 +191,23 @@ h1 svg {
   background: var(--surface);
   box-shadow: var(--shadow-card);
   color: var(--ink);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.smart-match {
+  min-height: 40px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: var(--teal);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  box-shadow: var(--shadow-card);
 }
 
 .bell .dot {

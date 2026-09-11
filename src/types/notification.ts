@@ -1,10 +1,10 @@
 export interface AppNotification {
-  id: number
+  id: string
   type: 'proximity' | 'sighting' | 'message' | 'reunited'
   title: string
   body: string
   time: string
   photo?: string
   read: boolean
-  petId?: number
+  petId?: string
 }

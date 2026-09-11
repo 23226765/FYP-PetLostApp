@@ -26,6 +26,8 @@
         @retry="loadPets"
         @radius-change="onRadiusChange"
         @species-change="onSpeciesChange"
+        @smart-match="showSmartMatch = true"
+        @notifications="showNotifications = true"
       />
       <PostPetScreen v-if="tab === 'post'" @done="onPosted" />
       <ProfileScreen
@@ -34,6 +36,8 @@
         @login="authOpen = true"
         @logout="logout"
         @open-settings="showSettings = true"
+        @open-activity="showActivity = true"
+        @open-boost="showBoost = true"
       />
     </main>
 
@@ -44,6 +48,43 @@
         :pet="selectedPet"
         @close="selectedPet = null"
         @found="openSighting(selectedPet)"
+        @poster="posterPet = selectedPet"
+        @chat="chatPet = selectedPet"
+      />
+    </Transition>
+
+    <!-- Smart Match overlay -->
+    <Transition name="page">
+      <SmartMatchScreen
+        v-if="showSmartMatch"
+        :pets="pets"
+        @close="showSmartMatch = false"
+        @open-pet="openPet"
+      />
+    </Transition>
+
+    <!-- Missing poster overlay -->
+    <Transition name="page">
+      <PosterModal v-if="posterPet" :pet="posterPet" @close="posterPet = null" />
+    </Transition>
+
+    <!-- Direct chat overlay -->
+    <Transition name="page">
+      <Chatscreen
+        v-if="chatPet"
+        :pet="chatPet"
+        :user="currentUser"
+        @close="chatPet = null"
+      />
+    </Transition>
+
+    <!-- Notifications overlay -->
+    <Transition name="page">
+      <NotificationsPanel
+        v-if="showNotifications"
+        :notifications="notifications"
+        @close="showNotifications = false"
+        @open-pet="openPetById"
       />
     </Transition>
 
@@ -118,6 +159,16 @@
       />
     </Transition>
 
+    <!-- Activity history overlay -->
+    <Transition name="page">
+      <AdoptionHistoryScreen v-if="showActivity" @close="showActivity = false" />
+    </Transition>
+
+    <!-- Alert boost overlay -->
+    <Transition name="page">
+      <BoostScreen v-if="showBoost" @back="showBoost = false" />
+    </Transition>
+
     <!-- Bottom tab bar -->
     <nav class="tabbar" aria-label="Main navigation">
       <button
@@ -146,8 +197,16 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Pet } from './types/pet'
+import type { AppNotification } from './types/notification'
 import type { User } from './types/user'
-import { getNearbyPets, reportSighting, getProfile } from './services/api'
+import {
+  getNearbyPets,
+  getNotifications,
+  getPet,
+  getProfile,
+  reportSighting,
+} from './services/api'
+import { getCurrentLocation } from './services/geolocation'
 import AppIcon from './components/AppIcon.vue'
 import RadarScreen from './components/RadarScreen.vue'
 import PostPetScreen from './components/PostPetScreen.vue'
@@ -155,6 +214,12 @@ import ProfileScreen from './components/ProfileScreen.vue'
 import PetDetail from './components/PetDetail.vue'
 import AuthScreen from './components/AuthScreen.vue'
 import UserSettingsScreen from './components/UserSettingsScreen.vue'
+import SmartMatchScreen from './components/SmartMatchScreen.vue'
+import PosterModal from './components/PosterModal.vue'
+import Chatscreen from './components/Chatscreen.vue'
+import NotificationsPanel from './components/NotificationsPanel.vue'
+import AdoptionHistoryScreen from './components/AdoptionHistoryScreen.vue'
+import BoostScreen from './components/BoostScreen.vue'
 
 type Tab = 'radar' | 'post' | 'profile'
 
@@ -173,22 +238,26 @@ const userLocation = ref<{ lat: number; lng: number } | null>(null)
 const currentUser = ref<User | null>(null)
 const authOpen = ref(false)
 const showSettings = ref(false)
+const showSmartMatch = ref(false)
+const showNotifications = ref(false)
+const showActivity = ref(false)
+const showBoost = ref(false)
+const notifications = ref<AppNotification[]>([])
 const selectedPet = ref<Pet | null>(null)
+const posterPet = ref<Pet | null>(null)
+const chatPet = ref<Pet | null>(null)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
 const sightingSent = ref(false)
 const sightingError = ref('')
 const toastPet = ref<Pet | null>(null)
 
-function getUserLocation(): Promise<{ lat: number; lng: number }> {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(DEFAULT_CENTER)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(DEFAULT_CENTER),
-      { timeout: 5000 },
-    )
-  })
+async function getUserLocation(): Promise<{ lat: number; lng: number }> {
+  try {
+    return await getCurrentLocation()
+  } catch {
+    return DEFAULT_CENTER
+  }
 }
 
 async function loadPets() {
@@ -264,8 +333,37 @@ function goTab(t: Tab) {
   selectedPet.value = null
 }
 
-function openPet(pet: Pet) {
+function openPet(petOrId: Pet | string | number) {
+  const pet =
+    typeof petOrId === 'object'
+      ? petOrId
+      : pets.value.find((item) => String(item.id) === String(petOrId))
+  if (!pet) return
   selectedPet.value = pet
+  showSmartMatch.value = false
+  showNotifications.value = false
+}
+
+async function openPetById(petId: string) {
+  const cachedPet = pets.value.find((pet) => pet.id === petId)
+  if (cachedPet) {
+    openPet(cachedPet)
+    return
+  }
+
+  try {
+    openPet(await getPet(petId))
+  } catch {
+    // Leave the notification panel open if the referenced pet is unavailable.
+  }
+}
+
+async function loadNotifications() {
+  try {
+    notifications.value = await getNotifications()
+  } catch {
+    notifications.value = []
+  }
 }
 
 function openSighting(pet: Pet | null) {
@@ -324,6 +422,7 @@ function handleUnauthorized() {
 
 onMounted(() => {
   loadPets()
+  loadNotifications()
   restoreSession()
   window.addEventListener('auth:unauthorized', handleUnauthorized)
 })

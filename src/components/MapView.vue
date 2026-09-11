@@ -14,6 +14,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Pet } from '../data/pets'
+import { getCurrentLocation } from '../services/geolocation'
 
 const props = defineProps<{
   pets: Pet[]
@@ -40,19 +41,14 @@ function esc(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function resolveCenter(): Promise<[number, number]> {
-  return new Promise((resolve) => {
-    if (props.center) return resolve([props.center.lat, props.center.lng])
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
-        () => resolve(HK_CENTER),
-        { timeout: 5000 },
-      )
-    } else {
-      resolve(HK_CENTER)
-    }
-  })
+async function resolveCenter(): Promise<[number, number]> {
+  if (props.center) return [props.center.lat, props.center.lng]
+  try {
+    const { lat, lng } = await getCurrentLocation()
+    return [lat, lng]
+  } catch {
+    return HK_CENTER
+  }
 }
 
 // Pet coordinates are stored as GeoJSON [lng, lat]; Leaflet expects [lat, lng].

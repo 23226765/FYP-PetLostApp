@@ -34,13 +34,26 @@
     </div>
 
     <h2>My pets</h2>
-    <div class="my-pet">
-      <img src="/pets/coco.svg" alt="Photo of Coco, a dachshund" />
-      <div class="my-pet-info">
-        <span class="my-pet-name">Coco</span>
-        <span class="my-pet-status">Currently missing · 47 neighbors watching</span>
+    <div class="my-pets">
+      <p v-if="!user" class="my-pets-state">Sign in to see your posts.</p>
+      <p v-else-if="loading" class="my-pets-state" role="status">Loading your posts...</p>
+      <div v-else-if="error" class="my-pets-state error" role="alert">
+        <p>{{ error }}</p>
+        <button type="button" @click="loadMyPets">Try again</button>
       </div>
-      <span class="status-badge">LOST</span>
+      <p v-else-if="myPets.length === 0" class="my-pets-state">
+        You haven't reported any pets yet.
+      </p>
+      <div v-else class="my-pets-list">
+        <article v-for="pet in myPets" :key="pet.id" class="my-pet">
+          <img :src="pet.photo" :alt="`Photo of ${pet.name}`" />
+          <div class="my-pet-info">
+            <span class="my-pet-name">{{ pet.name }}</span>
+            <span class="my-pet-status">{{ pet.breed || pet.species }}</span>
+          </div>
+          <span class="status-badge" :class="pet.status">{{ pet.status.toUpperCase() }}</span>
+        </article>
+      </div>
     </div>
 
     <h2>Settings</h2>
@@ -68,6 +81,20 @@
           <span class="knob" />
         </button>
       </li>
+      <li class="row-link" @click="emit('open-activity')">
+        <div class="setting-label">
+          <AppIcon name="list" :size="19" />
+          <span>Activity</span>
+        </div>
+        <span class="setting-value"><AppIcon name="chevron" :size="15" /></span>
+      </li>
+      <li class="row-link" @click="emit('open-boost')">
+        <div class="setting-label">
+          <AppIcon name="radar" :size="19" />
+          <span>Boost alert</span>
+        </div>
+        <span class="setting-value"><AppIcon name="chevron" :size="15" /></span>
+      </li>
       <li class="row-link" @click="emit('open-settings')">
         <div class="setting-label">
           <AppIcon name="user" :size="19" />
@@ -80,14 +107,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { getMyPets } from '../services/api'
+import type { Pet } from '../types/pet'
 import type { User } from '../types/user'
 
-defineProps<{ user: User | null }>()
-const emit = defineEmits<{ login: []; logout: []; 'open-settings': [] }>()
+const props = defineProps<{ user: User | null }>()
+const emit = defineEmits<{
+  login: []
+  logout: []
+  'open-settings': []
+  'open-activity': []
+  'open-boost': []
+}>()
 
 const alerts = ref(true)
+const myPets = ref<Pet[]>([])
+const loading = ref(false)
+const error = ref('')
+let requestId = 0
+
+async function loadMyPets() {
+  const currentRequest = ++requestId
+  myPets.value = []
+  error.value = ''
+
+  if (!props.user) {
+    loading.value = false
+    return
+  }
+
+  loading.value = true
+  try {
+    const pets = await getMyPets()
+    if (currentRequest === requestId) myPets.value = pets
+  } catch (e) {
+    if (currentRequest === requestId) {
+      error.value = e instanceof Error ? e.message : 'Failed to load your posts.'
+    }
+  } finally {
+    if (currentRequest === requestId) loading.value = false
+  }
+}
+
+watch(() => props.user?.id, loadMyPets, { immediate: true })
 </script>
 
 <style scoped>
@@ -202,6 +266,40 @@ h2 {
   margin-bottom: 10px;
 }
 
+.my-pets {
+  margin-bottom: 26px;
+}
+
+.my-pets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.my-pets-state {
+  padding: 20px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-muted);
+  box-shadow: var(--shadow-card);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.my-pets-state.error {
+  color: var(--coral);
+}
+
+.my-pets-state.error button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--teal);
+  color: #fff;
+  font-weight: 800;
+}
+
 .my-pet {
   display: flex;
   align-items: center;
@@ -210,7 +308,6 @@ h2 {
   border-radius: var(--radius-md);
   padding: 12px 14px;
   box-shadow: var(--shadow-card);
-  margin-bottom: 26px;
 }
 
 .my-pet img {
@@ -246,6 +343,11 @@ h2 {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
+}
+
+.status-badge.sighted,
+.status-badge.reunited {
+  background: var(--teal);
 }
 
 .settings {

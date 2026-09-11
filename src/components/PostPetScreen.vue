@@ -6,10 +6,18 @@
     </header>
 
     <form v-if="!submitted" @submit.prevent="submit">
-      <button type="button" class="photo-drop" aria-label="Add photos of your pet">
-        <AppIcon name="camera" :size="26" />
-        <span>Add photos</span>
-        <span class="hint">A clear face photo helps the most</span>
+      <button
+        type="button"
+        class="photo-drop"
+        aria-label="Add photos of your pet"
+        @click="addPhoto"
+      >
+        <img v-if="photo" class="photo-preview" :src="photo" alt="Selected pet" />
+        <template v-else>
+          <AppIcon name="camera" :size="26" />
+          <span>Add photos</span>
+          <span class="hint">A clear face photo helps the most</span>
+        </template>
       </button>
 
       <label class="field">
@@ -80,8 +88,10 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import { reportLostPet } from '../services/api'
+import { getCurrentLocation } from '../services/geolocation'
 
 const emit = defineEmits<{ done: [] }>()
 
@@ -89,6 +99,7 @@ const species = ['Dog', 'Cat', 'Other'] as const
 const submitted = ref(false)
 const submitting = ref(false)
 const error = ref('')
+const photo = ref('')
 const form = reactive({
   name: '',
   species: 'Dog' as (typeof species)[number],
@@ -98,15 +109,27 @@ const form = reactive({
   reward: '',
 })
 
-function currentCoordinates(): Promise<[number, number]> {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve([114.1694, 22.3193])
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve([pos.coords.longitude, pos.coords.latitude]),
-      () => resolve([114.1694, 22.3193]),
-      { timeout: 5000 },
-    )
-  })
+async function addPhoto() {
+  error.value = ''
+  try {
+    const image = await Camera.getPhoto({
+      resultType: CameraResultType.DataUrl,
+      quality: 85,
+      allowEditing: false,
+    })
+    photo.value = image.dataUrl ?? ''
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Unable to open the camera.'
+  }
+}
+
+async function currentCoordinates(): Promise<[number, number]> {
+  try {
+    const { lat, lng } = await getCurrentLocation()
+    return [lng, lat]
+  } catch {
+    return [114.1694, 22.3193]
+  }
 }
 
 async function submit() {
@@ -119,6 +142,7 @@ async function submit() {
       name: form.name,
       species: form.species,
       breed: form.breed,
+      photo: photo.value,
       description: form.details,
       details: form.details,
       reward: form.reward,
@@ -181,6 +205,13 @@ form {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-muted);
+}
+
+.photo-preview {
+  width: calc(100% - 24px);
+  max-height: 260px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
 }
 
 .field {

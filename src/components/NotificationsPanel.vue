@@ -67,7 +67,7 @@ import AppIcon from './AppIcon.vue'
 import type { AppNotification } from '../types/notification'
 
 const props = defineProps<{ notifications: AppNotification[] }>()
-const emit = defineEmits<{ close: []; 'open-pet': [petId: number] }>()
+const emit = defineEmits<{ close: []; 'open-pet': [petId: string] }>()
 
 const unread = computed(() => props.notifications.filter((n) => !n.read).length)
 

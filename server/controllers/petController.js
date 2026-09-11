@@ -78,6 +78,16 @@ export async function listPets(req, res, next) {
   }
 }
 
+// GET /api/pets/mine
+export async function listMyPets(req, res, next) {
+  try {
+    const docs = await Pet.find({ reportedBy: req.user._id }).sort({ createdAt: -1 })
+    res.json({ pets: docs.map((pet) => serializePet(pet)) })
+  } catch (err) {
+    next(err)
+  }
+}
+
 // GET /api/pets/nearby?lat=&lng=&radiusKm=&species=&status=
 export async function getNearbyPets(req, res, next) {
   try {
@@ -123,6 +133,38 @@ export async function getPet(req, res, next) {
     const pet = await Pet.findById(req.params.id)
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
     res.json({ pet: serializePet(pet) })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// GET /api/pets/:id/sightings
+export async function listSightings(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid pet id' })
+    }
+
+    let docs
+    try {
+      docs = await Sighting.find({ pet: req.params.id }).sort({ createdAt: -1 })
+    } catch (error) {
+      const isCosmosOrderByIndexError =
+        error?.code === 2 && String(error.message).includes('order-by item is excluded')
+      if (!isCosmosOrderByIndexError) throw error
+
+      docs = await Sighting.find({ pet: req.params.id })
+      docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }
+    const sightings = docs.map((sighting) => ({
+      id: String(sighting._id),
+      locationName: sighting.locationName,
+      note: sighting.note,
+      photo: sighting.photo,
+      createdAt: sighting.createdAt,
+    }))
+
+    res.json({ sightings })
   } catch (err) {
     next(err)
   }
@@ -232,4 +274,3 @@ export async function updateStatus(req, res, next) {
     next(err)
   }
 }
-

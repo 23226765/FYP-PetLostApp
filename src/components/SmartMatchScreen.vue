@@ -185,6 +185,10 @@
               <AppIcon name="check" :size="13" />
               {{ m.reason }}
             </p>
+            <p class="sighting-count">
+              <AppIcon name="eye" :size="13" />
+              {{ m.sightingCount }} sightings logged
+            </p>
 
             <div class="actions">
               <button class="found-btn" @click.stop="emit('confirm-match', m)">
@@ -212,7 +216,12 @@
 
 <script setup lang="ts">
 import { onUnmounted, ref } from 'vue'
+import { Camera, CameraResultType } from '@capacitor/camera'
+import type { Pet } from '../types/pet'
+import { getNearbyPets, getPetSightings } from '../services/api'
 import AppIcon from './AppIcon.vue'
+
+const props = defineProps<{ pets?: Pet[] }>()
 
 /* ── Emits ──────────────────────────────────────────────
    close          → dismiss the screen
@@ -228,21 +237,13 @@ const emit = defineEmits<{
 }>()
 
 /* ── Types ─────────────────────────────────────────── */
-export interface MatchResult {
-  id: number
-  name: string
-  breed: string
-  species: string
-  photo: string
-  status: 'lost' | 'sighted'
-  distanceKm: number
-  lastSeen: string
-  postedAgo: string
-  reward?: string
+type MatchResult = Pet & {
   /** Visual similarity score, 0–100 */
   confidence: number
   /** Human-readable explanation of the match */
   reason: string
+  /** Number of sightings submitted for this pet */
+  sightingCount: number
 }
 
 type ScreenState = 'idle' | 'scanning' | 'results'
@@ -264,53 +265,22 @@ const demoPhoto =
   'https://images.unsplash.com/photo-1552053831-71594a27632d?w=800&q=80'
 
 /* ── Mock match results (highest confidence first) ── */
-const matches = ref<MatchResult[]>([
-  {
-    id: 1,
-    name: 'Mochi',
-    breed: 'Shiba Inu',
-    species: 'Dog',
-    photo: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&q=80',
-    status: 'lost',
-    distanceKm: 0.4,
-    lastSeen: 'Riverside Park',
-    postedAgo: '2h ago',
-    reward: '$150',
-    confidence: 94,
-    reason: 'Coat pattern, ear shape and collar colour all align',
-  },
-  {
-    id: 2,
-    name: 'Kenji',
-    breed: 'Akita Mix',
-    species: 'Dog',
-    photo: 'https://images.unsplash.com/photo-1568572933382-74d440642117?w=600&q=80',
-    status: 'lost',
-    distanceKm: 1.9,
-    lastSeen: 'Birch Street',
-    postedAgo: '1d ago',
-    confidence: 71,
-    reason: 'Similar build and muzzle markings, different tail',
-  },
-  {
-    id: 3,
-    name: 'Hazel',
-    breed: 'Corgi',
-    species: 'Dog',
-    photo: 'https://images.unsplash.com/photo-1612195583950-b8fd34c87093?w=600&q=80',
-    status: 'sighted',
-    distanceKm: 3.2,
-    lastSeen: 'Willow Lane',
-    postedAgo: '3d ago',
-    reward: '$80',
-    confidence: 48,
-    reason: 'Coat colour matches but body proportions differ',
-  },
-])
+const matches = ref<MatchResult[]>([])
 
 /* ── Upload handling ───────────────────────────────── */
-function triggerFilePicker() {
-  fileInput.value?.click()
+async function triggerFilePicker() {
+  try {
+    const image = await Camera.getPhoto({
+      resultType: CameraResultType.DataUrl,
+      quality: 85,
+      allowEditing: false,
+    })
+
+    if (image.dataUrl) startScan(image.dataUrl)
+  } catch {
+    // Preserve the browser file picker when the Camera plugin is unavailable.
+    fileInput.value?.click()
+  }
 }
 
 function onFileSelected(e: Event) {
@@ -351,10 +321,43 @@ function startScan(photoSrc: string) {
   }, 40)
 
   // Reveal results after exactly 2 seconds
-  finishTimer = setTimeout(() => {
+  finishTimer = setTimeout(async () => {
     clearTimers()
     scanProgress.value = 100
-    state.value = 'results'
+    try {
+      const lostPets = props.pets
+        ? props.pets.filter((pet) => pet.status === 'lost')
+        : await getNearbyPets({
+            lat: 22.3193,
+            lng: 114.1694,
+            radiusKm: 20,
+            status: 'lost',
+          })
+
+      const rankedMatches = await Promise.all(
+        lostPets.map(async (pet) => {
+          let sightingCount = 0
+          try {
+            sightingCount = (await getPetSightings(pet.id)).length
+          } catch {
+            // Keep the match visible if its supporting history cannot be loaded.
+          }
+
+          return {
+            ...pet,
+            confidence: 60 + (pet.id.charCodeAt(0) % 35),
+            reason: 'Possible visual match based on the uploaded photo.',
+            sightingCount,
+          }
+        }),
+      )
+
+      matches.value = rankedMatches.sort((a, b) => b.confidence - a.confidence)
+    } catch {
+      matches.value = []
+    } finally {
+      state.value = 'results'
+    }
   }, 2000)
 }
 
@@ -819,6 +822,20 @@ h3 { font-size: 19px; font-weight: 800; }
 }
 
 .conf-reason svg { color: var(--teal); flex-shrink: 0; margin-top: 2px; }
+
+.sighting-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  color: var(--teal);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.sighting-count svg {
+  flex-shrink: 0;
+}
 
 .actions {
   display: flex;

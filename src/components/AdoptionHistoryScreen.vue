@@ -164,8 +164,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { getMyPets } from '../services/api'
+import type { Pet } from '../types/pet'
 
 /* ── Emits ── */
 const emit = defineEmits<{ close: [] }>()
@@ -175,7 +177,7 @@ type Outcome = 'reunited' | 'sighted' | 'lost' | 'adopted'
 type ActivityType = 'sighting' | 'post' | 'adoption'
 
 interface HistoryEntry {
-  id: number
+  id: string
   petName: string
   breed: string
   petPhoto: string
@@ -188,64 +190,32 @@ interface HistoryEntry {
 }
 
 /* ── Mock data — replace with API/store calls in production ── */
-const entries: HistoryEntry[] = [
-  {
-    id: 1,
-    petName: 'Coco',
-    breed: 'Dachshund',
-    petPhoto: '/pets/coco.svg',
-    location: 'Elm St & 3rd Ave',
-    dateAgo: '2 days ago',
+const entries = ref<HistoryEntry[]>([])
+
+function toHistoryEntry(pet: Pet): HistoryEntry {
+  return {
+    id: pet.id,
+    petName: pet.name,
+    breed: pet.breed || pet.species,
+    petPhoto: pet.photo,
+    location: pet.location,
+    dateAgo: pet.postedAgo,
     type: 'post',
-    outcome: 'lost',
-    note: 'Posted after Coco went missing from the backyard.',
-    reward: '$200 reward',
-  },
-  {
-    id: 2,
-    petName: 'Mochi',
-    breed: 'Shiba Inu',
-    petPhoto: '/pets/mochi.svg',
-    location: 'Riverside Park',
-    dateAgo: '5 days ago',
-    type: 'sighting',
-    outcome: 'sighted',
-    note: 'Spotted near the fountain heading east.',
-  },
-  {
-    id: 3,
-    petName: 'Biscuit',
-    breed: 'Tabby Cat',
-    petPhoto: '/pets/biscuit.svg',
-    location: 'Oak Lane',
-    dateAgo: '2 weeks ago',
-    type: 'sighting',
-    outcome: 'reunited',
-    note: 'Found hiding under a parked car. Owner was notified.',
-  },
-  {
-    id: 4,
-    petName: 'Luna',
-    breed: 'Border Collie',
-    petPhoto: '/pets/luna.svg',
-    location: 'Maplewood Shelter',
-    dateAgo: '1 month ago',
-    type: 'adoption',
-    outcome: 'adopted',
-    note: 'Adopted Luna from the community shelter drive.',
-  },
-  {
-    id: 5,
-    petName: 'Pepper',
-    breed: 'Domestic Shorthair',
-    petPhoto: '/pets/pepper.svg',
-    location: 'Cedar Ave',
-    dateAgo: '6 weeks ago',
-    type: 'sighting',
-    outcome: 'reunited',
-    reward: '$50 reward',
-  },
-]
+    outcome: pet.status,
+    note: pet.description,
+    reward: pet.reward,
+  }
+}
+
+async function loadEntries() {
+  try {
+    entries.value = (await getMyPets()).map(toHistoryEntry)
+  } catch {
+    entries.value = []
+  }
+}
+
+onMounted(loadEntries)
 
 /* ── Filter chips ── */
 const chips = ['All', 'Sightings', 'My Posts', 'Adoptions'] as const
@@ -253,7 +223,7 @@ type ChipValue = (typeof chips)[number]
 const activeFilter = ref<ChipValue>('All')
 
 const filtered = computed<HistoryEntry[]>(() => {
-  if (activeFilter.value === 'All') return entries
+  if (activeFilter.value === 'All') return entries.value
   const map: Record<ChipValue, ActivityType | null> = {
     All: null,
     Sightings: 'sighting',
@@ -261,18 +231,18 @@ const filtered = computed<HistoryEntry[]>(() => {
     Adoptions: 'adoption',
   }
   const t = map[activeFilter.value]
-  return t ? entries.filter((e) => e.type === t) : entries
+  return t ? entries.value.filter((entry) => entry.type === t) : entries.value
 })
 
 /* ── Selected entry for the detail sheet ── */
 const selectedEntry = ref<HistoryEntry | null>(null)
 
 /* ── Summary stats (derived from full entries list) ── */
-const stats = {
-  sightings: entries.filter((e) => e.type === 'sighting').length,
-  reunited: entries.filter((e) => e.outcome === 'reunited').length,
-  posts: entries.filter((e) => e.type === 'post').length,
-}
+const stats = computed(() => ({
+  sightings: entries.value.filter((entry) => entry.type === 'sighting').length,
+  reunited: entries.value.filter((entry) => entry.outcome === 'reunited').length,
+  posts: entries.value.filter((entry) => entry.type === 'post').length,
+}))
 
 /* ── Helper: human-readable outcome label ── */
 function outcomeLabel(outcome: Outcome): string {

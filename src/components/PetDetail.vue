@@ -5,7 +5,7 @@
       <button class="back" aria-label="Go back" @click="emit('close')">
         <AppIcon name="back" :size="20" />
       </button>
-      <button class="share" aria-label="Share this pet's poster">
+      <button class="share" aria-label="Share this pet's poster" @click="emit('poster')">
         <AppIcon name="share" :size="19" />
       </button>
       <span class="badge" :class="pet.status">
@@ -41,14 +41,50 @@
         </div>
       </div>
 
+      <section class="sighting-history" aria-labelledby="sighting-history-title">
+        <h3 id="sighting-history-title">Sighting history</h3>
+        <p v-if="sightingsLoading" class="timeline-state" role="status">
+          Loading sightings...
+        </p>
+        <p v-else-if="sightingsError" class="timeline-state error" role="alert">
+          {{ sightingsError }}
+        </p>
+        <p v-else-if="sightings.length === 0" class="timeline-state">No sightings yet.</p>
+        <ol v-else class="timeline">
+          <li v-for="sighting in sightings" :key="sighting.id" class="timeline-item">
+            <span class="timeline-dot" aria-hidden="true" />
+            <div class="timeline-content">
+              <div class="timeline-head">
+                <strong>{{ sighting.locationName || 'Location not provided' }}</strong>
+                <time v-if="sighting.createdAt" :datetime="String(sighting.createdAt)">
+                  {{ relativeTime(sighting.createdAt) }}
+                </time>
+              </div>
+              <p v-if="sighting.note">{{ sighting.note }}</p>
+              <img
+                v-if="sighting.photo"
+                :src="sighting.photo"
+                :alt="`Sighting of ${pet.name}`"
+                loading="lazy"
+              />
+            </div>
+          </li>
+        </ol>
+      </section>
+
       <h3>About {{ pet.name }}</h3>
       <p class="desc">{{ pet.description }}</p>
 
       <div class="owner">
-        <div class="owner-info">
+        <button
+          class="owner-info"
+          type="button"
+          :aria-label="`Message ${pet.owner}`"
+          @click="emit('chat')"
+        >
           <span class="owner-name">{{ pet.owner }}</span>
           <span class="owner-role">Owner · posted {{ pet.postedAgo }}</span>
-        </div>
+        </button>
         <a class="call" :href="`tel:${pet.ownerPhone}`" :aria-label="`Call ${pet.owner}`">
           <AppIcon name="phone" :size="19" />
         </a>
@@ -63,11 +99,43 @@
 </template>
 
 <script setup lang="ts">
-import type { Pet } from '../data/pets'
+import { onMounted, ref } from 'vue'
+import type { Pet, Sighting } from '../types/pet'
+import { getPetSightings } from '../services/api'
 import AppIcon from './AppIcon.vue'
 
-defineProps<{ pet: Pet }>()
-const emit = defineEmits<{ close: []; found: [] }>()
+const props = defineProps<{ pet: Pet }>()
+const emit = defineEmits<{ close: []; found: []; poster: []; chat: [] }>()
+
+const sightings = ref<Sighting[]>([])
+const sightingsLoading = ref(true)
+const sightingsError = ref('')
+
+async function loadSightings() {
+  sightingsLoading.value = true
+  sightingsError.value = ''
+  try {
+    sightings.value = await getPetSightings(props.pet.id)
+  } catch (error) {
+    sightings.value = []
+    sightingsError.value = error instanceof Error ? error.message : 'Failed to load sightings.'
+  } finally {
+    sightingsLoading.value = false
+  }
+}
+
+function relativeTime(value: string | Date) {
+  const elapsed = Math.max(0, Date.now() - new Date(value).getTime())
+  const minutes = Math.floor(elapsed / 60000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+onMounted(loadSightings)
 </script>
 
 <style scoped>
@@ -219,6 +287,100 @@ h2 {
   color: var(--coral);
 }
 
+.sighting-history {
+  margin-bottom: 20px;
+}
+
+.timeline-state {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.timeline-state.error {
+  color: var(--coral);
+}
+
+.timeline {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.timeline-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: var(--line);
+}
+
+.timeline-dot {
+  width: 16px;
+  height: 16px;
+  margin-top: 14px;
+  border: 4px solid var(--teal-soft);
+  border-radius: 50%;
+  background: var(--teal);
+  z-index: 1;
+}
+
+.timeline-content {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.timeline-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.timeline-head strong {
+  font-size: 14px;
+}
+
+.timeline-head time {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.timeline-content p {
+  margin-top: 5px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.timeline-content img {
+  width: 100%;
+  max-height: 180px;
+  margin-top: 10px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
 h3 {
   font-size: 16px;
   font-weight: 800;
@@ -246,6 +408,12 @@ h3 {
 .owner-info {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
 }
 
 .owner-name {

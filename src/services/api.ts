@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { Pet, Sighting } from '../types/pet'
+import type { AppNotification } from '../types/notification'
 import type { User } from '../types/user'
 
 // Direct backend base URL (CORS is enabled on the Express server).
@@ -43,9 +44,24 @@ export async function getNearbyPets(params: NearbyParams): Promise<Pet[]> {
   return data.pets
 }
 
+export async function getMyPets(): Promise<Pet[]> {
+  const { data } = await http.get<{ pets: Pet[] }>('/pets/mine')
+  return data.pets
+}
+
 export async function getPet(id: string): Promise<Pet> {
   const { data } = await http.get<{ pet: Pet }>(`/pets/${id}`)
   return data.pet
+}
+
+export async function getPetSightings(petId: string): Promise<Sighting[]> {
+  const { data } = await http.get<{ sightings: Sighting[] }>(`/pets/${petId}/sightings`)
+  return data.sightings
+}
+
+export async function getNotifications(): Promise<AppNotification[]> {
+  const { data } = await http.get<{ notifications: AppNotification[] }>('/notifications')
+  return data.notifications
 }
 
 export interface ReportPetPayload {
