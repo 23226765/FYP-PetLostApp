@@ -39,14 +39,38 @@ export interface NearbyParams {
   status?: 'lost' | 'sighted' | 'reunited'
 }
 
-export async function getNearbyPets(params: NearbyParams): Promise<Pet[]> {
-  const { data } = await http.get<{ pets: Pet[] }>('/pets/nearby', { params })
+export async function getNearbyPets(
+  params: NearbyParams,
+  signal?: AbortSignal,
+): Promise<Pet[]> {
+  const { data } = await http.get<{ pets: Pet[] }>('/pets/nearby', { params, signal })
   return data.pets
 }
 
 export async function getMyPets(): Promise<Pet[]> {
   const { data } = await http.get<{ pets: Pet[] }>('/pets/mine')
   return data.pets
+}
+
+export interface MySightingPet {
+  _id: string
+  name: string
+  photo: string
+  status: Pet['status']
+}
+
+export interface MySighting {
+  _id: string
+  pet: MySightingPet | null
+  locationName: string
+  note: string
+  photo?: string
+  createdAt: string
+}
+
+export async function getMySightings(): Promise<MySighting[]> {
+  const { data } = await http.get<{ sightings: MySighting[] }>('/pets/sightings/mine')
+  return data.sightings
 }
 
 export async function getPet(id: string): Promise<Pet> {

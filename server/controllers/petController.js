@@ -88,6 +88,19 @@ export async function listMyPets(req, res, next) {
   }
 }
 
+// GET /api/pets/sightings/mine
+export async function listMySightings(req, res, next) {
+  try {
+    const sightings = await Sighting.find({ reportedBy: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate('pet', 'name photo status')
+
+    res.json({ sightings })
+  } catch (err) {
+    next(err)
+  }
+}
+
 // GET /api/pets/nearby?lat=&lng=&radiusKm=&species=&status=
 export async function getNearbyPets(req, res, next) {
   try {
@@ -230,6 +243,7 @@ export async function submitSighting(req, res, next) {
 
     const sighting = await Sighting.create({
       pet: pet._id,
+      reportedBy: req.user?._id || undefined,
       location: { type: 'Point', coordinates },
       locationName: locationName || '',
       note: note || '',

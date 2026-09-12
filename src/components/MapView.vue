@@ -6,6 +6,9 @@
       role="application"
       aria-label="Interactive map of nearby missing pets"
     ></div>
+    <p v-if="locationMessage" class="location-notice" role="status">
+      {{ locationMessage }}
+    </p>
   </div>
 </template>
 
@@ -30,33 +33,73 @@ let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
 let radiusCircle: L.Circle | null = null
 let userMarker: L.Marker | null = null
+let resizeObserver: ResizeObserver | null = null
+let invalidateFrame: number | null = null
+let disposed = false
+let centerRequest = 0
+
+const locationMessage = ref<string | null>(null)
 
 const HK_CENTER: [number, number] = [22.2825, 114.1897]
 
-function esc(s: string): string {
-  return s
+function esc(value: unknown): string {
+  return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
 }
 
-async function resolveCenter(): Promise<[number, number]> {
-  if (props.center) return [props.center.lat, props.center.lng]
+function validLatLng(lat: unknown, lng: unknown): [number, number] | null {
+  if (
+    typeof lat !== 'number' ||
+    typeof lng !== 'number' ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    return null
+  }
+
+  return [lat, lng]
+}
+
+function propCenter(): [number, number] | null {
+  return props.center ? validLatLng(props.center.lat, props.center.lng) : null
+}
+
+async function resolveCenter(): Promise<{
+  coordinates: [number, number]
+  showUserMarker: boolean
+}> {
+  const suppliedCenter = propCenter()
+  if (suppliedCenter) {
+    locationMessage.value = null
+    return { coordinates: suppliedCenter, showUserMarker: true }
+  }
+
   try {
     const { lat, lng } = await getCurrentLocation()
-    return [lat, lng]
+    const coordinates = validLatLng(lat, lng)
+    if (!coordinates) throw new Error('Invalid coordinates returned by geolocation')
+
+    locationMessage.value = null
+    return { coordinates, showUserMarker: true }
   } catch {
-    return HK_CENTER
+    locationMessage.value = 'Location unavailable. Showing the default Hong Kong area.'
+    return { coordinates: HK_CENTER, showUserMarker: false }
   }
 }
 
 // Pet coordinates are stored as GeoJSON [lng, lat]; Leaflet expects [lat, lng].
-function petLatLng(pet: Pet): [number, number] {
+function petLatLng(pet: Pet): [number, number] | null {
   if (pet.coordinates && pet.coordinates.length === 2) {
-    return [pet.coordinates[1], pet.coordinates[0]]
+    return validLatLng(pet.coordinates[1], pet.coordinates[0])
   }
-  return HK_CENTER
+  return null
 }
 
 function petIcon(pet: Pet): L.DivIcon {
@@ -86,19 +129,31 @@ function renderPets() {
   if (!map || !markersLayer) return
   markersLayer.clearLayers()
   for (const pet of props.pets) {
-    const marker = L.marker(petLatLng(pet), { icon: petIcon(pet) })
+    const coordinates = petLatLng(pet)
+    if (!coordinates) continue
+
+    const marker = L.marker(coordinates, { icon: petIcon(pet) })
     marker.bindPopup(popupHtml(pet), { closeButton: true })
     marker.on('popupopen', () => {
-      const btn = mapEl.value?.querySelector(`.pawradar-view[data-id="${esc(pet.id)}"]`)
-      btn?.addEventListener('click', () => emit('open', pet))
+      const btn = marker.getPopup()?.getElement()?.querySelector<HTMLButtonElement>('.pawradar-view')
+      if (btn) btn.onclick = () => emit('open', pet)
+    })
+    marker.on('popupclose', () => {
+      const btn = marker.getPopup()?.getElement()?.querySelector<HTMLButtonElement>('.pawradar-view')
+      if (btn) btn.onclick = null
     })
     markersLayer.addLayer(marker)
   }
 }
 
+function radiusMeters(): number {
+  const radiusKm = props.radiusKm ?? 3
+  return (Number.isFinite(radiusKm) && radiusKm >= 0 ? radiusKm : 3) * 1000
+}
+
 function renderRadius() {
   if (!radiusCircle) return
-  radiusCircle.setRadius((props.radiusKm ?? 3) * 1000)
+  radiusCircle.setRadius(radiusMeters())
 }
 
 function renderUserMarker(center: [number, number]) {
@@ -115,9 +170,38 @@ function renderUserMarker(center: [number, number]) {
   }).addTo(map)
 }
 
-onMounted(async () => {
-  if (!mapEl.value) return
-  const center = await resolveCenter()
+function removeUserMarker() {
+  userMarker?.remove()
+  userMarker = null
+}
+
+function applyCenter(center: [number, number], showUserMarker: boolean) {
+  if (!map) return
+  map.setView(center)
+  radiusCircle?.setLatLng(center)
+  if (showUserMarker) renderUserMarker(center)
+  else removeUserMarker()
+}
+
+function scheduleInvalidateSize() {
+  if (!map || invalidateFrame !== null) return
+  invalidateFrame = window.requestAnimationFrame(() => {
+    invalidateFrame = null
+    if (!disposed) map?.invalidateSize()
+  })
+}
+
+async function initialiseMap() {
+  const request = ++centerRequest
+  const resolved = await resolveCenter()
+
+  // Permission prompts can outlive this component or a newer center update.
+  if (disposed || request !== centerRequest || !mapEl.value) return
+
+  const latestSuppliedCenter = propCenter()
+  const center = latestSuppliedCenter ?? resolved.coordinates
+  const showUserMarker = Boolean(latestSuppliedCenter) || resolved.showUserMarker
+  if (latestSuppliedCenter) locationMessage.value = null
 
   map = L.map(mapEl.value, { center, zoom: 13 })
 
@@ -128,35 +212,59 @@ onMounted(async () => {
 
   markersLayer = L.layerGroup().addTo(map)
   radiusCircle = L.circle(center, {
-    radius: (props.radiusKm ?? 3) * 1000,
+    radius: radiusMeters(),
     color: '#1d6360',
     weight: 1.5,
     fillColor: '#1d6360',
     fillOpacity: 0.08,
   }).addTo(map)
 
-  renderUserMarker(center)
+  if (showUserMarker) renderUserMarker(center)
   renderPets()
 
-  setTimeout(() => map?.invalidateSize(), 0)
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(scheduleInvalidateSize)
+    resizeObserver.observe(mapEl.value)
+  }
+  scheduleInvalidateSize()
+}
+
+onMounted(() => {
+  void initialiseMap()
 })
 
-watch(() => props.pets, () => renderPets())
+watch(() => props.pets, () => renderPets(), { deep: true })
 watch(() => props.radiusKm, () => renderRadius())
 watch(
   () => props.center,
   (c) => {
-    if (!c || !map) return
-    const latlng: [number, number] = [c.lat, c.lng]
-    map.setView(latlng)
-    renderUserMarker(latlng)
-    radiusCircle?.setLatLng(latlng)
+    const center = c ? validLatLng(c.lat, c.lng) : null
+    if (!center) return
+
+    locationMessage.value = null
+    // initialiseMap re-reads the prop after geolocation resolves.
+    if (!map) return
+
+    centerRequest += 1
+    applyCenter(center, true)
   },
+  { deep: true },
 )
 
 onBeforeUnmount(() => {
+  disposed = true
+  centerRequest += 1
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  if (invalidateFrame !== null) {
+    window.cancelAnimationFrame(invalidateFrame)
+    invalidateFrame = null
+  }
   map?.remove()
   map = null
+  markersLayer = null
+  radiusCircle = null
+  userMarker = null
 })
 </script>
 
@@ -166,6 +274,23 @@ onBeforeUnmount(() => {
   z-index: 0;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.location-notice {
+  position: absolute;
+  z-index: 500;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(239, 99, 81, 0.35);
+  border-radius: var(--radius-lg);
+  background: rgba(252, 249, 242, 0.96);
+  color: #1d6360;
+  font-size: 12px;
+  font-weight: 700;
   box-shadow: var(--shadow-card);
 }
 

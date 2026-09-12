@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   listPets,
   listMyPets,
+  listMySightings,
   getNearbyPets,
   getPet,
   listSightings,
@@ -18,10 +19,11 @@ router.get('/', listPets)
 router.get('/mine', requireAuth, listMyPets)
 router.get('/nearby', getNearbyPets)
 router.post('/report', optionalAuth, reportPet)
+router.get('/sightings/mine', requireAuth, listMySightings)
 
 router.get('/:id/sightings', listSightings)
 router.get('/:id', getPet)
-router.post('/:id/sighting', submitSighting)
+router.post('/:id/sighting', optionalAuth, submitSighting)
 router.patch('/:id/status', updateStatus)
 
 export default router

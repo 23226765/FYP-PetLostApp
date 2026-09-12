@@ -19,6 +19,7 @@ const pointSchema = new mongoose.Schema(
 const sightingSchema = new mongoose.Schema(
   {
     pet: { type: mongoose.Schema.Types.ObjectId, ref: 'Pet', required: true },
+    reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     location: { type: pointSchema, required: true },
     locationName: { type: String, default: '' },
     note: { type: String, default: '' },
@@ -32,5 +33,6 @@ const sightingSchema = new mongoose.Schema(
 
 sightingSchema.index({ location: '2dsphere' })
 sightingSchema.index({ pet: 1 })
+sightingSchema.index({ reportedBy: 1, createdAt: -1 })
 
 export default mongoose.models.Sighting || mongoose.model('Sighting', sightingSchema)

@@ -166,7 +166,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
-import { getMyPets } from '../services/api'
+import { getMyPets, getMySightings } from '../services/api'
+import type { MySighting } from '../services/api'
 import type { Pet } from '../types/pet'
 
 /* ── Emits ── */
@@ -194,7 +195,7 @@ const entries = ref<HistoryEntry[]>([])
 
 function toHistoryEntry(pet: Pet): HistoryEntry {
   return {
-    id: pet.id,
+    id: `post:${pet.id}`,
     petName: pet.name,
     breed: pet.breed || pet.species,
     petPhoto: pet.photo,
@@ -207,9 +208,41 @@ function toHistoryEntry(pet: Pet): HistoryEntry {
   }
 }
 
+function relativeTime(value: string): string {
+  const timestamp = new Date(value).getTime()
+  if (!Number.isFinite(timestamp)) return 'Recently'
+
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000))
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(timestamp).toLocaleDateString()
+}
+
+function sightingToHistoryEntry(sighting: MySighting): HistoryEntry {
+  return {
+    id: `sighting:${sighting._id}`,
+    petName: sighting.pet?.name || 'Pet sighting',
+    breed: 'Reported sighting',
+    petPhoto: sighting.pet?.photo || sighting.photo || '',
+    location: sighting.locationName || 'Location not provided',
+    dateAgo: relativeTime(sighting.createdAt),
+    type: 'sighting',
+    outcome: sighting.pet?.status || 'sighted',
+    note: sighting.note || undefined,
+  }
+}
+
 async function loadEntries() {
   try {
-    entries.value = (await getMyPets()).map(toHistoryEntry)
+    const [pets, sightings] = await Promise.all([getMyPets(), getMySightings()])
+    entries.value = [
+      ...sightings.map(sightingToHistoryEntry),
+      ...pets.map(toHistoryEntry),
+    ]
   } catch {
     entries.value = []
   }

@@ -1,17 +1,20 @@
-# NEXT_TASK — Final Cleanup & Commit
+# NEXT_TASK — Final Consolidation (roadmap complete)
 
-## Milestone & Target Feature
-All 5 milestones and every feature are complete. Remaining work is consolidation: delete the redundant `OnboardingScreen.vue` (superseded by `AuthScreen.vue`) and commit the uncommitted chat + sighting-photo work.
+## Status
+All 5 roadmap milestones are functionally complete. iOS is deferred (requires macOS/Xcode — not available on Windows); Android is built + synced.
 
-## Files to Modify
-- `src/components/OnboardingScreen.vue` (delete)
-- commit all pending changes
+## Target
+Commit the uncommitted "My Sightings" + auth-validation work and verify a clean build.
+
+## Files (already modified, uncommitted)
+- `server/controllers/authController.js`, `server/middleware/errorHandler.js`
+- `server/controllers/petController.js`, `server/models/Sighting.js`, `server/routes/pets.js`
+- `src/App.vue`, `src/components/MapView.vue`, `src/components/AdoptionHistoryScreen.vue`, `src/services/api.ts`
 
 ## Implementation Spec
-- Delete `OnboardingScreen.vue` — it is unreferenced (only self-referenced) and duplicates `AuthScreen.vue`.
-- Verify no imports: `grep -r "OnboardingScreen" src` → only its own file.
-- Commit: `git add -A && git commit -m "feat: chat + sighting photos; remove onboarding"`.
+- Run `npx vue-tsc --noEmit` and `npm run build` → confirm clean.
+- `git add -A && git commit -m "feat: my sightings + auth validation hardening"`.
 
 ## Acceptance Criteria
-- `OnboardingScreen.vue` removed; working tree clean.
-- `npx vue-tsc --noEmit` and `npm run build` pass; no console errors.
+- Working tree clean; typecheck + build pass.
+- Optional (non-blocking): generate iOS on a Mac; deploy backend + frontend.

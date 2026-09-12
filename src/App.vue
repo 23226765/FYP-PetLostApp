@@ -260,6 +260,16 @@ const sightingSent = ref(false)
 const sightingError = ref('')
 const toastPet = ref<Pet | null>(null)
 
+const PET_RELOAD_DEBOUNCE_MS = 300
+const TOAST_DELAY_MS = 2200
+const TOAST_DURATION_MS = 7000
+
+let petsRequestSequence = 0
+let petsAbortController: AbortController | null = null
+let petsReloadTimer: ReturnType<typeof setTimeout> | null = null
+let toastShowTimer: ReturnType<typeof setTimeout> | null = null
+let toastHideTimer: ReturnType<typeof setTimeout> | null = null
+
 async function getUserLocation(): Promise<{ lat: number; lng: number }> {
   try {
     return await getCurrentLocation()
@@ -269,36 +279,79 @@ async function getUserLocation(): Promise<{ lat: number; lng: number }> {
 }
 
 async function loadPets() {
+  if (petsReloadTimer) {
+    clearTimeout(petsReloadTimer)
+    petsReloadTimer = null
+  }
+
+  const requestSequence = ++petsRequestSequence
+  petsAbortController?.abort()
+  const controller = new AbortController()
+  petsAbortController = controller
+
+  const requestedRadiusKm = radiusKm.value
+  const requestedSpecies = species.value
   loading.value = true
   error.value = ''
+
   try {
     const { lat, lng } = await getUserLocation()
+    if (requestSequence !== petsRequestSequence) return
+
     userLocation.value = { lat, lng }
     const speciesParam =
-      species.value === 'All'
+      requestedSpecies === 'All'
         ? undefined
-        : species.value === 'Dogs'
+        : requestedSpecies === 'Dogs'
           ? 'Dog'
-          : species.value === 'Cats'
+          : requestedSpecies === 'Cats'
             ? 'Cat'
             : 'Other'
-    pets.value = await getNearbyPets({ lat, lng, radiusKm: radiusKm.value, species: speciesParam })
-    scheduleToast()
+
+    const nextPets = await getNearbyPets(
+      { lat, lng, radiusKm: requestedRadiusKm, species: speciesParam },
+      controller.signal,
+    )
+    if (requestSequence !== petsRequestSequence) return
+
+    const resultsChanged = petResultKey(pets.value) !== petResultKey(nextPets)
+    pets.value = nextPets
+    if (resultsChanged) scheduleToast(nextPets[0] ?? null)
   } catch (e) {
+    if (requestSequence !== petsRequestSequence) return
     error.value = e instanceof Error ? e.message : 'Failed to load nearby pets'
   } finally {
-    loading.value = false
+    if (requestSequence === petsRequestSequence) {
+      loading.value = false
+      if (petsAbortController === controller) petsAbortController = null
+    }
   }
 }
 
 function onRadiusChange(value: number) {
   radiusKm.value = value
-  loadPets()
+  schedulePetsReload()
 }
 
 function onSpeciesChange(value: SpeciesFilter) {
   species.value = value
-  loadPets()
+  schedulePetsReload()
+}
+
+function schedulePetsReload() {
+  if (petsReloadTimer) clearTimeout(petsReloadTimer)
+
+  // Invalidate in-flight work immediately while batching rapid filter changes.
+  petsRequestSequence += 1
+  petsAbortController?.abort()
+  petsAbortController = null
+  loading.value = true
+  error.value = ''
+
+  petsReloadTimer = setTimeout(() => {
+    petsReloadTimer = null
+    void loadPets()
+  }, PET_RELOAD_DEBOUNCE_MS)
 }
 
 async function restoreSession() {
@@ -326,14 +379,30 @@ function logout() {
   authOpen.value = true
 }
 
-function scheduleToast() {
-  if (!pets.value.length) return
-  setTimeout(() => {
-    toastPet.value = pets.value[0] ?? null
-    setTimeout(() => {
-      if (toastPet.value?.id === pets.value[0]?.id) toastPet.value = null
-    }, 7000)
-  }, 2200)
+function petResultKey(results: Pet[]): string {
+  return results.map((pet) => String(pet.id)).join('|')
+}
+
+function clearToastTimers() {
+  if (toastShowTimer) clearTimeout(toastShowTimer)
+  if (toastHideTimer) clearTimeout(toastHideTimer)
+  toastShowTimer = null
+  toastHideTimer = null
+}
+
+function scheduleToast(pet: Pet | null) {
+  clearToastTimers()
+  toastPet.value = null
+  if (!pet) return
+
+  toastShowTimer = setTimeout(() => {
+    toastShowTimer = null
+    toastPet.value = pet
+    toastHideTimer = setTimeout(() => {
+      toastHideTimer = null
+      if (toastPet.value?.id === pet.id) toastPet.value = null
+    }, TOAST_DURATION_MS)
+  }, TOAST_DELAY_MS)
 }
 
 function goTab(t: Tab) {
@@ -431,11 +500,12 @@ async function sendSighting() {
 
 function onPosted() {
   tab.value = 'radar'
-  loadPets()
+  void loadPets()
 }
 
 function openFromToast() {
   if (toastPet.value) {
+    clearToastTimers()
     selectedPet.value = toastPet.value
     toastPet.value = null
     tab.value = 'radar'
@@ -448,13 +518,21 @@ function handleUnauthorized() {
 }
 
 onMounted(() => {
-  loadPets()
-  loadNotifications()
-  restoreSession()
+  void loadPets()
+  void loadNotifications()
+  void restoreSession()
   window.addEventListener('auth:unauthorized', handleUnauthorized)
 })
 
 onBeforeUnmount(() => {
+  petsRequestSequence += 1
+  petsAbortController?.abort()
+  petsAbortController = null
+  if (petsReloadTimer) {
+    clearTimeout(petsReloadTimer)
+    petsReloadTimer = null
+  }
+  clearToastTimers()
   window.removeEventListener('auth:unauthorized', handleUnauthorized)
 })
 </script>
