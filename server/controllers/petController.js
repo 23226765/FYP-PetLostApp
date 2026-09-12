@@ -71,7 +71,16 @@ export async function listPets(req, res, next) {
     const filter = {}
     if (species) filter.species = species
     if (status) filter.status = status
-    const docs = await Pet.find(filter).sort({ createdAt: -1 })
+    let docs
+    try {
+      docs = await Pet.find(filter).sort({ createdAt: -1 })
+    } catch (error) {
+      const isCosmosOrderByIndexError =
+        error?.code === 2 && String(error.message).includes('order-by item is excluded')
+      if (!isCosmosOrderByIndexError) throw error
+      docs = await Pet.find(filter)
+      docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }
     res.json({ pets: docs.map((p) => serializePet(p)) })
   } catch (err) {
     next(err)
@@ -81,7 +90,16 @@ export async function listPets(req, res, next) {
 // GET /api/pets/mine
 export async function listMyPets(req, res, next) {
   try {
-    const docs = await Pet.find({ reportedBy: req.user._id }).sort({ createdAt: -1 })
+    let docs
+    try {
+      docs = await Pet.find({ reportedBy: req.user._id }).sort({ createdAt: -1 })
+    } catch (error) {
+      const isCosmosOrderByIndexError =
+        error?.code === 2 && String(error.message).includes('order-by item is excluded')
+      if (!isCosmosOrderByIndexError) throw error
+      docs = await Pet.find({ reportedBy: req.user._id })
+      docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }
     res.json({ pets: docs.map((pet) => serializePet(pet)) })
   } catch (err) {
     next(err)
@@ -91,10 +109,20 @@ export async function listMyPets(req, res, next) {
 // GET /api/pets/sightings/mine
 export async function listMySightings(req, res, next) {
   try {
-    const sightings = await Sighting.find({ reportedBy: req.user._id })
-      .sort({ createdAt: -1 })
-      .populate('pet', 'name photo status')
-
+    let sightings
+    try {
+      sightings = await Sighting.find({ reportedBy: req.user._id })
+        .sort({ createdAt: -1 })
+        .populate('pet', 'name photo status')
+    } catch (error) {
+      const isCosmosOrderByIndexError =
+        error?.code === 2 && String(error.message).includes('order-by item is excluded')
+      if (!isCosmosOrderByIndexError) throw error
+      sightings = await Sighting.find({ reportedBy: req.user._id }).populate('pet', 'name photo status')
+      sightings.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+    }
     res.json({ sightings })
   } catch (err) {
     next(err)

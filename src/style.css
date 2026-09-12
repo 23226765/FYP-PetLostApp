@@ -9,6 +9,11 @@
   --ink-muted: #8b827a;
   --line: #ece7e1;
 
+  /* Nav redesign tokens */
+  --color-teal: #1d6360;
+  --color-coral: #ef6351;
+  --color-base: #fcf9f2;
+
   --radius-lg: 24px;
   --radius-md: 16px;
   --radius-sm: 12px;

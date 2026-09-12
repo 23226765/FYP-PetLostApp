@@ -178,6 +178,8 @@
     <!-- Bottom tab bar -->
     <nav class="tabbar" aria-label="Main navigation">
       <button
+        type="button"
+        class="nav-item"
         :class="{ active: tab === 'radar' }"
         :aria-current="tab === 'radar' ? 'page' : undefined"
         @click="goTab('radar')"
@@ -185,10 +187,24 @@
         <AppIcon name="radar" :size="23" />
         <span>Radar</span>
       </button>
-      <button class="post-btn" aria-label="Post a lost pet" @click="goTab('post')">
-        <AppIcon name="plus" :size="26" />
-      </button>
+
       <button
+        type="button"
+        class="report-item"
+        :class="{ active: tab === 'post' }"
+        :aria-current="tab === 'post' ? 'page' : undefined"
+        aria-label="Report a lost pet"
+        @click="goTab('post')"
+      >
+        <span class="report-icon">
+          <AppIcon name="plus" :size="26" />
+        </span>
+        <span class="report-label">Report</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
         :class="{ active: tab === 'profile' }"
         :aria-current="tab === 'profile' ? 'page' : undefined"
         @click="goTab('profile')"
@@ -794,53 +810,166 @@ main {
 
 /* Bottom tab bar */
 .tabbar {
+  --nav-teal: #1d6360;
+  --nav-coral: #ef6351;
+  --nav-base: #fcf9f2;
+  --nav-muted: #626b68;
+  --nav-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
   position: fixed;
+  z-index: 40;
+  right: auto;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: end;
+  gap: 8px;
+
+  box-sizing: border-box;
   width: 100%;
   max-width: 480px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  padding: 8px 6px calc(var(--safe-bottom) + 10px);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid var(--line);
-  z-index: 40;
+  padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px));
+
+  border: 1px solid rgba(29, 99, 96, 0.09);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background: var(--nav-base);
+  box-shadow:
+    0 -2px 8px rgba(26, 47, 43, 0.025),
+    0 -12px 36px rgba(26, 47, 43, 0.07);
+
+  font-family:
+    ui-rounded, "SF Pro Rounded", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-.tabbar > button {
+.tabbar button {
+  appearance: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  font-size: 10.5px;
-  font-weight: 800;
-  color: var(--ink-muted);
-  width: 62px;
-  padding: 4px 0;
-  transition: color 0.15s ease;
+  justify-content: center;
+  gap: 4px;
+
+  min-width: 44px;
+  min-height: 52px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+
+  color: var(--nav-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    transform 0.2s var(--nav-ease),
+    color 0.2s var(--nav-ease),
+    background-color 0.2s var(--nav-ease),
+    box-shadow 0.2s var(--nav-ease);
 }
 
-.tabbar > button.active {
-  color: var(--teal);
+.nav-item.active {
+  background: rgba(29, 99, 96, 0.09);
+  color: var(--nav-teal);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  font-weight: 750;
 }
 
-.post-btn {
-  width: 56px;
-  height: 56px;
-  margin-top: -26px;
-  border-radius: 50%;
-  background: var(--coral);
-  color: #fff !important;
+.tabbar .report-item {
+  gap: 6px;
+  margin-top: -22px;
+  padding: 0 8px 3px;
+  color: var(--nav-teal);
+  font-weight: 750;
+}
+
+.report-icon {
   display: grid;
   place-items: center;
-  box-shadow: 0 6px 18px rgba(239, 99, 81, 0.45);
-  transition: transform 0.15s ease;
+  box-sizing: border-box;
+  width: 58px;
+  height: 58px;
+  border: 4px solid var(--nav-base);
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0)
+    ),
+    var(--nav-coral);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 3px 7px rgba(93, 45, 35, 0.09),
+    0 8px 18px rgba(239, 99, 81, 0.22);
+
+  transition:
+    transform 0.2s var(--nav-ease),
+    box-shadow 0.2s var(--nav-ease);
 }
 
-.post-btn:active {
-  transform: scale(0.92);
+.report-label {
+  padding: 2px 8px;
+  border-radius: 999px;
+  transition: background-color 0.2s var(--nav-ease);
+}
+
+.report-item.active .report-label {
+  background: rgba(29, 99, 96, 0.09);
+}
+
+.tabbar button:active {
+  transform: scale(0.98);
+}
+
+.report-item:active .report-icon {
+  box-shadow:
+    inset 0 1px 3px rgba(93, 45, 35, 0.12),
+    0 3px 8px rgba(239, 99, 81, 0.16);
+}
+
+.tabbar button:focus-visible {
+  outline: 3px solid var(--nav-teal);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav-item:hover {
+    background: rgba(29, 99, 96, 0.07);
+    color: var(--nav-teal);
+  }
+
+  .nav-item.active:hover {
+    background: rgba(29, 99, 96, 0.13);
+  }
+
+  .report-item:hover .report-icon {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabbar button,
+  .report-icon,
+  .report-label {
+    transition: none;
+  }
+
+  .tabbar button:active,
+  .report-item:hover .report-icon {
+    transform: none;
+  }
 }
 </style>
