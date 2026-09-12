@@ -1,20 +1,14 @@
-# NEXT_TASK — Final Consolidation (roadmap complete)
+# NEXT_TASK — Wrap-up: push, iOS, deploy
 
 ## Status
-All 5 roadmap milestones are functionally complete. iOS is deferred (requires macOS/Xcode — not available on Windows); Android is built + synced.
+All 5 roadmap milestones are complete and committed (`884a903`). No code feature remains.
 
 ## Target
-Commit the uncommitted "My Sightings" + auth-validation work and verify a clean build.
-
-## Files (already modified, uncommitted)
-- `server/controllers/authController.js`, `server/middleware/errorHandler.js`
-- `server/controllers/petController.js`, `server/models/Sighting.js`, `server/routes/pets.js`
-- `src/App.vue`, `src/components/MapView.vue`, `src/components/AdoptionHistoryScreen.vue`, `src/services/api.ts`
-
-## Implementation Spec
-- Run `npx vue-tsc --noEmit` and `npm run build` → confirm clean.
-- `git add -A && git commit -m "feat: my sightings + auth validation hardening"`.
+Final release actions (no code changes):
+- `git push` — commits `c64942e`, `884a903` are ahead of `origin/master`.
+- iOS (Mac only): `npx cap add ios && npx cap sync`.
+- Deploy (optional): host `dist/` + Express backend; set `VITE_API_BASE_URL`.
 
 ## Acceptance Criteria
-- Working tree clean; typecheck + build pass.
-- Optional (non-blocking): generate iOS on a Mac; deploy backend + frontend.
+- `origin/master` up to date; iOS project generated (on a Mac); app reachable via a public URL.
+
