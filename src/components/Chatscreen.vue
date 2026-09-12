@@ -2,13 +2,13 @@
   <div class="chat">
     <!-- Deep teal header -->
     <header class="chat-header">
-      <button class="back-btn" aria-label="Back to messages" @click="emit('back')">
+      <button class="back-btn" aria-label="Back to pet details" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
-      <img class="pet-avatar" src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=600&q=80" alt="Buddy the golden retriever" />
+      <img class="pet-avatar" :src="pet.photo" :alt="`Photo of ${pet.name}`" />
       <div class="chat-title">
-        <h1>Chatting with Sarah Chen</h1>
-        <p>[Context: Buddy]</p>
+        <h1>Chatting with {{ pet.owner || 'pet owner' }}</h1>
+        <p>Context: {{ pet.name }}</p>
       </div>
     </header>
 
@@ -16,23 +16,27 @@
     <main ref="feedEl" class="chat-feed" aria-label="Chat messages">
       <p class="day-divider">Today</p>
 
+      <p v-if="loading" class="chat-state" role="status">Loading messages...</p>
+      <p v-else-if="error" class="chat-state error" role="alert">{{ error }}</p>
+      <p v-else-if="messages.length === 0" class="chat-state">No messages yet.</p>
+
       <template v-for="msg in messages" :key="msg.id">
-        <div class="bubble-row" :class="msg.from === 'me' ? 'out' : 'in'">
+        <div class="bubble-row" :class="msg.sender === currentSender ? 'out' : 'in'">
           <img
-            v-if="msg.from === 'them'"
+            v-if="msg.sender !== currentSender"
             class="bubble-avatar"
-            src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80"
+            :src="pet.photo"
             alt=""
           />
-          <div class="bubble" :class="msg.from === 'me' ? 'out' : 'in'">
+          <div class="bubble" :class="msg.sender === currentSender ? 'out' : 'in'">
             <img
               v-if="msg.photo"
               class="bubble-photo"
               :src="msg.photo"
-              alt="Sighting photo of a golden retriever with a blue collar near the park entrance"
+              :alt="`Photo shared in the chat about ${pet.name}`"
             />
             <p v-if="msg.text">{{ msg.text }}</p>
-            <span class="time">{{ msg.time }}</span>
+            <span class="time">{{ formatTime(msg.createdAt) }}</span>
           </div>
         </div>
       </template>
@@ -51,7 +55,7 @@
         aria-label="Type a message"
         @keydown.enter="onEnter"
       />
-      <button class="send-btn" aria-label="Send message" @click="send">
+      <button class="send-btn" aria-label="Send message" :disabled="sending" @click="send">
         <AppIcon name="send" :size="19" />
       </button>
     </footer>
@@ -59,69 +63,99 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { getMessages, sendMessage, type ChatMessage } from '../services/api'
+import type { Pet } from '../types/pet'
+import type { User } from '../types/user'
 
-const emit = defineEmits<{ back: [] }>()
+const props = defineProps<{ pet: Pet; user?: User | null }>()
+const emit = defineEmits<{ close: [] }>()
 
-interface ChatMessage {
-  id: number
-  from: 'me' | 'them'
-  text?: string
-  photo?: string
-  time: string
-}
-
-const messages = ref<ChatMessage[]>([
-  {
-    id: 1,
-    from: 'them',
-    text: "Hi! I think I just saw Buddy near the Elm Street park entrance. He's wearing a blue collar, right?",
-    time: '4:02 PM',
-  },
-  {
-    id: 2,
-    from: 'me',
-    text: "Yes, that's him! A blue collar with a silver tag. Was he heading anywhere in particular?",
-    time: '4:03 PM',
-  },
-  {
-    id: 3,
-    from: 'them',
-    photo: 'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=600&q=80',
-    text: 'I managed to snap this before he trotted off toward the duck pond. Definitely looks like him!',
-    time: '4:05 PM',
-  },
-  {
-    id: 4,
-    from: 'me',
-    text: "That's 100% Buddy! Thank you so much. I'm 5 minutes away, heading there now!",
-    time: '4:06 PM',
-  },
-])
-
+const messages = ref<ChatMessage[]>([])
 const draft = ref('')
 const feedEl = ref<HTMLElement | null>(null)
+const loading = ref(true)
+const sending = ref(false)
+const error = ref('')
+const currentSender = computed<ChatMessage['sender']>(() =>
+  props.user?.name === props.pet.owner ? 'owner' : 'finder',
+)
+
+let pollTimer: ReturnType<typeof setInterval> | null = null
+let refreshing = false
+
+function mergeMessages(incoming: ChatMessage[]) {
+  const byId = new Map(messages.value.map((message) => [message.id, message]))
+  incoming.forEach((message) => byId.set(message.id, message))
+  messages.value = [...byId.values()].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  )
+}
+
+async function scrollToBottom(behavior: ScrollBehavior = 'auto') {
+  await nextTick()
+  feedEl.value?.scrollTo({ top: feedEl.value.scrollHeight, behavior })
+}
+
+async function loadMessages(showLoading = false) {
+  if (refreshing) return
+  refreshing = true
+  if (showLoading) loading.value = true
+
+  try {
+    const previousCount = messages.value.length
+    mergeMessages(await getMessages(props.pet.id))
+    error.value = ''
+    if (showLoading || messages.value.length > previousCount) await scrollToBottom()
+  } catch (e) {
+    if (showLoading) {
+      error.value = e instanceof Error ? e.message : 'Failed to load messages.'
+    }
+  } finally {
+    refreshing = false
+    if (showLoading) loading.value = false
+  }
+}
 
 function onEnter(e: KeyboardEvent) {
   if (e.isComposing || e.keyCode === 229) return
-  send()
+  void send()
 }
 
-function send() {
+async function send() {
   const text = draft.value.trim()
-  if (!text) return
-  messages.value.push({
-    id: Date.now(),
-    from: 'me',
-    text,
-    time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-  })
-  draft.value = ''
-  nextTick(() => {
-    feedEl.value?.scrollTo({ top: feedEl.value.scrollHeight, behavior: 'smooth' })
-  })
+  if (!text || sending.value) return
+
+  sending.value = true
+  error.value = ''
+  try {
+    const message = await sendMessage(props.pet.id, {
+      sender: currentSender.value,
+      text,
+    })
+    mergeMessages([message])
+    draft.value = ''
+    await scrollToBottom('smooth')
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to send message.'
+  } finally {
+    sending.value = false
+  }
 }
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+onMounted(async () => {
+  await loadMessages(true)
+  pollTimer = setInterval(() => void loadMessages(), 5000)
+})
+
+onBeforeUnmount(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
 </script>
 
 <style scoped>
@@ -210,6 +244,19 @@ function send() {
   border-radius: 999px;
   padding: 4px 14px;
   margin-bottom: 2px;
+}
+
+.chat-state {
+  align-self: center;
+  padding: 12px 16px;
+  color: #8b827a;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.chat-state.error {
+  color: #ef6351;
 }
 
 .bubble-row {
@@ -339,5 +386,9 @@ function send() {
 
 .send-btn:active {
   transform: scale(0.9);
+}
+
+.send-btn:disabled {
+  opacity: 0.65;
 }
 </style>

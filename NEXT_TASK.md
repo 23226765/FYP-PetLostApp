@@ -1,18 +1,17 @@
-# NEXT_TASK — Wire Adoption History & Boost screens
+# NEXT_TASK — Final Cleanup & Commit
 
 ## Milestone & Target Feature
-All 5 milestones + notifications are done. Two screens remain dead code: `AdoptionHistoryScreen` (Activity) and `BoostScreen`. Wire them into navigation and populate Activity with the user's real reported pets.
+All 5 milestones and every feature are complete. Remaining work is consolidation: delete the redundant `OnboardingScreen.vue` (superseded by `AuthScreen.vue`) and commit the uncommitted chat + sighting-photo work.
 
 ## Files to Modify
-- `src/components/ProfileScreen.vue`
-- `src/App.vue`
-- `src/components/AdoptionHistoryScreen.vue`
+- `src/components/OnboardingScreen.vue` (delete)
+- commit all pending changes
 
 ## Implementation Spec
-- `ProfileScreen.vue`: add emits `open-activity`, `open-boost`; add "Activity" and "Boost alert" rows to the Settings list that emit them.
-- `App.vue`: import both screens; add `showActivity`, `showBoost` refs; render each in `<Transition name="page">` with `@close`/`@back` handlers.
-- `AdoptionHistoryScreen.vue`: on mount call `getMyPets()` (import from `../services/api`); map each `Pet` → a `HistoryEntry` (`petName`, `breed`, `petPhoto`, `location`, `dateAgo: postedAgo`, `type:'post'`, `outcome: status`, `note: description`) and replace the hardcoded `entries`.
+- Delete `OnboardingScreen.vue` — it is unreferenced (only self-referenced) and duplicates `AuthScreen.vue`.
+- Verify no imports: `grep -r "OnboardingScreen" src` → only its own file.
+- Commit: `git add -A && git commit -m "feat: chat + sighting photos; remove onboarding"`.
 
 ## Acceptance Criteria
-- Profile → "Activity" lists the user's real posts; "Boost alert" opens the Boost screen; both close via back.
+- `OnboardingScreen.vue` removed; working tree clean.
 - `npx vue-tsc --noEmit` and `npm run build` pass; no console errors.

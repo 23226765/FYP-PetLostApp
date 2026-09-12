@@ -114,10 +114,16 @@
                 :placeholder="`e.g. Spotted near the bakery on Elm Street, heading north\u2026`"
               />
             </label>
-            <button class="sheet-photo" type="button">
+            <button class="sheet-photo" type="button" @click="attachSightingPhoto">
               <AppIcon name="camera" :size="19" />
-              Attach a photo
+              {{ sightingPhoto ? 'Change photo' : 'Attach a photo' }}
             </button>
+            <img
+              v-if="sightingPhoto"
+              class="sighting-photo-preview"
+              :src="sightingPhoto"
+              alt="Sighting photo preview"
+            />
             <p v-if="sightingError" class="sheet-error">{{ sightingError }}</p>
             <button class="sheet-send" @click="sendSighting">
               <AppIcon name="pin" :size="19" />
@@ -196,6 +202,7 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { Camera, CameraResultType } from '@capacitor/camera'
 import type { Pet } from './types/pet'
 import type { AppNotification } from './types/notification'
 import type { User } from './types/user'
@@ -248,6 +255,7 @@ const posterPet = ref<Pet | null>(null)
 const chatPet = ref<Pet | null>(null)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
+const sightingPhoto = ref('')
 const sightingSent = ref(false)
 const sightingError = ref('')
 const toastPet = ref<Pet | null>(null)
@@ -371,6 +379,7 @@ function openSighting(pet: Pet | null) {
   sightingPet.value = pet
   sightingSent.value = false
   sightingNote.value = ''
+  sightingPhoto.value = ''
   sightingError.value = ''
 }
 
@@ -381,6 +390,23 @@ function closeSighting() {
     selectedPet.value = null
   }
   sightingPet.value = null
+  sightingPhoto.value = ''
+}
+
+async function attachSightingPhoto() {
+  sightingError.value = ''
+  try {
+    const { dataUrl } = await Camera.getPhoto({
+      resultType: CameraResultType.DataUrl,
+      quality: 85,
+    })
+    sightingPhoto.value = dataUrl ?? ''
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (!message.toLowerCase().includes('cancel')) {
+      sightingError.value = message || 'Unable to attach a photo.'
+    }
+  }
 }
 
 async function sendSighting() {
@@ -393,6 +419,7 @@ async function sendSighting() {
       coordinates: [lng, lat],
       note: sightingNote.value,
       locationName: pet.location,
+      photo: sightingPhoto.value || undefined,
     })
     sightingSent.value = true
     const p = pets.value.find((x) => x.id === pet.id)
@@ -620,6 +647,16 @@ main {
   font-weight: 800;
   font-size: 14.5px;
   margin-bottom: 12px;
+}
+
+.sighting-photo-preview {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  margin: 0 0 12px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  box-shadow: var(--shadow-card);
 }
 
 .sheet-error {

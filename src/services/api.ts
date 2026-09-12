@@ -64,6 +64,34 @@ export async function getNotifications(): Promise<AppNotification[]> {
   return data.notifications
 }
 
+export interface ChatMessage {
+  id: string
+  petId: string
+  sender: 'owner' | 'finder'
+  text: string
+  photo?: string
+  createdAt: string
+}
+
+export interface SendMessagePayload {
+  sender: ChatMessage['sender']
+  text: string
+  photo?: string
+}
+
+export async function getMessages(petId: string): Promise<ChatMessage[]> {
+  const { data } = await http.get<{ messages: ChatMessage[] }>(`/chat/${petId}`)
+  return data.messages
+}
+
+export async function sendMessage(
+  petId: string,
+  payload: SendMessagePayload,
+): Promise<ChatMessage> {
+  const { data } = await http.post<{ message: ChatMessage }>(`/chat/${petId}`, payload)
+  return data.message
+}
+
 export interface ReportPetPayload {
   name: string
   species: 'Dog' | 'Cat' | 'Other'

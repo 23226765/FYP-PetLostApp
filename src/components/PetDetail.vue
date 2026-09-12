@@ -63,6 +63,7 @@
               <p v-if="sighting.note">{{ sighting.note }}</p>
               <img
                 v-if="sighting.photo"
+                class="sighting-thumbnail"
                 :src="sighting.photo"
                 :alt="`Sighting of ${pet.name}`"
                 loading="lazy"
@@ -373,9 +374,9 @@ h2 {
   line-height: 1.45;
 }
 
-.timeline-content img {
-  width: 100%;
-  max-height: 180px;
+.sighting-thumbnail {
+  width: 72px;
+  height: 72px;
   margin-top: 10px;
   border-radius: var(--radius-sm);
   object-fit: cover;
