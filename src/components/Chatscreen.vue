@@ -7,9 +7,40 @@
       </button>
       <img class="pet-avatar" :src="pet.photo" :alt="`Photo of ${pet.name}`" />
       <div class="chat-title">
-        <h1>Chatting with {{ pet.owner || 'pet owner' }}</h1>
+        <h1>
+          {{
+            currentSender === 'owner'
+              ? `Chatting with ${pet.participantName || 'finder'}`
+              : `Chatting with ${pet.owner || 'pet owner'}`
+          }}
+        </h1>
         <p>Context: {{ pet.name }}</p>
       </div>
+      <div v-if="ownerContactActions" class="header-contact">
+        <a
+          class="contact-btn"
+          :href="ownerContactActions.callHref"
+          :aria-label="`Call ${pet.owner || 'the pet owner'}`"
+        >
+          <AppIcon name="phone" :size="17" />
+        </a>
+        <a
+          class="contact-btn whatsapp"
+          :href="ownerContactActions.whatsappHref"
+          target="_blank"
+          rel="noopener noreferrer"
+          :aria-label="`Message ${pet.owner || 'the pet owner'} on WhatsApp`"
+        >
+          WA
+        </a>
+      </div>
+      <span
+        v-else-if="currentSender === 'finder'"
+        class="contact-missing"
+        aria-label="Owner phone number unavailable"
+      >
+        No phone
+      </span>
     </header>
 
     <!-- Chat feed -->
@@ -44,7 +75,20 @@
 
     <!-- Input footer -->
     <footer class="chat-footer">
-      <button class="attach-btn" aria-label="Attach a photo">
+      <div v-if="pendingPhoto" class="attachment-preview">
+        <img :src="pendingPhoto" alt="Photo ready to send" />
+        <button type="button" aria-label="Remove attached photo" @click="pendingPhoto = ''">
+          <AppIcon name="close" :size="14" />
+        </button>
+      </div>
+      <input
+        ref="attachmentInput"
+        class="attachment-input"
+        type="file"
+        accept="image/*"
+        @change="onAttachmentSelected"
+      />
+      <button class="attach-btn" type="button" aria-label="Attach a photo" @click="attachPhoto">
         <AppIcon name="camera" :size="22" />
       </button>
       <input
@@ -55,7 +99,12 @@
         aria-label="Type a message"
         @keydown.enter="onEnter"
       />
-      <button class="send-btn" aria-label="Send message" :disabled="sending" @click="send">
+      <button
+        class="send-btn"
+        aria-label="Send message"
+        :disabled="sending || loading"
+        @click="send"
+      >
         <AppIcon name="send" :size="19" />
       </button>
     </footer>
@@ -64,23 +113,34 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
-import { getMessages, sendMessage, type ChatMessage } from '../services/api'
-import type { Pet } from '../types/pet'
+import {
+  getMessages,
+  sendMessage,
+  type ChatMessage,
+  type ChatPet,
+} from '../services/api'
 import type { User } from '../types/user'
+import { createContactActions } from '../utils/contact'
 
-const props = defineProps<{ pet: Pet; user?: User | null }>()
+const props = defineProps<{ pet: ChatPet; user?: User | null }>()
 const emit = defineEmits<{ close: [] }>()
 
 const messages = ref<ChatMessage[]>([])
 const draft = ref('')
+const pendingPhoto = ref('')
+const attachmentInput = ref<HTMLInputElement | null>(null)
 const feedEl = ref<HTMLElement | null>(null)
 const loading = ref(true)
 const sending = ref(false)
 const error = ref('')
-const currentSender = computed<ChatMessage['sender']>(() =>
-  props.user?.name === props.pet.owner ? 'owner' : 'finder',
-)
+const currentSender = ref<ChatMessage['sender'] | null>(null)
+const ownerContactActions = computed(() => {
+  if (currentSender.value !== 'finder') return null
+  const message = `Hi, I'm contacting you through PawRadar about ${props.pet.name}.`
+  return createContactActions(props.pet.ownerPhone, message)
+})
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let refreshing = false
@@ -105,7 +165,9 @@ async function loadMessages(showLoading = false) {
 
   try {
     const previousCount = messages.value.length
-    mergeMessages(await getMessages(props.pet.id))
+    const thread = await getMessages(props.pet.id, props.pet.participantId)
+    currentSender.value = thread.viewerRole
+    mergeMessages(thread.messages)
     error.value = ''
     if (showLoading || messages.value.length > previousCount) await scrollToBottom()
   } catch (e) {
@@ -123,19 +185,67 @@ function onEnter(e: KeyboardEvent) {
   void send()
 }
 
+function setPendingPhoto(dataUrl: string) {
+  if (dataUrl.length > 1_500_000) {
+    error.value = 'Photo is too large. Choose a smaller image.'
+    return
+  }
+  pendingPhoto.value = dataUrl
+  error.value = ''
+}
+
+async function attachPhoto() {
+  try {
+    const image = await Camera.getPhoto({
+      resultType: CameraResultType.DataUrl,
+      quality: 70,
+      allowEditing: false,
+    })
+    if (image.dataUrl) setPendingPhoto(image.dataUrl)
+  } catch {
+    attachmentInput.value?.click()
+  }
+}
+
+function onAttachmentSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    error.value = 'Choose a valid image file.'
+    input.value = ''
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = () => {
+    if (typeof reader.result === 'string') setPendingPhoto(reader.result)
+    input.value = ''
+  }
+  reader.onerror = () => {
+    error.value = 'Unable to read the selected image.'
+    input.value = ''
+  }
+  reader.readAsDataURL(file)
+}
+
 async function send() {
   const text = draft.value.trim()
-  if (!text || sending.value) return
+  const photo = pendingPhoto.value
+  if ((!text && !photo) || sending.value) return
 
   sending.value = true
   error.value = ''
   try {
     const message = await sendMessage(props.pet.id, {
-      sender: currentSender.value,
       text,
+      photo: photo || undefined,
+      participantId: props.pet.participantId,
     })
+    currentSender.value = message.sender
     mergeMessages([message])
     draft.value = ''
+    pendingPhoto.value = ''
     await scrollToBottom('smooth')
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to send message.'
@@ -206,6 +316,7 @@ onBeforeUnmount(() => {
 }
 
 .chat-title {
+  flex: 1;
   min-width: 0;
 }
 
@@ -222,6 +333,47 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.75);
   font-size: 12px;
   font-weight: 700;
+}
+
+.header-contact {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.contact-btn {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.contact-btn.whatsapp {
+  background: rgba(252, 249, 242, 0.18);
+}
+
+.contact-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.contact-missing {
+  max-width: 42px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
 }
 
 /* Feed */
@@ -334,6 +486,39 @@ onBeforeUnmount(() => {
   padding: 12px 14px calc(var(--safe-bottom) + 14px);
   border-top: 1px solid rgba(61, 56, 53, 0.08);
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.attachment-input {
+  display: none;
+}
+
+.attachment-preview {
+  position: relative;
+  width: 100%;
+  height: 84px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fcf9f2;
+}
+
+.attachment-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-preview button {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(29, 99, 96, 0.9);
+  color: #fff;
 }
 
 .attach-btn {

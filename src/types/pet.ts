@@ -9,14 +9,15 @@ export interface Pet {
   reward?: string
   owner: string
   ownerPhone: string
+  reportedBy?: string
   status: 'lost' | 'sighted' | 'reunited'
   location: string
-  distanceKm: number
+  distanceKm?: number
   lastSeen: string
   postedAgo: string
   mapX: number
   mapY: number
-  coordinates?: [number, number]
+  coordinates?: [number, number] | null
 }
 
 export interface Sighting {
@@ -27,4 +28,6 @@ export interface Sighting {
   note?: string
   photo?: string
   createdAt?: string
+  confirmationCount?: number
+  confirmedByMe?: boolean
 }

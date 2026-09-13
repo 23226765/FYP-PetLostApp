@@ -1,7 +1,17 @@
 <template>
   <div class="detail">
     <div class="hero">
-      <img :src="pet.photo" :alt="`Photo of ${pet.name}, a missing ${pet.breed}`" />
+      <img
+        v-if="heroPhotoUrl && !heroPhotoFailed"
+        :src="heroPhotoUrl"
+        alt=""
+        aria-hidden="true"
+        @error="heroPhotoFailed = true"
+      />
+      <div v-else class="photo-placeholder hero-placeholder" aria-hidden="true">
+        <AppIcon name="paw" :size="58" />
+      </div>
+      <span class="sr-only">Photo of {{ pet.name }}, a missing {{ pet.breed }}</span>
       <button class="back" aria-label="Go back" @click="emit('close')">
         <AppIcon name="back" :size="20" />
       </button>
@@ -61,13 +71,49 @@
                 </time>
               </div>
               <p v-if="sighting.note">{{ sighting.note }}</p>
-              <img
-                v-if="sighting.photo"
-                class="sighting-thumbnail"
-                :src="sighting.photo"
-                :alt="`Sighting of ${pet.name}`"
-                loading="lazy"
-              />
+              <div class="sighting-thumbnail" role="img" :aria-label="`Sighting of ${pet.name}`">
+                <img
+                  v-if="normalizedImageUrl(sighting.photo) && !failedSightingPhotos.has(sightingImageKey(sighting))"
+                  :src="normalizedImageUrl(sighting.photo)"
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  @error="markSightingPhotoFailed(sightingImageKey(sighting))"
+                />
+                <div v-else class="photo-placeholder" aria-hidden="true">
+                  <AppIcon name="paw" :size="25" />
+                </div>
+              </div>
+              <div v-if="sighting.id" class="verification-row">
+                <span class="confirmation-count">
+                  {{ sighting.confirmationCount || 0 }}
+                  {{ (sighting.confirmationCount || 0) === 1 ? 'confirmation' : 'confirmations' }}
+                </span>
+                <button
+                  class="confirm-button"
+                  :class="{ confirmed: sighting.confirmedByMe }"
+                  type="button"
+                  :disabled="sighting.confirmedByMe || confirmingSightings.has(sighting.id)"
+                  :aria-pressed="Boolean(sighting.confirmedByMe)"
+                  @click="confirmSightingEntry(sighting)"
+                >
+                  <AppIcon name="check" :size="15" />
+                  {{
+                    sighting.confirmedByMe
+                      ? 'Confirmed'
+                      : confirmingSightings.has(sighting.id)
+                        ? 'Confirming...'
+                        : 'I saw this too'
+                  }}
+                </button>
+              </div>
+              <p
+                v-if="sighting.id && confirmationErrors[sighting.id]"
+                class="confirmation-error"
+                role="alert"
+              >
+                {{ confirmationErrors[sighting.id] }}
+              </p>
             </div>
           </li>
         </ol>
@@ -86,9 +132,27 @@
           <span class="owner-name">{{ pet.owner }}</span>
           <span class="owner-role">Owner · posted {{ pet.postedAgo }}</span>
         </button>
-        <a class="call" :href="`tel:${pet.ownerPhone}`" :aria-label="`Call ${pet.owner}`">
-          <AppIcon name="phone" :size="19" />
-        </a>
+        <div v-if="contactActions" class="contact-actions">
+          <a
+            class="contact-action call"
+            :href="contactActions.callHref"
+            :aria-label="`Call ${pet.owner || 'the owner'}`"
+          >
+            <AppIcon name="phone" :size="19" />
+          </a>
+          <a
+            class="contact-action whatsapp"
+            :href="contactActions.whatsappHref"
+            target="_blank"
+            rel="noopener noreferrer"
+            :aria-label="`Message ${pet.owner || 'the owner'} on WhatsApp`"
+          >
+            WhatsApp
+          </a>
+        </div>
+        <span v-else class="contact-unavailable" aria-label="Owner phone number unavailable">
+          Phone unavailable
+        </span>
       </div>
 
       <button class="found-cta" @click="emit('found')">
@@ -100,21 +164,101 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { Pet, Sighting } from '../types/pet'
-import { getPetSightings } from '../services/api'
+import type { User } from '../types/user'
+import { confirmSighting, getPetSightings } from '../services/api'
+import { createContactActions } from '../utils/contact'
 import AppIcon from './AppIcon.vue'
 
-const props = defineProps<{ pet: Pet }>()
-const emit = defineEmits<{ close: []; found: []; poster: []; chat: [] }>()
+const props = defineProps<{ pet: Pet; user?: User | null }>()
+const emit = defineEmits<{
+  close: []
+  found: []
+  poster: []
+  chat: []
+  'auth-needed': []
+}>()
 
 const sightings = ref<Sighting[]>([])
 const sightingsLoading = ref(true)
 const sightingsError = ref('')
+const heroPhotoFailed = ref(false)
+const failedSightingPhotos = ref<Set<string>>(new Set())
+const confirmingSightings = ref<Set<string>>(new Set())
+const confirmationErrors = ref<Record<string, string>>({})
+const heroPhotoUrl = computed(() => normalizedImageUrl(props.pet.photo))
+const contactActions = computed(() => {
+  const location = props.pet.location ? `, last seen near ${props.pet.location}` : ''
+  const message = `Hi, I'm contacting you through PawRadar about ${props.pet.name}${location}.`
+  return createContactActions(props.pet.ownerPhone, message)
+})
+
+watch(heroPhotoUrl, () => {
+  heroPhotoFailed.value = false
+})
+
+function normalizedImageUrl(value: string | null | undefined): string {
+  const photo = value?.trim()
+  if (!photo) return ''
+
+  try {
+    const apiUrl = new URL(
+      import.meta.env.VITE_API_BASE_URL || '/api',
+      window.location.origin,
+    )
+    const resolved = new URL(photo, `${apiUrl.origin}/`)
+    return ['http:', 'https:', 'data:', 'blob:'].includes(resolved.protocol) ? resolved.href : ''
+  } catch {
+    return ''
+  }
+}
+
+function markSightingPhotoFailed(id: string) {
+  failedSightingPhotos.value = new Set([...failedSightingPhotos.value, id])
+}
+
+function sightingImageKey(sighting: Sighting): string {
+  return String(sighting.id ?? sighting.createdAt ?? sighting.photo ?? '')
+}
+
+async function confirmSightingEntry(sighting: Sighting) {
+  const sightingId = sighting.id
+  if (!sightingId || sighting.confirmedByMe || confirmingSightings.value.has(sightingId)) {
+    return
+  }
+  if (!props.user) {
+    emit('auth-needed')
+    return
+  }
+
+  confirmingSightings.value = new Set([...confirmingSightings.value, sightingId])
+  const nextErrors = { ...confirmationErrors.value }
+  delete nextErrors[sightingId]
+  confirmationErrors.value = nextErrors
+
+  try {
+    const result = await confirmSighting(props.pet.id, sightingId)
+    sighting.confirmationCount = result.confirmationCount
+    sighting.confirmedByMe = result.confirmedByMe
+  } catch (error) {
+    confirmationErrors.value = {
+      ...confirmationErrors.value,
+      [sightingId]: error instanceof Error ? error.message : 'Unable to confirm this sighting.',
+    }
+  } finally {
+    const next = new Set(confirmingSightings.value)
+    next.delete(sightingId)
+    confirmingSightings.value = next
+  }
+}
 
 async function loadSightings() {
   sightingsLoading.value = true
   sightingsError.value = ''
+  failedSightingPhotos.value = new Set()
+  confirmingSightings.value = new Set()
+  confirmationErrors.value = {}
   try {
     sightings.value = await getPetSightings(props.pet.id)
   } catch (error) {
@@ -153,12 +297,25 @@ onMounted(loadSightings)
   aspect-ratio: 1 / 1;
   max-height: 55vh;
   width: 100%;
+  overflow: hidden;
+  background: #fcf9f2;
 }
 
 .hero img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.photo-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(29, 99, 96, 0.12), transparent 34%),
+    #fcf9f2;
+  color: rgba(29, 99, 96, 0.55);
 }
 
 .back,
@@ -375,11 +532,73 @@ h2 {
 }
 
 .sighting-thumbnail {
+  position: relative;
   width: 72px;
   height: 72px;
   margin-top: 10px;
   border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #fcf9f2;
+}
+
+.sighting-thumbnail img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+}
+
+.verification-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.confirmation-count {
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.confirm-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+  font-size: 12px;
+  font-weight: 800;
+  transition:
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.confirm-button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.confirm-button.confirmed {
+  background: #1d6360;
+  color: #fff;
+}
+
+.confirm-button:disabled {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.confirmation-error {
+  margin-top: 8px;
+  color: #ef6351;
+  font-size: 11.5px;
+  font-weight: 700;
 }
 
 h3 {
@@ -417,6 +636,14 @@ h3 {
   text-align: left;
 }
 
+.contact-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
 .owner-name {
   font-weight: 800;
   font-size: 15px;
@@ -428,14 +655,47 @@ h3 {
   font-weight: 600;
 }
 
+.contact-action {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.contact-action:active {
+  transform: scale(0.96);
+}
+
 .call {
   width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
   background: var(--teal);
   color: #fff;
+  box-shadow: 0 5px 14px rgba(29, 99, 96, 0.2);
+}
+
+.whatsapp {
+  padding: 0 13px;
+  border: 1px solid rgba(29, 99, 96, 0.18);
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+}
+
+.contact-unavailable {
+  max-width: 82px;
+  margin-left: 12px;
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: right;
 }
 
 .found-cta {

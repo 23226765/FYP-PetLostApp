@@ -3,10 +3,10 @@ import type { Pet, Sighting } from '../types/pet'
 import type { AppNotification } from '../types/notification'
 import type { User } from '../types/user'
 
-// Direct backend base URL (CORS is enabled on the Express server).
-// Override via VITE_API_BASE_URL for native/Capacitor or deployed builds.
+// Use the same-origin Vite proxy by default. Deployments can provide an
+// absolute VITE_API_BASE_URL when the API is hosted separately.
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -27,7 +27,16 @@ http.interceptors.response.use(
       localStorage.removeItem('token')
       window.dispatchEvent(new Event('auth:unauthorized'))
     }
-    return Promise.reject(error)
+    if (axios.isCancel(error)) return Promise.reject(error)
+
+    const responseMessage = error?.response?.data?.error
+    const message =
+      typeof responseMessage === 'string'
+        ? responseMessage
+        : error?.response
+          ? `Request failed with status ${error.response.status}.`
+          : 'Cannot reach the PawRadar server. Check that the backend is running.'
+    return Promise.reject(new Error(message))
   },
 )
 
@@ -57,6 +66,7 @@ export interface MySightingPet {
   name: string
   photo: string
   status: Pet['status']
+  ownerPhone?: string
 }
 
 export interface MySighting {
@@ -83,6 +93,21 @@ export async function getPetSightings(petId: string): Promise<Sighting[]> {
   return data.sightings
 }
 
+export interface SightingConfirmation {
+  confirmationCount: number
+  confirmedByMe: boolean
+}
+
+export async function confirmSighting(
+  petId: string,
+  sightingId: string,
+): Promise<SightingConfirmation> {
+  const { data } = await http.post<SightingConfirmation>(
+    `/pets/${petId}/sightings/${sightingId}/confirm`,
+  )
+  return data
+}
+
 export async function getNotifications(): Promise<AppNotification[]> {
   const { data } = await http.get<{ notifications: AppNotification[] }>('/notifications')
   return data.notifications
@@ -98,14 +123,47 @@ export interface ChatMessage {
 }
 
 export interface SendMessagePayload {
-  sender: ChatMessage['sender']
   text: string
   photo?: string
+  participantId?: string
 }
 
-export async function getMessages(petId: string): Promise<ChatMessage[]> {
-  const { data } = await http.get<{ messages: ChatMessage[] }>(`/chat/${petId}`)
-  return data.messages
+export interface ChatPet {
+  id: string
+  name: string
+  photo: string
+  owner: string
+  ownerPhone: string
+  reportedBy?: string
+  participantId?: string
+  participantName?: string
+}
+
+export interface ChatConversation {
+  id: string
+  pet: ChatPet
+  lastMessage: ChatMessage
+  updatedAt: string
+}
+
+export interface ChatThread {
+  messages: ChatMessage[]
+  viewerRole: ChatMessage['sender']
+}
+
+export async function getChatInbox(): Promise<ChatConversation[]> {
+  const { data } = await http.get<{ conversations: ChatConversation[] }>('/chat/inbox')
+  return data.conversations
+}
+
+export async function getMessages(
+  petId: string,
+  participantId?: string,
+): Promise<ChatThread> {
+  const { data } = await http.get<ChatThread>(`/chat/${petId}`, {
+    params: participantId ? { participantId } : undefined,
+  })
+  return data
 }
 
 export async function sendMessage(

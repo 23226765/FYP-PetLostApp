@@ -29,7 +29,7 @@
         @smart-match="showSmartMatch = true"
         @notifications="showNotifications = true"
       />
-      <PostPetScreen v-if="tab === 'post'" @done="onPosted" />
+      <PostPetScreen v-if="tab === 'post'" :user="currentUser" @done="onPosted" />
       <ProfileScreen
         v-if="tab === 'profile'"
         :user="currentUser"
@@ -37,6 +37,7 @@
         @logout="logout"
         @open-settings="showSettings = true"
         @open-activity="showActivity = true"
+        @open-inbox="openInbox"
         @open-boost="showBoost = true"
       />
     </main>
@@ -46,10 +47,12 @@
       <PetDetail
         v-if="selectedPet"
         :pet="selectedPet"
+        :user="currentUser"
         @close="selectedPet = null"
         @found="openSighting(selectedPet)"
         @poster="posterPet = selectedPet"
-        @chat="chatPet = selectedPet"
+        @chat="openChat(selectedPet)"
+        @auth-needed="authOpen = true"
       />
     </Transition>
 
@@ -59,7 +62,9 @@
         v-if="showSmartMatch"
         :pets="pets"
         @close="showSmartMatch = false"
-        @open-pet="openPet"
+        @open-match="openPet"
+        @confirm-match="confirmSmartMatch"
+        @post-instead="postFromSmartMatch"
       />
     </Transition>
 
@@ -75,6 +80,15 @@
         :pet="chatPet"
         :user="currentUser"
         @close="chatPet = null"
+      />
+    </Transition>
+
+    <!-- Conversation inbox overlay -->
+    <Transition name="page">
+      <ChatInboxScreen
+        v-if="showInbox"
+        @close="showInbox = false"
+        @open-chat="openChatFromInbox"
       />
     </Transition>
 
@@ -222,6 +236,7 @@ import { Camera, CameraResultType } from '@capacitor/camera'
 import type { Pet } from './types/pet'
 import type { AppNotification } from './types/notification'
 import type { User } from './types/user'
+import type { ChatPet } from './services/api'
 import {
   getNearbyPets,
   getNotifications,
@@ -240,6 +255,7 @@ import UserSettingsScreen from './components/UserSettingsScreen.vue'
 import SmartMatchScreen from './components/SmartMatchScreen.vue'
 import PosterModal from './components/PosterModal.vue'
 import Chatscreen from './components/Chatscreen.vue'
+import ChatInboxScreen from './components/ChatInboxScreen.vue'
 import NotificationsPanel from './components/NotificationsPanel.vue'
 import AdoptionHistoryScreen from './components/AdoptionHistoryScreen.vue'
 import BoostScreen from './components/BoostScreen.vue'
@@ -264,11 +280,12 @@ const showSettings = ref(false)
 const showSmartMatch = ref(false)
 const showNotifications = ref(false)
 const showActivity = ref(false)
+const showInbox = ref(false)
 const showBoost = ref(false)
 const notifications = ref<AppNotification[]>([])
 const selectedPet = ref<Pet | null>(null)
 const posterPet = ref<Pet | null>(null)
-const chatPet = ref<Pet | null>(null)
+const chatPet = ref<ChatPet | null>(null)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
 const sightingPhoto = ref('')
@@ -392,6 +409,8 @@ function handleAuth(user: User) {
 function logout() {
   localStorage.removeItem('token')
   currentUser.value = null
+  chatPet.value = null
+  showInbox.value = false
   authOpen.value = true
 }
 
@@ -435,6 +454,42 @@ function openPet(petOrId: Pet | string | number) {
   selectedPet.value = pet
   showSmartMatch.value = false
   showNotifications.value = false
+}
+
+function openChat(pet: ChatPet | null) {
+  if (!pet) return
+  if (!currentUser.value) {
+    authOpen.value = true
+    return
+  }
+  if (pet.reportedBy === currentUser.value.id && !pet.participantId) {
+    showInbox.value = true
+    return
+  }
+  chatPet.value = pet
+}
+
+function openInbox() {
+  if (!currentUser.value) {
+    authOpen.value = true
+    return
+  }
+  showInbox.value = true
+}
+
+function openChatFromInbox(pet: ChatPet) {
+  showInbox.value = false
+  openChat(pet)
+}
+
+function confirmSmartMatch(pet: Pet) {
+  showSmartMatch.value = false
+  openSighting(pet)
+}
+
+function postFromSmartMatch() {
+  showSmartMatch.value = false
+  tab.value = 'post'
 }
 
 async function openPetById(petId: string) {
@@ -530,6 +585,8 @@ function openFromToast() {
 
 function handleUnauthorized() {
   currentUser.value = null
+  chatPet.value = null
+  showInbox.value = false
   authOpen.value = true
 }
 

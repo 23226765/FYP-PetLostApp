@@ -155,6 +155,33 @@
             </li>
           </ul>
 
+          <section v-if="selectedEntry.type === 'sighting'" class="contact-panel">
+            <div class="contact-copy">
+              <span class="contact-title">Contact pet owner</span>
+              <span class="contact-sub">Share useful details directly and safely.</span>
+            </div>
+            <div v-if="selectedContactActions" class="contact-actions">
+              <a
+                class="contact-action call"
+                :href="selectedContactActions.callHref"
+                aria-label="Call the pet owner"
+              >
+                <AppIcon name="phone" :size="18" />
+                Call
+              </a>
+              <a
+                class="contact-action whatsapp"
+                :href="selectedContactActions.whatsappHref"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Message the pet owner on WhatsApp"
+              >
+                WhatsApp
+              </a>
+            </div>
+            <span v-else class="contact-unavailable">Owner phone unavailable</span>
+          </section>
+
           <button class="sheet-close" @click="selectedEntry = null">Done</button>
         </div>
       </div>
@@ -169,6 +196,7 @@ import AppIcon from './AppIcon.vue'
 import { getMyPets, getMySightings } from '../services/api'
 import type { MySighting } from '../services/api'
 import type { Pet } from '../types/pet'
+import { createContactActions } from '../utils/contact'
 
 /* ── Emits ── */
 const emit = defineEmits<{ close: [] }>()
@@ -188,6 +216,7 @@ interface HistoryEntry {
   outcome: Outcome
   note?: string
   reward?: string
+  ownerPhone?: string
 }
 
 /* ── Mock data — replace with API/store calls in production ── */
@@ -233,6 +262,7 @@ function sightingToHistoryEntry(sighting: MySighting): HistoryEntry {
     type: 'sighting',
     outcome: sighting.pet?.status || 'sighted',
     note: sighting.note || undefined,
+    ownerPhone: sighting.pet?.ownerPhone,
   }
 }
 
@@ -269,6 +299,11 @@ const filtered = computed<HistoryEntry[]>(() => {
 
 /* ── Selected entry for the detail sheet ── */
 const selectedEntry = ref<HistoryEntry | null>(null)
+const selectedContactActions = computed(() => {
+  if (!selectedEntry.value) return null
+  const message = `Hi, I'm contacting you through PawRadar about ${selectedEntry.value.petName}, near ${selectedEntry.value.location}.`
+  return createContactActions(selectedEntry.value.ownerPhone, message)
+})
 
 /* ── Summary stats (derived from full entries list) ── */
 const stats = computed(() => ({
@@ -741,6 +776,74 @@ h3 {
 
 .reward-text {
   color: var(--coral);
+}
+
+.contact-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(29, 99, 96, 0.14);
+  border-radius: var(--radius-md);
+  background: rgba(29, 99, 96, 0.06);
+}
+
+.contact-copy {
+  display: flex;
+  flex: 1 1 150px;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.contact-title {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.contact-sub,
+.contact-unavailable {
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.contact-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.contact-action {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 13px;
+  border-radius: 999px;
+  color: #1d6360;
+  font-size: 12.5px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.contact-action:active {
+  transform: scale(0.96);
+}
+
+.contact-action.call {
+  background: #1d6360;
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(29, 99, 96, 0.2);
+}
+
+.contact-action.whatsapp {
+  border: 1px solid rgba(29, 99, 96, 0.18);
+  background: #fcf9f2;
 }
 
 /* Sheet close button — matches App.vue .sheet-send */

@@ -1,7 +1,18 @@
 <template>
   <article class="card" @click="emit('open')">
     <div class="photo-wrap">
-      <img :src="pet.photo" :alt="`Photo of ${pet.name}, a missing ${pet.breed}`" loading="lazy" />
+      <img
+        v-if="photoUrl && !imageFailed"
+        :src="photoUrl"
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        @error="imageFailed = true"
+      />
+      <div v-else class="photo-placeholder" aria-hidden="true">
+        <AppIcon name="paw" :size="42" />
+      </div>
+      <span class="sr-only">Photo of {{ pet.name }}, a missing {{ pet.breed }}</span>
       <span class="badge" :class="pet.status">
         {{ pet.status === 'lost' ? 'LOST' : 'SIGHTED' }}
       </span>
@@ -28,11 +39,33 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import type { Pet } from '../data/pets'
 import AppIcon from './AppIcon.vue'
 
-defineProps<{ pet: Pet }>()
+const props = defineProps<{ pet: Pet }>()
 const emit = defineEmits<{ open: []; found: [] }>()
+
+const imageFailed = ref(false)
+const photoUrl = computed(() => normalizeImageUrl(props.pet.photo))
+
+watch(photoUrl, () => {
+  imageFailed.value = false
+})
+
+function normalizeImageUrl(value: string | null | undefined): string {
+  const photo = value?.trim()
+  if (!photo) return ''
+
+  try {
+    const appOrigin = window.location.origin
+    const apiUrl = new URL(import.meta.env.VITE_API_BASE_URL || '/api', appOrigin)
+    const resolved = new URL(photo, `${apiUrl.origin}/`)
+    return ['http:', 'https:', 'data:', 'blob:'].includes(resolved.protocol) ? resolved.href : ''
+  } catch {
+    return ''
+  }
+}
 </script>
 
 <style scoped>
@@ -51,12 +84,25 @@ const emit = defineEmits<{ open: []; found: [] }>()
 .photo-wrap {
   position: relative;
   aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #fcf9f2;
 }
 
 .photo-wrap img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.photo-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(29, 99, 96, 0.12), transparent 34%),
+    #fcf9f2;
+  color: rgba(29, 99, 96, 0.55);
 }
 
 .badge {

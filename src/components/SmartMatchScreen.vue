@@ -78,7 +78,18 @@
     ═══════════════════════════════════════════ -->
     <div v-else-if="state === 'scanning'" class="scan-stage">
       <div class="scan-frame">
-        <img :src="uploadedPhoto" alt="Photo being analyzed" class="scan-photo" />
+        <img
+          v-if="normalizedImageUrl(uploadedPhoto) && !uploadedPhotoFailed"
+          :src="normalizedImageUrl(uploadedPhoto)"
+          alt=""
+          aria-hidden="true"
+          class="scan-photo"
+          @error="uploadedPhotoFailed = true"
+        />
+        <div v-else class="photo-placeholder" aria-hidden="true">
+          <AppIcon name="paw" :size="52" />
+        </div>
+        <span class="sr-only">Photo being analyzed</span>
 
         <!-- Dimming veil so the glow reads clearly -->
         <div class="scan-veil" />
@@ -118,7 +129,18 @@
 
       <!-- Thumbnail of what was scanned -->
       <div class="scanned-summary">
-        <img :src="uploadedPhoto" alt="The photo you uploaded" class="scanned-thumb" />
+        <div class="scanned-thumb" role="img" aria-label="The photo you uploaded">
+          <img
+            v-if="normalizedImageUrl(uploadedPhoto) && !uploadedPhotoFailed"
+            :src="normalizedImageUrl(uploadedPhoto)"
+            alt=""
+            aria-hidden="true"
+            @error="uploadedPhotoFailed = true"
+          />
+          <div v-else class="photo-placeholder" aria-hidden="true">
+            <AppIcon name="paw" :size="23" />
+          </div>
+        </div>
         <div class="scanned-info">
           <span class="scanned-title">Analysis complete</span>
           <span class="scanned-sub">
@@ -144,10 +166,17 @@
         >
           <div class="photo-wrap">
             <img
-              :src="m.photo"
-              :alt="`Photo of ${m.name}, a missing ${m.breed}`"
+              v-if="normalizedImageUrl(m.photo) && !failedMatchImages.has(m.id)"
+              :src="normalizedImageUrl(m.photo)"
+              alt=""
+              aria-hidden="true"
               loading="lazy"
+              @error="markMatchPhotoFailed(m.id)"
             />
+            <div v-else class="photo-placeholder" aria-hidden="true">
+              <AppIcon name="paw" :size="42" />
+            </div>
+            <span class="sr-only">Photo of {{ m.name }}, a missing {{ m.breed }}</span>
 
             <!-- Original status badge (unchanged pattern) -->
             <span class="badge" :class="m.status">
@@ -251,8 +280,10 @@ type ScreenState = 'idle' | 'scanning' | 'results'
 /* ── State ─────────────────────────────────────────── */
 const state = ref<ScreenState>('idle')
 const uploadedPhoto = ref<string>('')
+const uploadedPhotoFailed = ref(false)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const failedMatchImages = ref<Set<string>>(new Set())
 
 const scanProgress = ref(0)
 const scanStage = ref('Initializing…')
@@ -266,6 +297,26 @@ const demoPhoto =
 
 /* ── Mock match results (highest confidence first) ── */
 const matches = ref<MatchResult[]>([])
+
+function normalizedImageUrl(value: string | null | undefined): string {
+  const photo = value?.trim()
+  if (!photo) return ''
+
+  try {
+    const apiUrl = new URL(
+      import.meta.env.VITE_API_BASE_URL || '/api',
+      window.location.origin,
+    )
+    const resolved = new URL(photo, `${apiUrl.origin}/`)
+    return ['http:', 'https:', 'data:', 'blob:'].includes(resolved.protocol) ? resolved.href : ''
+  } catch {
+    return ''
+  }
+}
+
+function markMatchPhotoFailed(id: string) {
+  failedMatchImages.value = new Set([...failedMatchImages.value, id])
+}
 
 /* ── Upload handling ───────────────────────────────── */
 async function triggerFilePicker() {
@@ -303,6 +354,8 @@ function readAndScan(file: File) {
 /* ── Scan sequence (2 s simulated delay) ───────────── */
 function startScan(photoSrc: string) {
   uploadedPhoto.value = photoSrc
+  uploadedPhotoFailed.value = false
+  failedMatchImages.value = new Set()
   state.value = 'scanning'
   scanProgress.value = 0
   scanStage.value = 'Detecting subject…'
@@ -365,6 +418,8 @@ function reset() {
   clearTimers()
   state.value = 'idle'
   uploadedPhoto.value = ''
+  uploadedPhotoFailed.value = false
+  failedMatchImages.value = new Set()
   scanProgress.value = 0
   if (fileInput.value) fileInput.value.value = ''
 }
@@ -513,6 +568,17 @@ h1 { font-size: 17px; font-weight: 800; }
 }
 
 .scan-photo { width: 100%; height: 100%; object-fit: cover; }
+
+.photo-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(29, 99, 96, 0.12), transparent 34%),
+    #fcf9f2;
+  color: rgba(29, 99, 96, 0.55);
+}
 
 /* Subtle teal veil so the glow pops */
 .scan-veil {
@@ -667,12 +733,16 @@ h1 { font-size: 17px; font-weight: 800; }
 }
 
 .scanned-thumb {
+  position: relative;
   width: 52px;
   height: 52px;
   border-radius: var(--radius-sm);
-  object-fit: cover;
+  overflow: hidden;
+  background: #fcf9f2;
   flex-shrink: 0;
 }
+
+.scanned-thumb img { width: 100%; height: 100%; object-fit: cover; }
 
 .scanned-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .scanned-title { font-size: 15px; font-weight: 800; }
@@ -709,7 +779,12 @@ h1 { font-size: 17px; font-weight: 800; }
 
 .card:active { transform: scale(0.98); }
 
-.photo-wrap { position: relative; aspect-ratio: 4 / 3; }
+.photo-wrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #fcf9f2;
+}
 .photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
 
 .badge {

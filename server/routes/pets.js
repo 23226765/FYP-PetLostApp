@@ -6,6 +6,7 @@ import {
   getNearbyPets,
   getPet,
   listSightings,
+  confirmSighting,
   reportPet,
   submitSighting,
   updateStatus,
@@ -21,9 +22,10 @@ router.get('/nearby', getNearbyPets)
 router.post('/report', optionalAuth, reportPet)
 router.get('/sightings/mine', requireAuth, listMySightings)
 
-router.get('/:id/sightings', listSightings)
+router.get('/:id/sightings', optionalAuth, listSightings)
+router.post('/:id/sightings/:sightingId/confirm', requireAuth, confirmSighting)
 router.get('/:id', getPet)
 router.post('/:id/sighting', optionalAuth, submitSighting)
-router.patch('/:id/status', updateStatus)
+router.patch('/:id/status', requireAuth, updateStatus)
 
 export default router

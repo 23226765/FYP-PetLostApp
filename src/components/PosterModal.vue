@@ -32,7 +32,7 @@
         <AppIcon name="close" :size="21" />
       </button>
       <span class="toolbar-title">Missing Poster</span>
-      <button class="tool-btn" aria-label="Share poster" @click="emit('share')">
+      <button class="tool-btn" type="button" aria-label="Share poster" @click="sharePoster">
         <AppIcon name="share" :size="19" />
       </button>
     </header>
@@ -149,11 +149,11 @@
       </Transition>
 
       <div class="action-row">
-        <button class="secondary-btn" @click="savePoster">
+        <button class="secondary-btn" type="button" @click="savePoster">
           <AppIcon name="camera" :size="18" />
-          Save to Camera Roll
+          Save as PDF
         </button>
-        <button class="primary-btn" @click="printPoster">
+        <button class="primary-btn" type="button" @click="printPoster">
           <AppIcon name="list" :size="18" />
           Print
         </button>
@@ -164,15 +164,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import type { Pet } from '../data/pets'
 
 const props = defineProps<{ pet: Pet }>()
-const emit = defineEmits<{ close: []; share: [] }>()
+const emit = defineEmits<{ close: [] }>()
 
 const sheetEl = ref<HTMLElement | null>(null)
 const feedback = ref('')
+let feedbackTimer: ReturnType<typeof setTimeout> | null = null
 
 /* ── Dummy QR generation ────────────────────────────────
    Builds a 21×21 boolean grid from a small deterministic
@@ -216,12 +217,38 @@ function printPoster() {
 }
 
 function savePoster() {
-  // In a native wrapper (Capacitor / React Native WebView) this would
-  // call the platform photo-library API. On web we surface the print
-  // dialog as the closest equivalent and confirm to the user.
-  feedback.value = 'Poster saved to your Camera Roll'
-  setTimeout(() => { feedback.value = '' }, 2600)
+  showFeedback('Choose “Save as PDF” in the print dialog.')
+  window.print()
 }
+
+async function sharePoster() {
+  const text = `${props.pet.name} is missing. Last seen near ${props.pet.location}. Contact ${props.pet.owner}${props.pet.ownerPhone ? ` at ${props.pet.ownerPhone}` : ' through PawRadar'}.`
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: `Missing: ${props.pet.name}`, text })
+      showFeedback('Poster details shared.')
+      return
+    }
+    await navigator.clipboard.writeText(text)
+    showFeedback('Poster details copied to clipboard.')
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return
+    showFeedback('Unable to share. Please use Print instead.')
+  }
+}
+
+function showFeedback(message: string) {
+  if (feedbackTimer) clearTimeout(feedbackTimer)
+  feedback.value = message
+  feedbackTimer = setTimeout(() => {
+    feedback.value = ''
+    feedbackTimer = null
+  }, 2600)
+}
+
+onBeforeUnmount(() => {
+  if (feedbackTimer) clearTimeout(feedbackTimer)
+})
 </script>
 
 <style scoped>

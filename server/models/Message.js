@@ -12,6 +12,16 @@ const messageSchema = new mongoose.Schema(
       enum: ['owner', 'finder'],
       required: true,
     },
+    sentBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    participant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     text: { type: String, default: '', trim: true },
     photo: { type: String, default: '' },
   },
@@ -19,5 +29,7 @@ const messageSchema = new mongoose.Schema(
 )
 
 messageSchema.index({ pet: 1, createdAt: 1 })
+messageSchema.index({ sentBy: 1, createdAt: -1 })
+messageSchema.index({ pet: 1, participant: 1, createdAt: 1 })
 
 export default mongoose.models.Message || mongoose.model('Message', messageSchema)

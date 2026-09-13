@@ -2,7 +2,7 @@
   <div class="post">
     <header class="top">
       <h1>Post a lost pet</h1>
-      <p>Your poster reaches everyone within a 3 km radius instantly.</p>
+      <p>Your report appears on the nearby community radar immediately.</p>
     </header>
 
     <form v-if="!submitted" @submit.prevent="submit">
@@ -67,12 +67,29 @@
         <input v-model="form.reward" type="text" inputmode="numeric" placeholder="$" />
       </label>
 
+      <label class="field">
+        <span>Contact name</span>
+        <input v-model="form.ownerName" type="text" autocomplete="name" required />
+      </label>
+
+      <label class="field">
+        <span>Contact phone</span>
+        <input
+          v-model="form.ownerPhone"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          placeholder="e.g. 9123 4567"
+          required
+        />
+      </label>
+
       <p v-if="error" class="error-msg">{{ error }}</p>
       <button type="submit" class="submit" :disabled="submitting">
         <AppIcon name="radar" :size="20" />
         {{ submitting ? 'POSTING…' : 'POST LOST PET' }}
       </button>
-      <p class="note">Neighbors nearby get a push notification immediately.</p>
+      <p class="note">Nearby community members can discover the report through Radar.</p>
     </form>
 
     <div v-else class="success" role="status">
@@ -80,7 +97,7 @@
         <AppIcon name="check" :size="30" />
       </span>
       <h2>{{ form.name || 'Your pet' }} is on the radar</h2>
-      <p>212 neighbors within 3 km have been notified. We&apos;ll alert you the moment someone reports a sighting.</p>
+      <p>Your report is live on Radar. Check back for sightings and community messages.</p>
       <button class="back-btn" @click="emit('done')">Back to radar</button>
     </div>
   </div>
@@ -92,7 +109,9 @@ import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import { reportLostPet } from '../services/api'
 import { getCurrentLocation } from '../services/geolocation'
+import type { User } from '../types/user'
 
+const props = defineProps<{ user?: User | null }>()
 const emit = defineEmits<{ done: [] }>()
 
 const species = ['Dog', 'Cat', 'Other'] as const
@@ -107,6 +126,8 @@ const form = reactive({
   location: '',
   details: '',
   reward: '',
+  ownerName: props.user?.name || '',
+  ownerPhone: props.user?.phone || '',
 })
 
 async function addPhoto() {
@@ -146,6 +167,8 @@ async function submit() {
       description: form.details,
       details: form.details,
       reward: form.reward,
+      ownerName: form.ownerName,
+      ownerPhone: form.ownerPhone,
       locationName: form.location || 'Current location',
       coordinates,
     })

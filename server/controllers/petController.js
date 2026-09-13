@@ -9,8 +9,27 @@ function isPoint(obj) {
     obj &&
     obj.type === 'Point' &&
     Array.isArray(obj.coordinates) &&
-    obj.coordinates.length === 2
+    obj.coordinates.length === 2 &&
+    Number.isFinite(Number(obj.coordinates[0])) &&
+    Number.isFinite(Number(obj.coordinates[1])) &&
+    Number(obj.coordinates[0]) >= -180 &&
+    Number(obj.coordinates[0]) <= 180 &&
+    Number(obj.coordinates[1]) >= -90 &&
+    Number(obj.coordinates[1]) <= 90
   )
+}
+
+const MAX_PHOTO_LENGTH = 1_500_000
+const PHONE_PATTERN = /^\+?[\d\s().-]{8,30}$/
+
+function normalizedText(value, maxLength) {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
+}
+
+function isValidPhone(value) {
+  if (!PHONE_PATTERN.test(value)) return false
+  const digitCount = value.replace(/\D/g, '').length
+  return digitCount >= 8 && digitCount <= 15
 }
 
 function relativeDay(date) {
@@ -51,6 +70,7 @@ function serializePet(pet, distanceMeters) {
     reward: pet.reward || undefined,
     owner: pet.ownerName,
     ownerPhone: pet.ownerPhone,
+    reportedBy: pet.reportedBy ? String(pet.reportedBy) : undefined,
     status: pet.status,
     location: pet.locationName,
     distanceKm,
@@ -113,12 +133,15 @@ export async function listMySightings(req, res, next) {
     try {
       sightings = await Sighting.find({ reportedBy: req.user._id })
         .sort({ createdAt: -1 })
-        .populate('pet', 'name photo status')
+        .populate('pet', 'name photo status ownerPhone')
     } catch (error) {
       const isCosmosOrderByIndexError =
         error?.code === 2 && String(error.message).includes('order-by item is excluded')
       if (!isCosmosOrderByIndexError) throw error
-      sightings = await Sighting.find({ reportedBy: req.user._id }).populate('pet', 'name photo status')
+      sightings = await Sighting.find({ reportedBy: req.user._id }).populate(
+        'pet',
+        'name photo status ownerPhone',
+      )
       sightings.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )
@@ -141,7 +164,12 @@ export async function getNearbyPets(req, res, next) {
     if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
       return res.status(400).json({ error: 'Invalid coordinates.' })
     }
-    const radiusMeters = (Number(radiusKm) > 0 ? Number(radiusKm) : 3) * 1000
+    const requestedRadius = Number(radiusKm)
+    const normalizedRadius =
+      Number.isFinite(requestedRadius) && requestedRadius > 0
+        ? Math.min(requestedRadius, 50)
+        : 3
+    const radiusMeters = normalizedRadius * 1000
 
     const pipeline = [
       {
@@ -197,15 +225,48 @@ export async function listSightings(req, res, next) {
       docs = await Sighting.find({ pet: req.params.id })
       docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }
-    const sightings = docs.map((sighting) => ({
-      id: String(sighting._id),
-      locationName: sighting.locationName,
-      note: sighting.note,
-      photo: sighting.photo,
-      createdAt: sighting.createdAt,
-    }))
+    const currentUserId = req.user?._id ? String(req.user._id) : null
+    const sightings = docs.map((sighting) => {
+      const confirmedBy = Array.isArray(sighting.confirmedBy) ? sighting.confirmedBy : []
+      return {
+        id: String(sighting._id),
+        petId: String(sighting.pet),
+        coordinates: sighting.location?.coordinates,
+        locationName: sighting.locationName,
+        note: sighting.note,
+        photo: sighting.photo,
+        createdAt: sighting.createdAt,
+        confirmationCount: confirmedBy.length,
+        confirmedByMe:
+          Boolean(currentUserId) && confirmedBy.some((id) => String(id) === currentUserId),
+      }
+    })
 
     res.json({ sightings })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// POST /api/pets/:id/sightings/:sightingId/confirm
+export async function confirmSighting(req, res, next) {
+  try {
+    const { id, sightingId } = req.params
+    if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(sightingId)) {
+      return res.status(400).json({ error: 'Invalid pet or sighting id' })
+    }
+
+    const sighting = await Sighting.findOneAndUpdate(
+      { _id: sightingId, pet: id },
+      { $addToSet: { confirmedBy: req.user._id } },
+      { new: true },
+    )
+    if (!sighting) return res.status(404).json({ error: 'Sighting not found' })
+
+    res.json({
+      confirmationCount: sighting.confirmedBy?.length || 0,
+      confirmedByMe: true,
+    })
   } catch (err) {
     next(err)
   }
@@ -219,29 +280,40 @@ export async function reportPet(req, res, next) {
       ownerName, ownerPhone, locationName, coordinates, lastSeen, mapX, mapY,
     } = req.body
 
-    if (!name || !species) {
+    const normalizedName = normalizedText(name, 100)
+    const normalizedLocationName = normalizedText(locationName, 200)
+    if (!normalizedName || !['Dog', 'Cat', 'Other'].includes(species)) {
       return res.status(400).json({ error: '`name` and `species` are required.' })
+    }
+    if (!normalizedLocationName) {
+      return res.status(400).json({ error: 'Last seen location is required.' })
     }
     if (!isPoint({ type: 'Point', coordinates })) {
       return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
     }
 
     // Prefer the authenticated user's identity as the owner.
-    const resolvedOwnerName = req.user?.name || ownerName || 'Anonymous'
-    const resolvedOwnerPhone = req.user?.phone || ownerPhone || ''
+    const resolvedOwnerName = normalizedText(req.user?.name || ownerName, 100)
+    const resolvedOwnerPhone = normalizedText(req.user?.phone || ownerPhone, 30)
+    if (!resolvedOwnerName || !isValidPhone(resolvedOwnerPhone)) {
+      return res.status(400).json({ error: 'A valid contact name and phone are required.' })
+    }
+    if (typeof photo === 'string' && photo.length > MAX_PHOTO_LENGTH) {
+      return res.status(413).json({ error: 'Photo is too large. Choose a smaller image.' })
+    }
 
     const pet = await Pet.create({
-      name,
+      name: normalizedName,
       species,
-      breed: breed || '',
+      breed: normalizedText(breed, 120),
       photo: photo || '',
-      description: description || '',
-      details: details || '',
-      reward: reward || '',
+      description: normalizedText(description, 2000),
+      details: normalizedText(details, 2000),
+      reward: normalizedText(reward, 100),
       ownerName: resolvedOwnerName,
       ownerPhone: resolvedOwnerPhone,
-      locationName: locationName || '',
-      location: { type: 'Point', coordinates },
+      locationName: normalizedLocationName,
+      location: { type: 'Point', coordinates: coordinates.map(Number) },
       lastSeen: lastSeen ? new Date(lastSeen) : new Date(),
       mapX: Number.isFinite(Number(mapX)) ? Number(mapX) : 50,
       mapY: Number.isFinite(Number(mapY)) ? Number(mapY) : 50,
@@ -268,16 +340,19 @@ export async function submitSighting(req, res, next) {
     if (!isPoint({ type: 'Point', coordinates })) {
       return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
     }
+    if (typeof photo === 'string' && photo.length > MAX_PHOTO_LENGTH) {
+      return res.status(413).json({ error: 'Photo is too large. Choose a smaller image.' })
+    }
 
     const sighting = await Sighting.create({
       pet: pet._id,
       reportedBy: req.user?._id || undefined,
-      location: { type: 'Point', coordinates },
-      locationName: locationName || '',
-      note: note || '',
+      location: { type: 'Point', coordinates: coordinates.map(Number) },
+      locationName: normalizedText(locationName, 200),
+      note: normalizedText(note, 2000),
       photo: photo || '',
-      reporterName: reporterName || '',
-      reporterPhone: reporterPhone || '',
+      reporterName: normalizedText(reporterName, 100),
+      reporterPhone: normalizedText(reporterPhone, 30),
     })
 
     pet.status = 'sighted'
@@ -290,7 +365,10 @@ export async function submitSighting(req, res, next) {
         coordinates: sighting.location.coordinates,
         locationName: sighting.locationName,
         note: sighting.note,
+        photo: sighting.photo || undefined,
         createdAt: sighting.createdAt,
+        confirmationCount: 0,
+        confirmedByMe: false,
       },
       pet: serializePet(pet),
     })
@@ -309,6 +387,12 @@ export async function updateStatus(req, res, next) {
     if (!['lost', 'sighted', 'reunited'].includes(status)) {
       return res.status(400).json({ error: '`status` must be lost | sighted | reunited.' })
     }
+    const existingPet = await Pet.findById(req.params.id).select('reportedBy')
+    if (!existingPet) return res.status(404).json({ error: 'Pet not found' })
+    if (!existingPet.reportedBy || String(existingPet.reportedBy) !== String(req.user._id)) {
+      return res.status(403).json({ error: 'Only the reporting owner can update this pet.' })
+    }
+
     const pet = await Pet.findByIdAndUpdate(req.params.id, { status }, { new: true })
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
     res.json({ pet: serializePet(pet) })

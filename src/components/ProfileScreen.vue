@@ -88,6 +88,13 @@
         </div>
         <span class="setting-value"><AppIcon name="chevron" :size="15" /></span>
       </li>
+      <li class="row-link" @click="emit('open-inbox')">
+        <div class="setting-label">
+          <AppIcon name="send" :size="19" />
+          <span>Messages</span>
+        </div>
+        <span class="setting-value"><AppIcon name="chevron" :size="15" /></span>
+      </li>
       <li class="row-link" @click="emit('open-boost')">
         <div class="setting-label">
           <AppIcon name="radar" :size="19" />
@@ -119,6 +126,7 @@ const emit = defineEmits<{
   logout: []
   'open-settings': []
   'open-activity': []
+  'open-inbox': []
   'open-boost': []
 }>()
 

@@ -26,6 +26,7 @@ const sightingSchema = new mongoose.Schema(
     photo: { type: String, default: '' },
     reporterName: { type: String, default: '' },
     reporterPhone: { type: String, default: '' },
+    confirmedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     resolved: { type: Boolean, default: false },
   },
   { timestamps: true },
