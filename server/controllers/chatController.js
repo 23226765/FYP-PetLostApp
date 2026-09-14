@@ -25,6 +25,22 @@ function isOwner(pet, userId) {
   return Boolean(pet.reportedBy) && String(pet.reportedBy) === String(userId)
 }
 
+function hasRequestBody(req) {
+  return (
+    req.body &&
+    typeof req.body === 'object' &&
+    !Array.isArray(req.body) &&
+    Object.keys(req.body).length > 0
+  )
+}
+
+function invalidRequestBody(res) {
+  return res.status(400).json({
+    success: false,
+    message: 'Invalid or missing request body',
+  })
+}
+
 function serializeChatPet(pet, participant, participantName) {
   return {
     id: String(pet._id),
@@ -154,6 +170,7 @@ export async function createMessage(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.petId)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
+    if (!hasRequestBody(req)) return invalidRequestBody(res)
 
     const { text, photo } = req.body
     const normalizedMessage = typeof text === 'string' ? text.trim() : ''

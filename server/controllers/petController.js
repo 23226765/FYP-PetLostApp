@@ -43,6 +43,22 @@ function isValidPhone(value) {
   return digitCount >= 8 && digitCount <= 15
 }
 
+function hasRequestBody(req) {
+  return (
+    req.body &&
+    typeof req.body === 'object' &&
+    !Array.isArray(req.body) &&
+    Object.keys(req.body).length > 0
+  )
+}
+
+function invalidRequestBody(res) {
+  return res.status(400).json({
+    success: false,
+    message: 'Invalid or missing request body',
+  })
+}
+
 function relativeDay(date) {
   const now = new Date()
   const then = new Date(date)
@@ -303,6 +319,8 @@ export async function confirmSighting(req, res, next) {
 // POST /api/pets/report
 export async function reportPet(req, res, next) {
   try {
+    if (!hasRequestBody(req)) return invalidRequestBody(res)
+
     const {
       name, species, breed, district, photo, description, details, reward,
       ownerName, ownerPhone, locationName, coordinates, lastSeen, mapX, mapY,
@@ -377,6 +395,8 @@ export async function submitSighting(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
+    if (!hasRequestBody(req)) return invalidRequestBody(res)
+
     const pet = await Pet.findById(req.params.id)
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
 
@@ -439,6 +459,8 @@ export async function updateStatus(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
+    if (!hasRequestBody(req)) return invalidRequestBody(res)
+
     const { status } = req.body
     if (!['lost', 'sighted', 'reunited'].includes(status)) {
       return res.status(400).json({ error: '`status` must be lost | sighted | reunited.' })

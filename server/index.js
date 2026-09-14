@@ -1,19 +1,41 @@
-import 'dotenv/config'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import dotenv from 'dotenv'
 import express from 'express'
 import cors from 'cors'
 import mongoose from 'mongoose'
-import petsRouter from './routes/pets.js'
-import authRouter from './routes/auth.js'
-import notificationsRouter from './routes/notifications.js'
-import chatRouter from './routes/chat.js'
-import straysRouter from './routes/strays.js'
 import { errorHandler } from './middleware/errorHandler.js'
+
+const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: path.resolve(serverDirectory, '.env') })
+
+// Authentication modules read JWT_SECRET during evaluation, so load routes
+// only after the server-local environment file has been configured.
+const [
+  { default: petsRouter },
+  { default: authRouter },
+  { default: notificationsRouter },
+  { default: chatRouter },
+  { default: straysRouter },
+] = await Promise.all([
+  import('./routes/pets.js'),
+  import('./routes/auth.js'),
+  import('./routes/notifications.js'),
+  import('./routes/chat.js'),
+  import('./routes/strays.js'),
+])
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5000
 const MONGODB_URI = process.env.MONGODB_URI
 
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000')
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+]
+const allowedOrigins = (process.env.CORS_ORIGINS || defaultOrigins.join(','))
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
@@ -26,6 +48,7 @@ app.use(
       error.status = 403
       callback(error)
     },
+    credentials: true,
   }),
 )
 app.use(express.json({ limit: '2mb' }))

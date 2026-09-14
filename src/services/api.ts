@@ -59,6 +59,11 @@ export async function getNearbyPets(
   return data.pets
 }
 
+export async function getAllPets(): Promise<Pet[]> {
+  const { data } = await http.get<{ pets: Pet[] }>('/pets')
+  return data.pets
+}
+
 export async function getMyPets(): Promise<Pet[]> {
   const { data } = await http.get<{ pets: Pet[] }>('/pets/mine')
   return data.pets
@@ -201,15 +206,16 @@ export interface ReportPetPayload {
   name: string
   species: 'Dog' | 'Cat' | 'Other'
   breed?: string
-  district?: string
+  district: string
   photo?: string
   description?: string
   details?: string
   reward?: string
   ownerName?: string
   ownerPhone?: string
-  locationName?: string
+  locationName: string
   coordinates: [number, number]
+  lastSeen?: string
   mapX?: number
   mapY?: number
 }
@@ -263,6 +269,16 @@ export async function getNearbyStrays(
     params,
     signal,
   })
+  return data.strays
+}
+
+export async function getStrayById(id: string): Promise<StrayReport> {
+  const { data } = await http.get<{ stray: StrayReport }>(`/strays/${id}`)
+  return data.stray
+}
+
+export async function getMyStrays(): Promise<StrayReport[]> {
+  const { data } = await http.get<{ strays: StrayReport[] }>('/strays/mine')
   return data.strays
 }
 

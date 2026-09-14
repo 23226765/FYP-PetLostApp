@@ -1,28 +1,15 @@
-# DEBUG_TARGET — Stabilization Audit
+# DEBUG_TARGET — Pet card image fallback
 
-## Current Milestone Status
-1. Auth & Session Persistence — Completed.
-2. Leaflet Map + Live GPS + 2dsphere — Completed.
-3. Sighting Reports & History Timeline — Completed.
-4. Smart Match Engine — Completed.
-5. Capacitor Native Wrappers — Partial (Android done; iOS not generated — requires macOS).
+## Files
+- `src/components/PetCard.vue` — pet card render.
+- `server/seed.js` — image URLs (`U()` → absolute Unsplash).
+- `server/controllers/petController.js` — `reportPet` allows empty `photo`.
 
-## Root Cause Analysis
-- **"Network Error"** = two stacked problems:
-  1. Both dev servers had been stopped after an environment reset → Axios could not reach `http://localhost:5000/api` (connection refused → Axios "Network Error").
-  2. Once the backend was up, `GET /api/pets` (also `/pets/mine`, `/pets/sightings/mine`) returned **500** because Cosmos DB rejects `.sort({ createdAt: -1 })` ("order-by item is excluded"); these three queries lacked the JS-sort fallback the other controllers already had.
-- Minor: unused `pnpm.overrides` in `package.json`; Android scaffolded test references `com.getcapacitor.app` instead of `com.pawradar.app`.
-
-## Target Files to Fix
-- `server/controllers/petController.js` (order-by fallback — edited, uncommitted)
-- `src/App.vue`, `src/style.css` (nav redesign — edited, uncommitted)
-- `package.json` (drop `pnpm.overrides.hono`)
-- `android/app/src/androidTest/.../ExampleInstrumentedTest.java` (appId mismatch)
+## Why the image fails
+Seed URLs are absolute (all verified 200), so there is no `/uploads` path issue. The breakage is frontend: `PetCard.vue` binds `<img :src="pet.photo">` with no `@error` handler. User-reported pets with no photo get `photo: ''` → empty `src` renders a broken icon, and its long `alt` text overlaps the "LOST" badge.
 
 ## Fix Checklist
-- [x] Restart backend + frontend; confirm `/api/pets` → 200.
-- [x] `npx vue-tsc --noEmit` clean; `npm run build` clean.
-- [ ] Commit pending changes (`git add -A && git commit`).
-- [ ] Remove unused `pnpm.overrides` from `package.json`.
-- [ ] Fix Android test `appId` (or delete the sample test).
-- [ ] Generate iOS on a Mac (`npx cap add ios && npx cap sync`).
+- [ ] `PetCard.vue`: `@error` → styled placeholder (warm tint + `<AppIcon name="paw">`).
+- [ ] Hide raw `alt` text on failure (keep it for screen readers only).
+- [ ] Normalize URL: treat empty/relative `photo` as "no photo" → placeholder.
+- [ ] Repeat the fallback in `PetDetail.vue`, `MapView.vue`, `SmartMatchScreen.vue` thumbnails.

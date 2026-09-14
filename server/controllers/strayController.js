@@ -33,6 +33,22 @@ function validPhone(value) {
   return PHONE_PATTERN.test(value) && value.replace(/\D/g, '').length >= 8
 }
 
+function hasRequestBody(req) {
+  return (
+    req.body &&
+    typeof req.body === 'object' &&
+    !Array.isArray(req.body) &&
+    Object.keys(req.body).length > 0
+  )
+}
+
+function invalidRequestBody(res) {
+  return res.status(400).json({
+    success: false,
+    message: 'Invalid or missing request body',
+  })
+}
+
 function relativeTime(date) {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 60000))
   if (minutes < 1) return 'Just now'
@@ -155,6 +171,8 @@ export async function getStray(req, res, next) {
 
 export async function reportStray(req, res, next) {
   try {
+    if (!hasRequestBody(req)) return invalidRequestBody(res)
+
     const { species, description, photo, condition, district, locationName, coordinates } = req.body
     const normalizedDescription = text(description, 2000)
     const normalizedDistrict = text(district, 80)
@@ -204,6 +222,8 @@ export async function updateRescueStatus(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid stray report id' })
     }
+    if (!hasRequestBody(req)) return invalidRequestBody(res)
+
     const status = req.body?.status
     if (!RESCUE_STATUSES.has(status)) {
       return res.status(400).json({ error: 'Invalid rescue status.' })
