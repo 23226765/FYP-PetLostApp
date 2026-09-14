@@ -5,17 +5,17 @@
         <AppIcon name="back" :size="22" />
       </button>
       <div class="head-text">
-        <h1>Boost your alert</h1>
-        <p>Reach every neighbor before the trail goes cold</p>
+        <h1>Expand radar coverage</h1>
+        <p>Monitor a wider area with your existing web alerts</p>
       </div>
     </header>
 
     <div class="body">
       <!-- Radius comparison graphic -->
-      <div class="radius-visual" role="img" aria-label="Comparison of a small 2 kilometer standard alert radius versus a large 15 kilometer boosted alert radius">
+      <div class="radius-visual" role="img" :aria-label="`Comparison of the current ${radiusKm} kilometer radius versus a 15 kilometer radius`">
         <div class="circle-wrap">
           <span class="circle small"><AppIcon name="pin" :size="14" /></span>
-          <span class="circle-label">2 km</span>
+          <span class="circle-label">{{ radiusKm }} km</span>
         </div>
         <AppIcon name="chevron" :size="20" />
         <div class="circle-wrap">
@@ -30,47 +30,48 @@
       <!-- Comparison card -->
       <div class="compare">
         <section class="plan">
-          <h2>Standard Alert</h2>
-          <span class="price">Free</span>
+          <h2>Current coverage</h2>
+          <span class="price">{{ radiusKm }} km</span>
           <ul>
-            <li><AppIcon name="check" :size="15" /> 2 km radius</li>
+            <li><AppIcon name="check" :size="15" /> Nearby report filtering</li>
             <li><AppIcon name="check" :size="15" /> Radar feed listing</li>
-            <li class="dim"><AppIcon name="close" :size="15" /> No instant push</li>
+            <li><AppIcon name="check" :size="15" /> In-app notifications</li>
           </ul>
         </section>
         <section class="plan featured">
           <span class="badge"><AppIcon name="zap" :size="12" /> BOOSTED</span>
-          <h2>Boosted Alert</h2>
-          <span class="price">$4.99</span>
+          <h2>Wider coverage</h2>
+          <span class="price">Free</span>
           <ul>
             <li><AppIcon name="check" :size="15" /> 15 km radius</li>
-            <li><AppIcon name="check" :size="15" /> Instant push to all users</li>
-            <li><AppIcon name="check" :size="15" /> Pinned top of Radar</li>
+            <li><AppIcon name="check" :size="15" /> Wider Radar results</li>
+            <li><AppIcon name="check" :size="15" /> Wider web alert area</li>
           </ul>
         </section>
       </div>
 
       <p class="note">
-        Boosted alerts are seen by <strong>12x more neighbors</strong> in the first critical hour.
+        A wider radius can surface more reports, but may also include less relevant results.
       </p>
     </div>
 
     <footer class="foot">
-      <button class="boost-btn" :class="{ done: boosted }" @click="boosted = true">
+      <button class="boost-btn" :class="{ done: boosted }" :disabled="boosted" @click="emit('activate', 15)">
         <AppIcon :name="boosted ? 'check' : 'zap'" :size="20" />
-        {{ boosted ? 'Alert boosted! 15 km radius active' : 'Boost Alert for $4.99' }}
+        {{ boosted ? '15 km radius is active' : 'Use 15 km radius' }}
       </button>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
 
-const emit = defineEmits<{ back: [] }>()
+const props = defineProps<{ radiusKm: number }>()
+const emit = defineEmits<{ back: []; activate: [radiusKm: number] }>()
 
-const boosted = ref(false)
+const boosted = computed(() => props.radiusKm >= 15)
 </script>
 
 <style scoped>

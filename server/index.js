@@ -6,6 +6,7 @@ import petsRouter from './routes/pets.js'
 import authRouter from './routes/auth.js'
 import notificationsRouter from './routes/notifications.js'
 import chatRouter from './routes/chat.js'
+import straysRouter from './routes/strays.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
 const app = express()
@@ -42,6 +43,7 @@ app.use('/api/pets', petsRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/chat', chatRouter)
+app.use('/api/strays', straysRouter)
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }))
 app.use(errorHandler)

@@ -20,16 +20,16 @@
 
     <div class="stats">
       <div class="stat">
-        <span class="num">3</span>
+        <span class="num">{{ sightingCount }}</span>
         <span class="lbl">Sightings reported</span>
       </div>
       <div class="stat highlight">
-        <span class="num">1</span>
+        <span class="num">{{ reunitedCount }}</span>
         <span class="lbl">Pet reunited</span>
       </div>
       <div class="stat">
-        <span class="num">212</span>
-        <span class="lbl">Neighbors nearby</span>
+        <span class="num">{{ activePostCount }}</span>
+        <span class="lbl">Active reports</span>
       </div>
     </div>
 
@@ -114,9 +114,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
-import { getMyPets } from '../services/api'
+import { getMyPets, getMySightings } from '../services/api'
 import type { Pet } from '../types/pet'
 import type { User } from '../types/user'
 
@@ -132,6 +132,9 @@ const emit = defineEmits<{
 }>()
 
 const myPets = ref<Pet[]>([])
+const sightingCount = ref(0)
+const reunitedCount = computed(() => myPets.value.filter((pet) => pet.status === 'reunited').length)
+const activePostCount = computed(() => myPets.value.filter((pet) => pet.status !== 'reunited').length)
 const loading = ref(false)
 const error = ref('')
 let requestId = 0
@@ -139,6 +142,7 @@ let requestId = 0
 async function loadMyPets() {
   const currentRequest = ++requestId
   myPets.value = []
+  sightingCount.value = 0
   error.value = ''
 
   if (!props.user) {
@@ -148,8 +152,15 @@ async function loadMyPets() {
 
   loading.value = true
   try {
-    const pets = await getMyPets()
-    if (currentRequest === requestId) myPets.value = pets
+    const [petsResult, sightingsResult] = await Promise.allSettled([
+      getMyPets(),
+      getMySightings(),
+    ])
+    if (petsResult.status === 'rejected') throw petsResult.reason
+    if (currentRequest === requestId) {
+      myPets.value = petsResult.value
+      sightingCount.value = sightingsResult.status === 'fulfilled' ? sightingsResult.value.length : 0
+    }
   } catch (e) {
     if (currentRequest === requestId) {
       error.value = e instanceof Error ? e.message : 'Failed to load your posts.'

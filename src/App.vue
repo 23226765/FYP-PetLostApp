@@ -34,6 +34,13 @@
         @smart-match="showSmartMatch = true"
         @notifications="showNotifications = true"
       />
+      <StrayRescueScreen
+        v-if="tab === 'strays'"
+        :user="currentUser"
+        :radius-km="radiusKm"
+        :user-location="userLocation"
+        @auth-needed="authOpen = true"
+      />
       <PostPetScreen v-if="tab === 'post'" :user="currentUser" @done="onPosted" />
       <ProfileScreen
         v-if="tab === 'profile'"
@@ -42,10 +49,10 @@
         :radius-km="radiusKm"
         @login="authOpen = true"
         @logout="logout"
-        @open-settings="showSettings = true"
-        @open-activity="showActivity = true"
+        @open-settings="openSettings"
+        @open-activity="openActivity"
         @open-inbox="openInbox"
-        @open-boost="showBoost = true"
+        @open-boost="openBoost"
         @toggle-alerts="handleAlertsToggle"
       />
     </main>
@@ -184,8 +191,13 @@
       <UserSettingsScreen
         v-if="showSettings"
         :user="currentUser"
+        :alerts-enabled="alertsEnabled"
+        :radius-km="radiusKm"
         @close="showSettings = false"
         @logout="logout"
+        @updated="handleUserUpdated"
+        @toggle-alerts="handleAlertsToggle"
+        @radius-change="onRadiusChange"
       />
     </Transition>
 
@@ -196,7 +208,12 @@
 
     <!-- Alert boost overlay -->
     <Transition name="page">
-      <BoostScreen v-if="showBoost" @back="showBoost = false" />
+      <BoostScreen
+        v-if="showBoost"
+        :radius-km="radiusKm"
+        @back="showBoost = false"
+        @activate="onRadiusChange"
+      />
     </Transition>
 
     <!-- Bottom tab bar -->
@@ -210,6 +227,17 @@
       >
         <AppIcon name="radar" :size="23" />
         <span>Radar</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
+        :class="{ active: tab === 'strays' }"
+        :aria-current="tab === 'strays' ? 'page' : undefined"
+        @click="goTab('strays')"
+      >
+        <AppIcon name="paw" :size="23" />
+        <span>Rescue</span>
       </button>
 
       <button
@@ -272,8 +300,9 @@ import ChatInboxScreen from './components/ChatInboxScreen.vue'
 import NotificationsPanel from './components/NotificationsPanel.vue'
 import AdoptionHistoryScreen from './components/AdoptionHistoryScreen.vue'
 import BoostScreen from './components/BoostScreen.vue'
+import StrayRescueScreen from './components/StrayRescueScreen.vue'
 
-type Tab = 'radar' | 'post' | 'profile'
+type Tab = 'radar' | 'strays' | 'post' | 'profile'
 
 // Hong Kong centre — fallback when geolocation is unavailable/denied.
 const DEFAULT_CENTER = { lat: 22.2825, lng: 114.1897 }
@@ -463,6 +492,9 @@ function logout() {
   stopNotificationPolling()
   chatPet.value = null
   showInbox.value = false
+  showSettings.value = false
+  showActivity.value = false
+  showBoost.value = false
   authOpen.value = true
 }
 
@@ -523,6 +555,34 @@ function openInbox() {
     return
   }
   showInbox.value = true
+}
+
+function openSettings() {
+  if (!currentUser.value) {
+    authOpen.value = true
+    return
+  }
+  showSettings.value = true
+}
+
+function openActivity() {
+  if (!currentUser.value) {
+    authOpen.value = true
+    return
+  }
+  showActivity.value = true
+}
+
+function openBoost() {
+  if (!currentUser.value) {
+    authOpen.value = true
+    return
+  }
+  showBoost.value = true
+}
+
+function handleUserUpdated(user: User) {
+  currentUser.value = user
 }
 
 function openChatFromInbox(pet: ChatPet) {
@@ -721,6 +781,9 @@ function handleUnauthorized() {
   stopNotificationPolling()
   chatPet.value = null
   showInbox.value = false
+  showSettings.value = false
+  showActivity.value = false
+  showBoost.value = false
   authOpen.value = true
 }
 
@@ -1018,14 +1081,14 @@ main {
   transform: translateX(-50%);
 
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   align-items: end;
   gap: 8px;
 
   box-sizing: border-box;
   width: 100%;
   max-width: 480px;
-  padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
 
   border: 1px solid rgba(29, 99, 96, 0.09);
   border-bottom: 0;

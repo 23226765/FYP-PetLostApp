@@ -2,6 +2,7 @@ import axios from 'axios'
 import type { Pet, Sighting } from '../types/pet'
 import type { AppNotification } from '../types/notification'
 import type { User } from '../types/user'
+import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
 
 // Use the same-origin Vite proxy by default. Deployments can provide an
 // absolute VITE_API_BASE_URL when the API is hosted separately.
@@ -244,6 +245,54 @@ export async function updatePetStatus(
   return data.pet
 }
 
+export interface NearbyStrayParams {
+  lng: number
+  lat: number
+  radiusKm?: number
+  species?: StrayReport['species']
+  condition?: StrayCondition
+  status?: RescueStatus
+  district?: string
+}
+
+export async function getNearbyStrays(
+  params: NearbyStrayParams,
+  signal?: AbortSignal,
+): Promise<StrayReport[]> {
+  const { data } = await http.get<{ strays: StrayReport[] }>('/strays/nearby', {
+    params,
+    signal,
+  })
+  return data.strays
+}
+
+export interface ReportStrayPayload {
+  species: StrayReport['species']
+  description: string
+  photo?: string
+  condition: StrayCondition
+  district: string
+  locationName: string
+  coordinates: [number, number]
+  reporterName?: string
+  reporterPhone?: string
+}
+
+export async function reportStray(payload: ReportStrayPayload): Promise<StrayReport> {
+  const { data } = await http.post<{ stray: StrayReport }>('/strays/report', payload)
+  return data.stray
+}
+
+export async function updateStrayStatus(
+  id: string,
+  status: RescueStatus,
+): Promise<StrayReport> {
+  const { data } = await http.patch<{ stray: StrayReport }>(`/strays/${id}/status`, {
+    status,
+  })
+  return data.stray
+}
+
 /* ── Auth ── */
 
 export interface AuthResponse {
@@ -268,5 +317,14 @@ export async function login(data: { email: string; password: string }): Promise<
 
 export async function getProfile(): Promise<User> {
   const { data } = await http.get<{ user: User }>('/auth/me')
+  return data.user
+}
+
+export async function updateProfile(payload: {
+  name: string
+  email: string
+  phone: string
+}): Promise<User> {
+  const { data } = await http.patch<{ user: User }>('/auth/me', payload)
   return data.user
 }

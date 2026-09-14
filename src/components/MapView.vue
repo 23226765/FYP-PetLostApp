@@ -4,7 +4,7 @@
       ref="mapEl"
       class="leaflet-map"
       role="application"
-      aria-label="Interactive map of nearby missing pets"
+      :aria-label="strays?.length ? 'Interactive map of nearby stray rescue reports' : 'Interactive map of nearby missing pets'"
     ></div>
     <p v-if="locationMessage" class="location-notice" role="status">
       {{ locationMessage }}
@@ -17,6 +17,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Pet, Sighting } from '../types/pet'
+import type { StrayReport } from '../types/stray'
 import { getCurrentLocation } from '../services/geolocation'
 
 const props = defineProps<{
@@ -24,15 +25,17 @@ const props = defineProps<{
   center?: { lat: number; lng: number } | null
   radiusKm?: number
   sightings?: Sighting[]
+  strays?: StrayReport[]
 }>()
 
-const emit = defineEmits<{ open: [pet: Pet] }>()
+const emit = defineEmits<{ open: [pet: Pet]; 'open-stray': [stray: StrayReport] }>()
 
 const mapEl = ref<HTMLElement | null>(null)
 
 let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
 let trajectoryLayer: L.LayerGroup | null = null
+let straysLayer: L.LayerGroup | null = null
 let radiusCircle: L.Circle | null = null
 let userMarker: L.Marker | null = null
 let resizeObserver: ResizeObserver | null = null
@@ -198,6 +201,61 @@ function renderPets() {
   }
 }
 
+function strayLatLng(stray: StrayReport): [number, number] | null {
+  if (!stray.coordinates) return null
+  return validLatLng(stray.coordinates[1], stray.coordinates[0])
+}
+
+function strayIcon(stray: StrayReport): L.DivIcon {
+  return L.divIcon({
+    className: '',
+    html: `<div class="pawradar-stray-pin ${esc(stray.condition)} ${esc(stray.rescueStatus)}">
+      ${imageMarkup(stray.photo, `Reported stray ${stray.species}`, 'pawradar-stray-media')}
+      <span>RESCUE</span>
+    </div>`,
+    iconSize: [50, 62],
+    iconAnchor: [25, 62],
+    popupAnchor: [0, -54],
+  })
+}
+
+function strayPopup(stray: StrayReport): string {
+  const rescueLabel = stray.rescueStatus.replace(/_/g, ' ')
+  return `<div class="pawradar-popup">
+    ${imageMarkup(stray.photo, `Reported stray ${stray.species}`, 'pawradar-popup-media')}
+    <div class="pawradar-popup-body">
+      <strong>${esc(stray.species)} needs help</strong>
+      <span class="pawradar-popup-status ${esc(stray.condition)}">${esc(stray.condition.toUpperCase())}</span>
+      <p>${esc(stray.location)} · ${esc(rescueLabel)}</p>
+      <button class="pawradar-view" data-stray-id="${esc(stray.id)}">View rescue report</button>
+    </div>
+  </div>`
+}
+
+function renderStrays() {
+  if (!map || !straysLayer) return
+  const layer = straysLayer
+  layer.clearLayers()
+  for (const stray of props.strays ?? []) {
+    const coordinates = strayLatLng(stray)
+    if (!coordinates) continue
+    const marker = L.marker(coordinates, { icon: strayIcon(stray), zIndexOffset: 600 })
+    marker.bindPopup(strayPopup(stray), { closeButton: true })
+    marker.on('popupopen', () => {
+      const popupElement = marker.getPopup()?.getElement()
+      bindImageFallback(popupElement)
+      const button = popupElement?.querySelector<HTMLButtonElement>('[data-stray-id]')
+      if (button) button.onclick = () => emit('open-stray', stray)
+    })
+    marker.on('popupclose', () => {
+      const button = marker.getPopup()?.getElement()?.querySelector<HTMLButtonElement>('[data-stray-id]')
+      if (button) button.onclick = null
+    })
+    marker.addTo(layer)
+    bindImageFallback(marker.getElement())
+  }
+}
+
 function sightingLatLng(sighting: Sighting): [number, number] | null {
   return validLatLng(sighting.coordinates?.[1], sighting.coordinates?.[0])
 }
@@ -328,6 +386,7 @@ async function initialiseMap() {
 
   markersLayer = L.layerGroup().addTo(map)
   trajectoryLayer = L.layerGroup().addTo(map)
+  straysLayer = L.layerGroup().addTo(map)
   radiusCircle = L.circle(center, {
     radius: radiusMeters(),
     color: '#1d6360',
@@ -339,6 +398,7 @@ async function initialiseMap() {
   if (showUserMarker) renderUserMarker(center)
   renderPets()
   renderTrajectory()
+  renderStrays()
 
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(scheduleInvalidateSize)
@@ -353,6 +413,7 @@ onMounted(() => {
 
 watch(() => props.pets, () => renderPets(), { deep: true })
 watch(() => props.sightings, () => renderTrajectory(), { deep: true })
+watch(() => props.strays, () => renderStrays(), { deep: true })
 watch(() => props.radiusKm, () => renderRadius())
 watch(
   () => props.center,
@@ -383,6 +444,7 @@ onBeforeUnmount(() => {
   map = null
   markersLayer = null
   trajectoryLayer = null
+  straysLayer = null
   radiusCircle = null
   userMarker = null
 })
@@ -464,6 +526,60 @@ onBeforeUnmount(() => {
 
 .pawradar-pin.sighted::after {
   border-top-color: #1d6360;
+}
+
+.pawradar-stray-pin {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pawradar-stray-media {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  border: 3px solid #ef6351;
+  border-radius: 16px;
+  background: #fcf9f2;
+  box-shadow: 0 5px 14px rgba(61, 56, 53, 0.3);
+}
+
+.pawradar-stray-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pawradar-stray-pin > span {
+  margin-top: -2px;
+  padding: 2px 7px;
+  border: 2px solid #fcf9f2;
+  border-radius: 999px;
+  background: #ef6351;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.pawradar-stray-pin.rescued .pawradar-stray-media {
+  border-color: #1d6360;
+}
+
+.pawradar-stray-pin.rescued > span {
+  background: #1d6360;
+}
+
+.pawradar-popup-status.healthy,
+.pawradar-popup-status.unknown {
+  background: #1d6360;
+}
+
+.pawradar-popup-status.injured,
+.pawradar-popup-status.critical {
+  background: #ef6351;
 }
 
 .pawradar-you {

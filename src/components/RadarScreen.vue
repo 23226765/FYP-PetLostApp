@@ -10,7 +10,7 @@
       </div>
       <div class="header-actions">
         <button class="smart-match" type="button" @click="emit('smart-match')">
-          Smart Match
+          Photo Compare
         </button>
         <button
           class="bell"

@@ -17,6 +17,7 @@ try {
   const health = await check('/health')
   if (health?.db !== 'connected') throw new Error('Database is not connected')
   await check('/pets')
+  await check('/strays')
   console.log('PawRadar API smoke test passed.')
 } catch (error) {
   console.error(`PawRadar API smoke test failed: ${error.message}`)

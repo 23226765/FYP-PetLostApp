@@ -3,14 +3,14 @@
     ════════════════════════════════════════════════════════════════
     SmartMatchScreen.vue
     ════════════════════════════════════════════════════════════════
-    AI-style photo matching screen. Three visual states:
+    Photo-assisted manual comparison screen. Three visual states:
 
       1. IDLE      → dashed upload dropzone with paw icon
       2. SCANNING  → uploaded photo with a glowing teal scan line
                      sweeping top→bottom, plus a progress readout
       3. RESULTS   → "Potential Matches" list reusing the exact
                      PetCard visual language, with an added coral
-                     Confidence Score badge on every card
+                     review-priority badge on every card
 
     Design tokens used (all from style.css — no new colors):
       --teal, --teal-soft, --coral, --surface, --bg, --ink,
@@ -24,7 +24,7 @@
       <button class="back-btn" aria-label="Go back" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
-      <h1>Smart Match</h1>
+      <h1>Photo Compare</h1>
       <span class="spacer" aria-hidden="true" />
     </header>
 
@@ -32,8 +32,8 @@
     <section v-if="state === 'idle'" class="intro">
       <h2>Found a pet? Let's identify them.</h2>
       <p>
-        Upload a photo and we'll compare it against every missing pet reported in your
-        neighborhood, ranked by visual similarity.
+        Keep your photo beside active nearby reports and compare markings manually.
+        Candidates are ranked using real distance and sighting activity.
       </p>
     </section>
 
@@ -89,7 +89,7 @@
         <div v-else class="photo-placeholder" aria-hidden="true">
           <AppIcon name="paw" :size="52" />
         </div>
-        <span class="sr-only">Photo being analyzed</span>
+        <span class="sr-only">Photo being prepared for comparison</span>
 
         <!-- Dimming veil so the glow reads clearly -->
         <div class="scan-veil" />
@@ -118,7 +118,7 @@
         <div class="scan-bar">
           <div class="scan-bar-fill" :style="{ width: scanProgress + '%' }" />
         </div>
-        <p class="scan-pct">{{ scanProgress }}% analyzed</p>
+        <p class="scan-pct">{{ scanProgress }}% ready</p>
       </div>
     </div>
 
@@ -142,9 +142,9 @@
           </div>
         </div>
         <div class="scanned-info">
-          <span class="scanned-title">Analysis complete</span>
+          <span class="scanned-title">Comparison ready</span>
           <span class="scanned-sub">
-            {{ matches.length }} potential {{ matches.length === 1 ? 'match' : 'matches' }} found
+            {{ matches.length }} nearby {{ matches.length === 1 ? 'report' : 'reports' }} found
             nearby
           </span>
         </div>
@@ -153,7 +153,7 @@
         </button>
       </div>
 
-      <h2 class="section-title">Potential Matches</h2>
+      <h2 class="section-title">Nearby reports to review</h2>
 
       <!-- Match feed — PetCard structure + confidence badge -->
       <TransitionGroup name="match" tag="div" class="match-feed">
@@ -186,7 +186,7 @@
             <!-- ★ NEW: prominent coral Confidence Score badge ★ -->
             <span class="confidence-badge" :class="confidenceTier(m.confidence)">
               <span class="conf-pct">{{ m.confidence }}%</span>
-              <span class="conf-label">match</span>
+              <span class="conf-label">priority</span>
             </span>
 
             <span class="distance">
@@ -267,7 +267,7 @@ const emit = defineEmits<{
 
 /* ── Types ─────────────────────────────────────────── */
 type MatchResult = Pet & {
-  /** Visual similarity score, 0–100 */
+  /** Review-priority score derived from distance and sighting activity, 0–100 */
   confidence: number
   /** Human-readable explanation of the match */
   reason: string
@@ -295,7 +295,7 @@ let finishTimer: ReturnType<typeof setTimeout> | null = null
 const demoPhoto =
   'https://images.unsplash.com/photo-1552053831-71594a27632d?w=800&q=80'
 
-/* ── Mock match results (highest confidence first) ── */
+/* Nearby reports ordered by real distance and sighting activity. */
 const matches = ref<MatchResult[]>([])
 
 function normalizedImageUrl(value: string | null | undefined): string {
@@ -351,25 +351,25 @@ function readAndScan(file: File) {
   reader.readAsDataURL(file)
 }
 
-/* ── Scan sequence (2 s simulated delay) ───────────── */
+/* Brief preparation sequence while nearby report details are loaded. */
 function startScan(photoSrc: string) {
   uploadedPhoto.value = photoSrc
   uploadedPhotoFailed.value = false
   failedMatchImages.value = new Set()
   state.value = 'scanning'
   scanProgress.value = 0
-  scanStage.value = 'Detecting subject…'
+  scanStage.value = 'Loading active reports…'
 
   // Progress ticks every 40 ms → reaches 100 in ~2000 ms
   progressTimer = setInterval(() => {
     scanProgress.value = Math.min(100, scanProgress.value + 2)
 
     if (scanProgress.value > 25 && scanProgress.value <= 55) {
-      scanStage.value = 'Extracting coat & marking features…'
+      scanStage.value = 'Loading sighting histories…'
     } else if (scanProgress.value > 55 && scanProgress.value <= 85) {
-      scanStage.value = 'Comparing against 212 nearby reports…'
+      scanStage.value = 'Ordering reports by distance…'
     } else if (scanProgress.value > 85) {
-      scanStage.value = 'Ranking potential matches…'
+      scanStage.value = 'Preparing side-by-side review…'
     }
   }, 40)
 
@@ -396,10 +396,12 @@ function startScan(photoSrc: string) {
             // Keep the match visible if its supporting history cannot be loaded.
           }
 
+          const distance = Number.isFinite(pet.distanceKm) ? pet.distanceKm || 0 : 20
+          const reviewPriority = Math.max(35, Math.min(95, Math.round(95 - distance * 3 + Math.min(sightingCount, 5))))
           return {
             ...pet,
-            confidence: 60 + (pet.id.charCodeAt(0) % 35),
-            reason: 'Possible visual match based on the uploaded photo.',
+            confidence: reviewPriority,
+            reason: `Prioritized by ${distance.toFixed(1)} km distance and ${sightingCount} recorded sightings. Compare coat and markings manually.`,
             sightingCount,
           }
         }),

@@ -3,15 +3,14 @@
     AdoptionHistoryScreen.vue
     ─────────────────────────
     Displays the user's full activity history: sightings they reported,
-    pets they posted, and any reunited/adopted outcomes.
+    pets they posted, and any reunited outcomes.
 
     Navigation model:
       • Accessed from ProfileScreen via an "Activity" row (see integration notes).
       • Slides in as a full-screen overlay using App.vue's existing
         <Transition name="page"> pattern — identical to PetDetail.vue.
 
-    Props:
-      (none — data is self-contained mock data; swap for API calls in production)
+    Data is loaded from the authenticated activity APIs.
 
     Emits:
       close  – user tapped the back arrow
@@ -57,10 +56,14 @@
     </div>
 
     <!-- ── Result count ── -->
-    <p class="count">{{ filtered.length }} {{ filtered.length === 1 ? 'entry' : 'entries' }}</p>
+    <p v-if="!loading && !loadError" class="count">{{ filtered.length }} {{ filtered.length === 1 ? 'entry' : 'entries' }}</p>
+    <div v-if="loading" class="load-state" role="status">Loading your activity...</div>
+    <div v-else-if="loadError" class="load-state error" role="alert">
+      <span>{{ loadError }}</span><button type="button" @click="loadEntries">Try again</button>
+    </div>
 
     <!-- ── Activity feed ── -->
-    <div v-if="filtered.length > 0" class="feed">
+    <div v-else-if="filtered.length > 0" class="feed">
       <article
         v-for="entry in filtered"
         :key="entry.id"
@@ -97,7 +100,7 @@
     </div>
 
     <!-- ── Empty state ── -->
-    <div v-else class="empty" role="status">
+    <div v-else-if="!loading" class="empty" role="status">
       <span class="empty-icon">
         <AppIcon name="paw" :size="32" />
       </span>
@@ -202,8 +205,8 @@ import { createContactActions } from '../utils/contact'
 const emit = defineEmits<{ close: [] }>()
 
 /* ── Types ── */
-type Outcome = 'reunited' | 'sighted' | 'lost' | 'adopted'
-type ActivityType = 'sighting' | 'post' | 'adoption'
+type Outcome = 'reunited' | 'sighted' | 'lost'
+type ActivityType = 'sighting' | 'post'
 
 interface HistoryEntry {
   id: string
@@ -221,6 +224,8 @@ interface HistoryEntry {
 
 /* ── Mock data — replace with API/store calls in production ── */
 const entries = ref<HistoryEntry[]>([])
+const loading = ref(true)
+const loadError = ref('')
 
 function toHistoryEntry(pet: Pet): HistoryEntry {
   return {
@@ -267,21 +272,26 @@ function sightingToHistoryEntry(sighting: MySighting): HistoryEntry {
 }
 
 async function loadEntries() {
+  loading.value = true
+  loadError.value = ''
   try {
     const [pets, sightings] = await Promise.all([getMyPets(), getMySightings()])
     entries.value = [
       ...sightings.map(sightingToHistoryEntry),
       ...pets.map(toHistoryEntry),
     ]
-  } catch {
+  } catch (caught) {
     entries.value = []
+    loadError.value = caught instanceof Error ? caught.message : 'Unable to load your activity.'
+  } finally {
+    loading.value = false
   }
 }
 
 onMounted(loadEntries)
 
 /* ── Filter chips ── */
-const chips = ['All', 'Sightings', 'My Posts', 'Adoptions'] as const
+const chips = ['All', 'Sightings', 'My Posts'] as const
 type ChipValue = (typeof chips)[number]
 const activeFilter = ref<ChipValue>('All')
 
@@ -291,7 +301,6 @@ const filtered = computed<HistoryEntry[]>(() => {
     All: null,
     Sightings: 'sighting',
     'My Posts': 'post',
-    Adoptions: 'adoption',
   }
   const t = map[activeFilter.value]
   return t ? entries.value.filter((entry) => entry.type === t) : entries.value
@@ -318,7 +327,6 @@ function outcomeLabel(outcome: Outcome): string {
     reunited: 'REUNITED',
     sighted: 'SIGHTED',
     lost: 'LOST',
-    adopted: 'ADOPTED',
   }
   return map[outcome]
 }
@@ -328,7 +336,6 @@ function typePillIcon(type: ActivityType): string {
   const map: Record<ActivityType, string> = {
     sighting: 'eye',
     post: 'radar',
-    adoption: 'check',
   }
   return map[type]
 }
@@ -338,7 +345,6 @@ function typePillLabel(type: ActivityType): string {
   const map: Record<ActivityType, string> = {
     sighting: 'Sighting reported',
     post: 'Pet posted',
-    adoption: 'Adopted',
   }
   return map[type]
 }
@@ -475,6 +481,33 @@ h1 {
   font-weight: 700;
   color: var(--ink-muted);
   padding: 12px 18px 4px;
+}
+
+.load-state {
+  margin: 18px;
+  padding: 28px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+
+.load-state.error {
+  color: var(--coral);
+}
+
+.load-state button {
+  display: block;
+  min-height: 42px;
+  margin: 12px auto 0;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--teal);
+  color: #fff;
+  font-weight: 800;
 }
 
 /* ── Activity feed ── */

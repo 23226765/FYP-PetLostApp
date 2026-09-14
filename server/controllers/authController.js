@@ -238,3 +238,33 @@ export async function login(req, res, next) {
 export async function me(req, res) {
   res.json({ user: serializeUser(req.user) })
 }
+
+// PATCH /api/auth/me
+export async function updateMe(req, res, next) {
+  try {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : ''
+    const email = normalizeEmail(req.body?.email)
+    const phone = typeof req.body?.phone === 'string' ? req.body.phone.trim() : ''
+
+    if (!name || name.length > MAX_NAME_LENGTH) {
+      return res.status(400).json({ error: `Name is required and must be ${MAX_NAME_LENGTH} characters or fewer.` })
+    }
+    if (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
+      return res.status(400).json({ error: 'Enter a valid email address.' })
+    }
+    if (phone.length > 30) {
+      return res.status(400).json({ error: 'Phone must be 30 characters or fewer.' })
+    }
+
+    const existing = await User.findOne({ email, _id: { $ne: req.user._id } }).select('_id')
+    if (existing) return res.status(409).json({ error: 'That email address is already in use.' })
+
+    req.user.name = name
+    req.user.email = email
+    req.user.phone = phone
+    await req.user.save()
+    res.json({ user: serializeUser(req.user) })
+  } catch (error) {
+    next(error)
+  }
+}

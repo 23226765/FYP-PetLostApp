@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import chatRouter from '../routes/chat.js'
 import petsRouter from '../routes/pets.js'
 import notificationsRouter from '../routes/notifications.js'
+import straysRouter from '../routes/strays.js'
+import authRouter from '../routes/auth.js'
 
 function findRoute(router, path, method) {
   return router.stack.find(
@@ -48,4 +50,21 @@ test('notification inbox, preferences, and read state require authentication', (
   assert.deepEqual(middlewareNames(preferences), ['updatePreferences'])
   assert.deepEqual(middlewareNames(readAll), ['markAllRead'])
   assert.deepEqual(middlewareNames(readOne), ['markRead'])
+})
+
+test('stray reports are public while ownership actions require authentication', () => {
+  const nearby = findRoute(straysRouter, '/nearby', 'get')
+  const report = findRoute(straysRouter, '/report', 'post')
+  const mine = findRoute(straysRouter, '/mine', 'get')
+  const status = findRoute(straysRouter, '/:id/status', 'patch')
+
+  assert.deepEqual(middlewareNames(nearby), ['nearbyStrays'])
+  assert.deepEqual(middlewareNames(report), ['optionalAuth', 'reportStray'])
+  assert.deepEqual(middlewareNames(mine), ['requireAuth', 'listMyStrays'])
+  assert.deepEqual(middlewareNames(status), ['requireAuth', 'updateRescueStatus'])
+})
+
+test('profile updates require authentication', () => {
+  const update = findRoute(authRouter, '/me', 'patch')
+  assert.deepEqual(middlewareNames(update), ['requireAuth', 'updateMe'])
 })

@@ -1,618 +1,156 @@
 <template>
-  <!--
-    UserSettingsScreen.vue
-    ──────────────────────
-    Full-screen settings overlay that slides in from the bottom, matching the
-    same page-transition pattern used by PetDetail.vue.
-
-    Props:
-      (none – opened/closed by App.vue via v-if + <Transition name="page">)
-
-    Emits:
-      close  – user tapped the back arrow; parent sets showSettings = false
-  -->
   <div class="settings-screen">
-
-    <!-- ── Header ── -->
     <header class="top">
-      <button class="back-btn" aria-label="Go back" @click="emit('close')">
+      <button class="icon-button" aria-label="Go back" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
       <h1>Account &amp; Settings</h1>
-      <!-- Spacer keeps the title visually centred -->
       <span class="spacer" aria-hidden="true" />
     </header>
 
-    <!-- ── Avatar + name ── -->
-    <div class="profile-row">
-      <div class="avatar-wrap">
-        <img
-          :src="user?.avatar || '/avatar.svg'"
-          :alt="user ? `Profile photo of ${user.name}` : 'Guest profile'"
-          class="avatar"
-        />
-        <!-- Teal camera badge overlaid on avatar -->
-        <button class="avatar-edit" aria-label="Change profile photo">
-          <AppIcon name="camera" :size="14" />
-        </button>
+    <section class="profile-card">
+      <img :src="user?.avatar || '/avatar.svg'" :alt="user ? `Profile photo of ${user.name}` : 'Guest profile'" />
+      <div>
+        <strong>{{ user?.name || 'Guest' }}</strong>
+        <span>{{ user?.email || 'Not signed in' }}</span>
       </div>
-      <div class="profile-info">
-        <span class="profile-name">{{ user ? user.name : 'Guest' }}</span>
-        <span class="profile-email">{{ user ? user.email : 'Not signed in' }}</span>
-      </div>
-      <button class="edit-btn" aria-label="Edit profile" @click="editingProfile = !editingProfile">
-        <AppIcon name="chevron" :size="16" />
+      <button class="edit-button" type="button" :disabled="!user" @click="editingProfile = !editingProfile">
+        {{ editingProfile ? 'Cancel' : 'Edit' }}
       </button>
-    </div>
+    </section>
 
-    <!-- ── Inline profile edit form (collapsed by default) ── -->
     <Transition name="expand">
       <form v-if="editingProfile" class="edit-form" @submit.prevent="saveProfile">
-        <label class="field">
-          <span>Display name</span>
-          <input v-model="form.name" type="text" placeholder="Your name" />
-        </label>
-        <label class="field">
-          <span>Email</span>
-          <input v-model="form.email" type="email" placeholder="you@example.com" />
-        </label>
-        <label class="field">
-          <span>Phone number</span>
-          <div class="input-icon">
-            <AppIcon name="phone" :size="17" />
-            <input v-model="form.phone" type="tel" placeholder="+1 555 000 0000" />
-          </div>
-        </label>
-        <button type="submit" class="save-btn">
-          <AppIcon name="check" :size="18" />
-          Save changes
+        <label><span>Display name</span><input v-model="form.name" required maxlength="100" autocomplete="name" /></label>
+        <label><span>Email</span><input v-model="form.email" required type="email" autocomplete="email" /></label>
+        <label><span>Phone number</span><input v-model="form.phone" type="tel" maxlength="30" autocomplete="tel" /></label>
+        <p v-if="profileError" class="message error" role="alert">{{ profileError }}</p>
+        <p v-if="profileSaved" class="message" role="status">Profile updated.</p>
+        <button class="save-button" type="submit" :disabled="savingProfile">
+          <AppIcon name="check" :size="18" />{{ savingProfile ? 'Saving...' : 'Save changes' }}
         </button>
       </form>
     </Transition>
 
-    <!-- ── Section: Notifications ── -->
-    <h2 class="section-title">Notifications</h2>
+    <h2>Notifications</h2>
     <ul class="settings-list">
       <li>
-        <div class="setting-label">
-          <AppIcon name="bell" :size="19" />
-          <span>Proximity alerts</span>
-        </div>
-        <button
-          class="switch"
-          :class="{ on: prefs.proximityAlerts }"
-          role="switch"
-          :aria-checked="prefs.proximityAlerts"
-          aria-label="Toggle proximity alerts"
-          @click="prefs.proximityAlerts = !prefs.proximityAlerts"
-        >
-          <span class="knob" />
-        </button>
-      </li>
-      <li>
-        <div class="setting-label">
-          <AppIcon name="radar" :size="19" />
-          <span>New pets in my area</span>
-        </div>
-        <button
-          class="switch"
-          :class="{ on: prefs.newPetsAlert }"
-          role="switch"
-          :aria-checked="prefs.newPetsAlert"
-          aria-label="Toggle new pets in area alerts"
-          @click="prefs.newPetsAlert = !prefs.newPetsAlert"
-        >
-          <span class="knob" />
-        </button>
-      </li>
-      <li>
-        <div class="setting-label">
-          <AppIcon name="eye" :size="19" />
-          <span>Sighting updates on my posts</span>
-        </div>
-        <button
-          class="switch"
-          :class="{ on: prefs.sightingUpdates }"
-          role="switch"
-          :aria-checked="prefs.sightingUpdates"
-          aria-label="Toggle sighting update notifications"
-          @click="prefs.sightingUpdates = !prefs.sightingUpdates"
-        >
-          <span class="knob" />
-        </button>
+        <div class="setting-label"><AppIcon name="bell" :size="19" /><div><strong>Proximity alerts</strong><span>Lost pets reported inside your radius</span></div></div>
+        <button class="switch" :class="{ on: alertsEnabled }" role="switch" :aria-checked="alertsEnabled" @click="emit('toggle-alerts', !alertsEnabled)"><span /></button>
       </li>
     </ul>
 
-    <!-- ── Section: Radar ── -->
-    <h2 class="section-title">Radar</h2>
-    <ul class="settings-list">
-      <li>
-        <div class="setting-label">
-          <AppIcon name="pin" :size="19" />
-          <span>Search radius</span>
-        </div>
-        <!-- Pill segmented control matching RadarScreen / PostPetScreen pattern -->
-        <div class="radius-seg" role="group" aria-label="Search radius">
-          <button
-            v-for="r in radiusOptions"
-            :key="r"
-            :class="{ active: prefs.radius === r }"
-            :aria-pressed="prefs.radius === r"
-            @click="prefs.radius = r"
-          >
-            {{ r }}
-          </button>
-        </div>
-      </li>
-      <li>
-        <div class="setting-label">
-          <AppIcon name="map" :size="19" />
-          <span>Default view</span>
-        </div>
-        <div class="radius-seg" role="group" aria-label="Default radar view">
-          <button
-            v-for="v in viewOptions"
-            :key="v"
-            :class="{ active: prefs.defaultView === v }"
-            :aria-pressed="prefs.defaultView === v"
-            @click="prefs.defaultView = v"
-          >
-            {{ v }}
-          </button>
-        </div>
-      </li>
-    </ul>
+    <h2>Radar</h2>
+    <section class="radius-card">
+      <div class="setting-label"><AppIcon name="pin" :size="19" /><div><strong>Search and alert radius</strong><span>Used by both Radar and notifications</span></div></div>
+      <div class="radius-options" role="group" aria-label="Search radius">
+        <button v-for="option in radiusOptions" :key="option" type="button" :class="{ active: radiusKm === option }" :aria-pressed="radiusKm === option" @click="emit('radius-change', option)">{{ option }} km</button>
+      </div>
+    </section>
 
-    <!-- ── Section: Privacy ── -->
-    <h2 class="section-title">Privacy</h2>
-    <ul class="settings-list">
-      <li>
-        <div class="setting-label">
-          <AppIcon name="user" :size="19" />
-          <span>Show my name on sightings</span>
-        </div>
-        <button
-          class="switch"
-          :class="{ on: prefs.showName }"
-          role="switch"
-          :aria-checked="prefs.showName"
-          aria-label="Toggle name visibility on sightings"
-          @click="prefs.showName = !prefs.showName"
-        >
-          <span class="knob" />
-        </button>
-      </li>
-      <li>
-        <div class="setting-label">
-          <AppIcon name="pin" :size="19" />
-          <span>Share precise location</span>
-        </div>
-        <button
-          class="switch"
-          :class="{ on: prefs.preciseLocation }"
-          role="switch"
-          :aria-checked="prefs.preciseLocation"
-          aria-label="Toggle precise location sharing"
-          @click="prefs.preciseLocation = !prefs.preciseLocation"
-        >
-          <span class="knob" />
-        </button>
-      </li>
-    </ul>
-
-    <!-- ── Section: Account ── -->
-    <h2 class="section-title">Account</h2>
-    <ul class="settings-list">
-      <li class="row-link">
-        <div class="setting-label">
-          <AppIcon name="share" :size="19" />
-          <span>Invite a neighbour</span>
-        </div>
-        <span class="row-arrow"><AppIcon name="chevron" :size="15" /></span>
-      </li>
-      <li class="row-link">
-        <div class="setting-label">
-          <AppIcon name="list" :size="19" />
-          <span>Terms &amp; Privacy Policy</span>
-        </div>
-        <span class="row-arrow"><AppIcon name="chevron" :size="15" /></span>
-      </li>
-      <li class="row-link row-danger" @click="confirmSignOut">
-        <div class="setting-label">
-          <AppIcon name="close" :size="19" />
-          <span>Sign out</span>
-        </div>
-        <span class="row-arrow"><AppIcon name="chevron" :size="15" /></span>
-      </li>
-    </ul>
-
-    <!-- ── App version footer ── -->
-    <p class="version">PawRadar v1.0.0 · Made with ♥ for lost pets</p>
-
+    <h2>Account</h2>
+    <button class="sign-out" type="button" @click="emit('logout')"><AppIcon name="close" :size="19" />Sign out</button>
+    <p class="version">PawRadar web v1.0.0</p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { updateProfile } from '../services/api'
 import type { User } from '../types/user'
 
-/* ── Props & Emits ── */
-defineProps<{ user: User | null }>()
-const emit = defineEmits<{ close: []; logout: [] }>()
+const props = defineProps<{
+  user: User | null
+  alertsEnabled: boolean
+  radiusKm: number
+}>()
+const emit = defineEmits<{
+  close: []
+  logout: []
+  updated: [user: User]
+  'toggle-alerts': [enabled: boolean]
+  'radius-change': [radiusKm: number]
+}>()
 
-/* ── Local state: profile edit form ── */
+const radiusOptions = [1, 3, 5, 10, 15] as const
 const editingProfile = ref(false)
-const form = reactive({
-  name: '',
-  email: '',
-  phone: '',
-})
+const savingProfile = ref(false)
+const profileError = ref('')
+const profileSaved = ref(false)
+const form = reactive({ name: '', email: '', phone: '' })
 
-function saveProfile() {
-  // TODO: persist to backend / local storage
-  editingProfile.value = false
-}
+watch(
+  () => props.user,
+  (user) => {
+    form.name = user?.name || ''
+    form.email = user?.email || ''
+    form.phone = user?.phone || ''
+    profileError.value = ''
+    profileSaved.value = false
+  },
+  { immediate: true },
+)
 
-/* ── Local state: user preferences ── */
-const radiusOptions = ['1 km', '3 km', '5 km', '10 km'] as const
-const viewOptions = ['List', 'Map'] as const
-
-const prefs = reactive({
-  proximityAlerts: true,
-  newPetsAlert: true,
-  sightingUpdates: true,
-  radius: '3 km' as (typeof radiusOptions)[number],
-  defaultView: 'List' as (typeof viewOptions)[number],
-  showName: true,
-  preciseLocation: false,
-})
-
-/* ── Sign out ── */
-function confirmSignOut() {
-  emit('logout')
+async function saveProfile() {
+  if (!props.user || savingProfile.value) return
+  savingProfile.value = true
+  profileError.value = ''
+  profileSaved.value = false
+  try {
+    const user = await updateProfile({ ...form })
+    emit('updated', user)
+    profileSaved.value = true
+    editingProfile.value = false
+  } catch (caught) {
+    profileError.value = caught instanceof Error ? caught.message : 'Unable to update your profile.'
+  } finally {
+    savingProfile.value = false
+  }
 }
 </script>
 
 <style scoped>
-/* ─────────────────────────────────────────────
-   Screen shell — mirrors ProfileScreen / RadarScreen
-───────────────────────────────────────────── */
-.settings-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: var(--bg);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 0 0 calc(var(--safe-bottom) + 40px);
-  max-width: 480px;
-  margin: 0 auto;
-}
-
-/* ── Header ── */
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(var(--safe-top) + 14px) 18px 14px;
-  position: sticky;
-  top: 0;
-  background: rgba(252, 249, 242, 0.92);
-  backdrop-filter: blur(10px);
-  z-index: 10;
-  border-bottom: 1px solid var(--line);
-}
-
-.back-btn {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  color: var(--ink);
-  flex-shrink: 0;
-}
-
-h1 {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.spacer {
-  width: 40px; /* mirrors back-btn width to centre the title */
-}
-
-/* ── Avatar / profile row ── */
-.profile-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 20px 18px 16px;
-}
-
-.avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid var(--surface);
-  box-shadow: var(--shadow-card);
-}
-
-.avatar-edit {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--teal);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  box-shadow: var(--shadow-card);
-}
-
-.profile-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.profile-name {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.profile-email {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-muted);
-}
-
-.edit-btn {
-  color: var(--ink-muted);
-}
-
-/* ── Inline edit form ── */
-.edit-form {
-  padding: 0 18px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* expand/collapse transition */
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.25s cubic-bezier(0.3, 0.8, 0.4, 1);
-  overflow: hidden;
-}
-
-.expand-enter-from,
-.expand-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-.expand-enter-to,
-.expand-leave-from {
-  max-height: 400px;
-  opacity: 1;
-}
-
-/* Field — matches PostPetScreen .field */
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.field > span {
-  font-size: 13.5px;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-input {
-  width: 100%;
-  padding: 14px 16px;
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--line);
-  background: var(--surface);
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-
-input:focus {
-  border-color: var(--teal);
-}
-
-input::placeholder {
-  color: #b6ada4;
-}
-
-.input-icon {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon svg {
-  position: absolute;
-  left: 15px;
-  color: var(--teal);
-  pointer-events: none;
-}
-
-.input-icon input {
-  padding-left: 42px;
-}
-
-.save-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px 0;
-  border-radius: var(--radius-md);
-  background: var(--teal);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 800;
-  box-shadow: var(--shadow-float);
-  transition: transform 0.15s ease;
-}
-
-.save-btn:active {
-  transform: scale(0.98);
-}
-
-/* ── Section titles ── */
-.section-title {
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--ink-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 18px 18px 8px;
-}
-
-/* ── Settings list — mirrors ProfileScreen .settings ── */
-.settings-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  background: var(--line);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  margin: 0 18px;
-}
-
-.settings-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface);
-  padding: 15px 16px;
-  gap: 12px;
-}
-
-.setting-label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 700;
-  font-size: 14.5px;
-  flex: 1;
-  min-width: 0;
-}
-
-.setting-label svg {
-  color: var(--teal);
-  flex-shrink: 0;
-}
-
-/* ── Toggle switch — identical to ProfileScreen ── */
-.switch {
-  width: 50px;
-  height: 30px;
-  border-radius: 999px;
-  background: var(--line);
-  position: relative;
-  transition: background 0.2s ease;
-  flex-shrink: 0;
-}
-
-.switch.on {
-  background: var(--teal);
-}
-
-.knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: var(--shadow-card);
-  transition: transform 0.2s ease;
-}
-
-.switch.on .knob {
-  transform: translateX(20px);
-}
-
-/* ── Radius / view segmented control ── */
-.radius-seg {
-  display: flex;
-  background: var(--line);
-  border-radius: 999px;
-  padding: 3px;
-  gap: 0;
-  flex-shrink: 0;
-}
-
-.radius-seg button {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 800;
-  color: var(--ink-muted);
-  transition: all 0.18s ease;
-  white-space: nowrap;
-}
-
-.radius-seg button.active {
-  background: var(--surface);
-  color: var(--teal);
-  box-shadow: var(--shadow-card);
-}
-
-/* ── Tappable row links ── */
-.row-link {
-  cursor: pointer;
-  transition: background 0.12s ease;
-}
-
-.row-link:active {
-  background: var(--teal-soft) !important;
-}
-
-.row-arrow {
-  color: var(--ink-muted);
-  display: inline-flex;
-  align-items: center;
-}
-
-/* Danger row (sign out) */
-.row-danger .setting-label {
-  color: var(--coral);
-}
-
-.row-danger .setting-label svg {
-  color: var(--coral);
-}
-
-/* ── Version footer ── */
-.version {
-  text-align: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-muted);
-  padding: 28px 18px 0;
-}
+.settings-screen { position: fixed; inset: 0; z-index: 50; max-width: 480px; margin: 0 auto; padding: 0 18px calc(var(--safe-bottom) + 40px); overflow-y: auto; background: var(--bg); }
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: calc(var(--safe-top) + 14px) 0 14px; border-bottom: 1px solid var(--line); background: rgba(252,249,242,.94); backdrop-filter: blur(12px); }
+.top h1 { font-size: 17px; font-weight: 850; }
+.icon-button, .spacer { width: 42px; height: 42px; }
+.icon-button { display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-card); }
+.profile-card { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 13px; margin: 20px 0; padding: 15px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
+.profile-card img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+.profile-card div { min-width: 0; display: flex; flex-direction: column; }
+.profile-card strong { font-size: 16px; }
+.profile-card span { overflow: hidden; color: var(--ink-muted); font-size: 12.5px; text-overflow: ellipsis; }
+.edit-button { min-height: 42px; padding: 0 14px; border-radius: 999px; background: var(--teal-soft); color: var(--teal); font-size: 12.5px; font-weight: 800; }
+.edit-button:disabled { opacity: .5; }
+.edit-form { display: flex; flex-direction: column; gap: 12px; margin: -8px 0 22px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; }
+input { min-height: 46px; padding: 0 13px; border: 1.5px solid var(--line); border-radius: var(--radius-md); background: var(--bg); outline: none; }
+input:focus { border-color: var(--teal); }
+.message { color: var(--teal); font-size: 12.5px; font-weight: 750; }
+.message.error { color: var(--coral); }
+.save-button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--radius-md); background: var(--teal); color: #fff; font-weight: 800; box-shadow: var(--shadow-card); }
+.save-button:disabled { opacity: .65; }
+h2 { margin: 22px 2px 9px; font-size: 15px; font-weight: 850; }
+.settings-list { overflow: hidden; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); list-style: none; }
+.settings-list li, .radius-card { padding: 15px; }
+.settings-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setting-label { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.setting-label > svg { flex-shrink: 0; color: var(--teal); }
+.setting-label div { display: flex; flex-direction: column; }
+.setting-label strong { font-size: 13.5px; }
+.setting-label span { color: var(--ink-muted); font-size: 11.5px; line-height: 1.35; }
+.switch { position: relative; flex-shrink: 0; width: 50px; height: 30px; border-radius: 999px; background: var(--line); transition: background .2s ease; }
+.switch span { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-card); transition: transform .2s ease; }
+.switch.on { background: var(--teal); }
+.switch.on span { transform: translateX(20px); }
+.radius-card { border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
+.radius-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 14px; }
+.radius-options button { min-height: 42px; padding: 0 3px; border-radius: 12px; background: var(--bg); color: var(--ink-muted); font-size: 11.5px; font-weight: 800; }
+.radius-options button.active { background: var(--teal); color: #fff; }
+.sign-out { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid rgba(239,99,81,.2); border-radius: var(--radius-md); background: rgba(239,99,81,.08); color: var(--coral); font-weight: 800; }
+.version { margin-top: 22px; color: var(--ink-muted); font-size: 11.5px; text-align: center; }
+.expand-enter-active, .expand-leave-active { transition: all .2s ease; overflow: hidden; }
+.expand-enter-from, .expand-leave-to { opacity: 0; transform: translateY(-8px); }
+button:active { transform: scale(.98); }
 </style>
