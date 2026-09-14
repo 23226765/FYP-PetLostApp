@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
+import { createRadiusNotifications } from './notificationController.js'
 
 /* ───────────────────────── Helpers ───────────────────────── */
 
@@ -21,9 +22,19 @@ function isPoint(obj) {
 
 const MAX_PHOTO_LENGTH = 1_500_000
 const PHONE_PATTERN = /^\+?[\d\s().-]{8,30}$/
+const HK_DISTRICTS = new Set([
+  'Central and Western', 'Eastern', 'Southern', 'Wan Chai',
+  'Kowloon City', 'Kwun Tong', 'Sham Shui Po', 'Wong Tai Sin', 'Yau Tsim Mong',
+  'Islands', 'Kwai Tsing', 'North', 'Sai Kung', 'Sha Tin', 'Tai Po',
+  'Tsuen Wan', 'Tuen Mun', 'Yuen Long',
+])
 
 function normalizedText(value, maxLength) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function isValidPhone(value) {
@@ -64,6 +75,7 @@ function serializePet(pet, distanceMeters) {
     name: pet.name,
     species: pet.species,
     breed: pet.breed,
+    district: pet.district || '',
     photo: pet.photo,
     description: pet.description,
     details: pet.details || '',
@@ -87,10 +99,17 @@ function serializePet(pet, distanceMeters) {
 // GET /api/pets
 export async function listPets(req, res, next) {
   try {
-    const { species, status } = req.query
+    const { species, status, breed, district } = req.query
+    if (district && !HK_DISTRICTS.has(normalizedText(district, 80))) {
+      return res.status(400).json({ error: 'Invalid Hong Kong district.' })
+    }
     const filter = {}
     if (species) filter.species = species
     if (status) filter.status = status
+    if (breed) {
+      filter.breed = { $regex: escapeRegex(normalizedText(breed, 120)), $options: 'i' }
+    }
+    if (district) filter.district = normalizedText(district, 80)
     let docs
     try {
       docs = await Pet.find(filter).sort({ createdAt: -1 })
@@ -155,7 +174,10 @@ export async function listMySightings(req, res, next) {
 // GET /api/pets/nearby?lat=&lng=&radiusKm=&species=&status=
 export async function getNearbyPets(req, res, next) {
   try {
-    const { lat, lng, radiusKm, species, status } = req.query
+    const { lat, lng, radiusKm, species, status, breed, district } = req.query
+    if (district && !HK_DISTRICTS.has(normalizedText(district, 80))) {
+      return res.status(400).json({ error: 'Invalid Hong Kong district.' })
+    }
     const latitude = Number(lat)
     const longitude = Number(lng)
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -182,8 +204,14 @@ export async function getNearbyPets(req, res, next) {
         },
       },
     ]
-    if (species) pipeline.push({ $match: { species } })
-    if (status) pipeline.push({ $match: { status } })
+    const match = {}
+    if (species) match.species = species
+    if (status) match.status = status
+    if (breed) {
+      match.breed = { $regex: escapeRegex(normalizedText(breed, 120)), $options: 'i' }
+    }
+    if (district) match.district = normalizedText(district, 80)
+    if (Object.keys(match).length) pipeline.push({ $match: match })
     pipeline.push({ $sort: { distanceMeters: 1 } })
 
     const docs = await Pet.aggregate(pipeline)
@@ -276,17 +304,21 @@ export async function confirmSighting(req, res, next) {
 export async function reportPet(req, res, next) {
   try {
     const {
-      name, species, breed, photo, description, details, reward,
+      name, species, breed, district, photo, description, details, reward,
       ownerName, ownerPhone, locationName, coordinates, lastSeen, mapX, mapY,
     } = req.body
 
     const normalizedName = normalizedText(name, 100)
     const normalizedLocationName = normalizedText(locationName, 200)
+    const normalizedDistrict = normalizedText(district, 80)
     if (!normalizedName || !['Dog', 'Cat', 'Other'].includes(species)) {
       return res.status(400).json({ error: '`name` and `species` are required.' })
     }
     if (!normalizedLocationName) {
       return res.status(400).json({ error: 'Last seen location is required.' })
+    }
+    if (!HK_DISTRICTS.has(normalizedDistrict)) {
+      return res.status(400).json({ error: 'Select a valid Hong Kong district.' })
     }
     if (!isPoint({ type: 'Point', coordinates })) {
       return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
@@ -306,6 +338,7 @@ export async function reportPet(req, res, next) {
       name: normalizedName,
       species,
       breed: normalizedText(breed, 120),
+      district: normalizedDistrict,
       photo: photo || '',
       description: normalizedText(description, 2000),
       details: normalizedText(details, 2000),
@@ -320,6 +353,17 @@ export async function reportPet(req, res, next) {
       status: 'lost',
       reportedBy: req.user?._id || undefined,
     })
+
+    try {
+      await createRadiusNotifications({
+        pet,
+        type: 'proximity',
+        origin: pet.location.coordinates,
+        excludeUserId: req.user?._id,
+      })
+    } catch (notificationError) {
+      console.error('Could not create proximity notifications:', notificationError)
+    }
 
     res.status(201).json({ pet: serializePet(pet) })
   } catch (err) {
@@ -357,6 +401,18 @@ export async function submitSighting(req, res, next) {
 
     pet.status = 'sighted'
     await pet.save()
+
+    try {
+      await createRadiusNotifications({
+        pet,
+        sighting,
+        type: 'sighting',
+        origin: sighting.location.coordinates,
+        excludeUserId: req.user?._id,
+      })
+    } catch (notificationError) {
+      console.error('Could not create sighting notifications:', notificationError)
+    }
 
     res.status(201).json({
       sighting: {

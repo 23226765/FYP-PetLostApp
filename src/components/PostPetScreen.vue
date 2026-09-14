@@ -46,6 +46,16 @@
       </label>
 
       <label class="field">
+        <span>District</span>
+        <select v-model="form.district" required>
+          <option value="" disabled>Select the last-seen district</option>
+          <option v-for="district in HK_DISTRICTS" :key="district" :value="district">
+            {{ district }}
+          </option>
+        </select>
+      </label>
+
+      <label class="field">
         <span>Last seen location</span>
         <div class="input-icon">
           <AppIcon name="pin" :size="17" />
@@ -110,6 +120,7 @@ import AppIcon from './AppIcon.vue'
 import { reportLostPet } from '../services/api'
 import { getCurrentLocation } from '../services/geolocation'
 import type { User } from '../types/user'
+import { HK_DISTRICTS } from '../types/pet'
 
 const props = defineProps<{ user?: User | null }>()
 const emit = defineEmits<{ done: [] }>()
@@ -123,6 +134,7 @@ const form = reactive({
   name: '',
   species: 'Dog' as (typeof species)[number],
   breed: '',
+  district: '',
   location: '',
   details: '',
   reward: '',
@@ -163,6 +175,7 @@ async function submit() {
       name: form.name,
       species: form.species,
       breed: form.breed,
+      district: form.district,
       photo: photo.value,
       description: form.details,
       details: form.details,
@@ -250,6 +263,7 @@ form {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   padding: 14px 16px;
@@ -262,6 +276,7 @@ textarea {
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: var(--teal);
 }

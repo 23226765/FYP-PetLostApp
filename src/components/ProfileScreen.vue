@@ -63,7 +63,7 @@
           <AppIcon name="radar" :size="19" />
           <span>Radar radius</span>
         </div>
-        <span class="setting-value">3 km <AppIcon name="chevron" :size="15" /></span>
+        <span class="setting-value">{{ radiusKm }} km <AppIcon name="chevron" :size="15" /></span>
       </li>
       <li>
         <div class="setting-label">
@@ -72,11 +72,11 @@
         </div>
         <button
           class="switch"
-          :class="{ on: alerts }"
+          :class="{ on: alertsEnabled }"
           role="switch"
-          :aria-checked="alerts"
+          :aria-checked="alertsEnabled"
           aria-label="Toggle proximity alerts"
-          @click="alerts = !alerts"
+          @click="emit('toggle-alerts', !alertsEnabled)"
         >
           <span class="knob" />
         </button>
@@ -120,7 +120,7 @@ import { getMyPets } from '../services/api'
 import type { Pet } from '../types/pet'
 import type { User } from '../types/user'
 
-const props = defineProps<{ user: User | null }>()
+const props = defineProps<{ user: User | null; alertsEnabled: boolean; radiusKm: number }>()
 const emit = defineEmits<{
   login: []
   logout: []
@@ -128,9 +128,9 @@ const emit = defineEmits<{
   'open-activity': []
   'open-inbox': []
   'open-boost': []
+  'toggle-alerts': [enabled: boolean]
 }>()
 
-const alerts = ref(true)
 const myPets = ref<Pet[]>([])
 const loading = ref(false)
 const error = ref('')

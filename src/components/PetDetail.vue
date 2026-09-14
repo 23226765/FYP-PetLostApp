@@ -45,6 +45,10 @@
           <span class="label">Location</span>
           <span class="value">{{ pet.location }}</span>
         </div>
+        <div v-if="pet.district" class="fact">
+          <span class="label">District</span>
+          <span class="value">{{ pet.district }}</span>
+        </div>
         <div v-if="pet.reward" class="fact">
           <span class="label">Reward</span>
           <span class="value reward">{{ pet.reward }}</span>
@@ -60,8 +64,22 @@
           {{ sightingsError }}
         </p>
         <p v-else-if="sightings.length === 0" class="timeline-state">No sightings yet.</p>
-        <ol v-else class="timeline">
-          <li v-for="sighting in sightings" :key="sighting.id" class="timeline-item">
+        <template v-else>
+          <div class="trajectory-card">
+            <div class="trajectory-heading">
+              <strong>Movement trace</strong>
+              <span>{{ trajectorySightings.length }} recorded locations</span>
+            </div>
+            <MapView
+              class="trajectory-map"
+              :pets="[pet]"
+              :sightings="trajectorySightings"
+              :center="trajectoryCenter"
+              :radius-km="0"
+            />
+          </div>
+        <ol class="timeline">
+          <li v-for="sighting in trajectorySightings" :key="sighting.id" class="timeline-item">
             <span class="timeline-dot" aria-hidden="true" />
             <div class="timeline-content">
               <div class="timeline-head">
@@ -117,6 +135,7 @@
             </div>
           </li>
         </ol>
+        </template>
       </section>
 
       <h3>About {{ pet.name }}</h3>
@@ -164,12 +183,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Pet, Sighting } from '../types/pet'
 import type { User } from '../types/user'
 import { confirmSighting, getPetSightings } from '../services/api'
 import { createContactActions } from '../utils/contact'
 import AppIcon from './AppIcon.vue'
+import MapView from './MapView.vue'
 
 const props = defineProps<{ pet: Pet; user?: User | null }>()
 const emit = defineEmits<{
@@ -188,6 +208,21 @@ const failedSightingPhotos = ref<Set<string>>(new Set())
 const confirmingSightings = ref<Set<string>>(new Set())
 const confirmationErrors = ref<Record<string, string>>({})
 const heroPhotoUrl = computed(() => normalizedImageUrl(props.pet.photo))
+const trajectorySightings = computed(() =>
+  [...sightings.value].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return aTime - bTime
+  }),
+)
+const trajectoryCenter = computed(() => {
+  const first = trajectorySightings.value.find((sighting) => sighting.coordinates?.length === 2)
+  if (first) return { lat: first.coordinates[1], lng: first.coordinates[0] }
+  if (props.pet.coordinates?.length === 2) {
+    return { lat: props.pet.coordinates[1], lng: props.pet.coordinates[0] }
+  }
+  return null
+})
 const contactActions = computed(() => {
   const location = props.pet.location ? `, last seen near ${props.pet.location}` : ''
   const message = `Hi, I'm contacting you through PawRadar about ${props.pet.name}${location}.`
@@ -280,7 +315,7 @@ function relativeTime(value: string | Date) {
   return `${days}d ago`
 }
 
-onMounted(loadSightings)
+watch(() => props.pet.id, loadSightings, { immediate: true })
 </script>
 
 <style scoped>
@@ -463,11 +498,41 @@ h2 {
   color: var(--coral);
 }
 
+.trajectory-card {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.trajectory-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 2px 10px;
+}
+
+.trajectory-heading strong {
+  font-size: 14px;
+}
+
+.trajectory-heading span {
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.trajectory-map :deep(.leaflet-map) {
+  height: 280px;
+}
+
 .timeline {
   list-style: none;
   display: flex;
   flex-direction: column;
-  margin-top: 10px;
+  margin-top: 14px;
 }
 
 .timeline-item {

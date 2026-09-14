@@ -67,7 +67,12 @@ import AppIcon from './AppIcon.vue'
 import type { AppNotification } from '../types/notification'
 
 const props = defineProps<{ notifications: AppNotification[] }>()
-const emit = defineEmits<{ close: []; 'open-pet': [petId: string] }>()
+const emit = defineEmits<{
+  close: []
+  'open-pet': [petId: string]
+  'mark-read': [notificationId: string]
+  'mark-all': []
+}>()
 
 const unread = computed(() => props.notifications.filter((n) => !n.read).length)
 
@@ -80,13 +85,13 @@ function typeBadge(type: AppNotification['type']): string {
 }
 
 function onTap(n: AppNotification) {
-  n.read = true
+  if (!n.read) emit('mark-read', n.id)
   if (n.petId) emit('open-pet', n.petId)
   else emit('close')
 }
 
 function markAll() {
-  props.notifications.forEach((n) => (n.read = true))
+  if (unread.value > 0) emit('mark-all')
 }
 </script>
 

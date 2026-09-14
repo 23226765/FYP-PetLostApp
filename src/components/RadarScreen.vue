@@ -5,7 +5,7 @@
         <p class="greeting">Community Radar</p>
         <h1>
           <AppIcon name="pin" :size="18" />
-          Maplewood, {{ radiusKm }} km radius
+          {{ district || 'Hong Kong' }}, {{ radiusKm }} km radius
         </h1>
       </div>
       <div class="header-actions">
@@ -15,11 +15,11 @@
         <button
           class="bell"
           type="button"
-          aria-label="Notifications, 2 unread"
+          :aria-label="`Notifications, ${unreadCount} unread`"
           @click="emit('notifications')"
         >
           <AppIcon name="bell" :size="21" />
-          <span class="dot" />
+          <span v-if="unreadCount" class="dot">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
         </button>
       </div>
     </header>
@@ -43,6 +43,25 @@
         <AppIcon name="map" :size="17" />
         Map
       </button>
+    </div>
+
+    <div class="detail-filters" aria-label="Filter by breed and district">
+      <label>
+        <span>Breed</span>
+        <input
+          type="search"
+          :value="breed"
+          placeholder="Any breed"
+          @input="handleBreed"
+        />
+      </label>
+      <label>
+        <span>District</span>
+        <select :value="district" @change="handleDistrict">
+          <option value="">All districts</option>
+          <option v-for="item in HK_DISTRICTS" :key="item" :value="item">{{ item }}</option>
+        </select>
+      </label>
     </div>
 
     <div class="chips" role="group" aria-label="Filter by species">
@@ -110,7 +129,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { Pet } from '../data/pets'
+import type { Pet } from '../types/pet'
+import { HK_DISTRICTS } from '../types/pet'
 import AppIcon from './AppIcon.vue'
 import PetCard from './PetCard.vue'
 import MapView from './MapView.vue'
@@ -121,6 +141,9 @@ defineProps<{
   error?: string
   radiusKm: number
   species: 'All' | 'Dogs' | 'Cats' | 'Other'
+  breed: string
+  district: string
+  unreadCount: number
   userLocation: { lat: number; lng: number } | null
 }>()
 
@@ -132,6 +155,8 @@ const emit = defineEmits<{
   notifications: []
   'radius-change': [value: number]
   'species-change': [value: 'All' | 'Dogs' | 'Cats' | 'Other']
+  'breed-change': [value: string]
+  'district-change': [value: string]
 }>()
 
 const view = ref<'list' | 'map'>('list')
@@ -143,6 +168,14 @@ function handleRadius(e: Event) {
 
 function handleSpecies(chip: (typeof chips)[number]) {
   emit('species-change', chip)
+}
+
+function handleBreed(event: Event) {
+  emit('breed-change', (event.target as HTMLInputElement).value)
+}
+
+function handleDistrict(event: Event) {
+  emit('district-change', (event.target as HTMLSelectElement).value)
 }
 </script>
 
@@ -214,11 +247,17 @@ h1 svg {
   position: absolute;
   top: 11px;
   right: 12px;
-  width: 8px;
-  height: 8px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
   border-radius: 50%;
   background: var(--coral);
   border: 1.5px solid var(--surface);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
 }
 
 .toggle {
@@ -277,6 +316,45 @@ h1 svg {
   background: var(--teal);
   border-color: var(--teal);
   color: #fff;
+}
+
+.detail-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.detail-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.detail-filters span {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-muted);
+}
+
+.detail-filters input,
+.detail-filters select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+}
+
+.detail-filters input:focus,
+.detail-filters select:focus {
+  border-color: var(--teal);
 }
 
 .count {

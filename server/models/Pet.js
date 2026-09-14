@@ -21,6 +21,7 @@ const petSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     species: { type: String, enum: ['Dog', 'Cat', 'Other'], required: true },
     breed: { type: String, default: '' },
+    district: { type: String, default: '', trim: true },
     photo: { type: String, default: '' },
     photos: [{ type: String }],
     description: { type: String, default: '' },
@@ -43,5 +44,6 @@ const petSchema = new mongoose.Schema(
 petSchema.index({ location: '2dsphere' })
 // Compound index for species & status filtering
 petSchema.index({ species: 1, status: 1 })
+petSchema.index({ district: 1, breed: 1, status: 1 })
 
 export default mongoose.models.Pet || mongoose.model('Pet', petSchema)

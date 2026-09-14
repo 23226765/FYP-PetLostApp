@@ -20,12 +20,17 @@
         :error="error"
         :radius-km="radiusKm"
         :species="species"
+        :breed="breed"
+        :district="district"
+        :unread-count="unreadCount"
         :user-location="userLocation"
         @open="openPet"
         @found="openSighting"
         @retry="loadPets"
         @radius-change="onRadiusChange"
         @species-change="onSpeciesChange"
+        @breed-change="onBreedChange"
+        @district-change="onDistrictChange"
         @smart-match="showSmartMatch = true"
         @notifications="showNotifications = true"
       />
@@ -33,12 +38,15 @@
       <ProfileScreen
         v-if="tab === 'profile'"
         :user="currentUser"
+        :alerts-enabled="alertsEnabled"
+        :radius-km="radiusKm"
         @login="authOpen = true"
         @logout="logout"
         @open-settings="showSettings = true"
         @open-activity="showActivity = true"
         @open-inbox="openInbox"
         @open-boost="showBoost = true"
+        @toggle-alerts="handleAlertsToggle"
       />
     </main>
 
@@ -99,6 +107,8 @@
         :notifications="notifications"
         @close="showNotifications = false"
         @open-pet="openPetById"
+        @mark-read="handleMarkNotificationRead"
+        @mark-all="handleMarkAllNotificationsRead"
       />
     </Transition>
 
@@ -231,7 +241,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import type { Pet } from './types/pet'
 import type { AppNotification } from './types/notification'
@@ -242,7 +252,10 @@ import {
   getNotifications,
   getPet,
   getProfile,
+  markAllNotificationsRead,
+  markNotificationRead,
   reportSighting,
+  updateNotificationPreferences,
 } from './services/api'
 import { getCurrentLocation } from './services/geolocation'
 import AppIcon from './components/AppIcon.vue'
@@ -273,8 +286,12 @@ const loading = ref(true)
 const error = ref('')
 const radiusKm = ref(3)
 const species = ref<SpeciesFilter>('All')
+const breed = ref('')
+const district = ref('')
 const userLocation = ref<{ lat: number; lng: number } | null>(null)
+const hasPreciseLocation = ref(false)
 const currentUser = ref<User | null>(null)
+const alertsEnabled = ref(true)
 const authOpen = ref(false)
 const showSettings = ref(false)
 const showSmartMatch = ref(false)
@@ -292,21 +309,29 @@ const sightingPhoto = ref('')
 const sightingSent = ref(false)
 const sightingError = ref('')
 const toastPet = ref<Pet | null>(null)
+const unreadCount = computed(
+  () => notifications.value.filter((notification) => !notification.read).length,
+)
 
 const PET_RELOAD_DEBOUNCE_MS = 300
 const TOAST_DELAY_MS = 2200
 const TOAST_DURATION_MS = 7000
+const NOTIFICATION_POLL_MS = 30_000
 
 let petsRequestSequence = 0
 let petsAbortController: AbortController | null = null
 let petsReloadTimer: ReturnType<typeof setTimeout> | null = null
 let toastShowTimer: ReturnType<typeof setTimeout> | null = null
 let toastHideTimer: ReturnType<typeof setTimeout> | null = null
+let notificationPollTimer: ReturnType<typeof setInterval> | null = null
 
 async function getUserLocation(): Promise<{ lat: number; lng: number }> {
   try {
-    return await getCurrentLocation()
+    const location = await getCurrentLocation()
+    hasPreciseLocation.value = true
+    return location
   } catch {
+    hasPreciseLocation.value = false
     return DEFAULT_CENTER
   }
 }
@@ -324,6 +349,8 @@ async function loadPets() {
 
   const requestedRadiusKm = radiusKm.value
   const requestedSpecies = species.value
+  const requestedBreed = breed.value.trim()
+  const requestedDistrict = district.value
   loading.value = true
   error.value = ''
 
@@ -331,7 +358,7 @@ async function loadPets() {
     const { lat, lng } = await getUserLocation()
     if (requestSequence !== petsRequestSequence) return
 
-    userLocation.value = { lat, lng }
+    userLocation.value = hasPreciseLocation.value ? { lat, lng } : null
     const speciesParam =
       requestedSpecies === 'All'
         ? undefined
@@ -342,14 +369,20 @@ async function loadPets() {
             : 'Other'
 
     const nextPets = await getNearbyPets(
-      { lat, lng, radiusKm: requestedRadiusKm, species: speciesParam },
+      {
+        lat,
+        lng,
+        radiusKm: requestedRadiusKm,
+        species: speciesParam,
+        breed: requestedBreed || undefined,
+        district: requestedDistrict || undefined,
+      },
       controller.signal,
     )
     if (requestSequence !== petsRequestSequence) return
 
-    const resultsChanged = petResultKey(pets.value) !== petResultKey(nextPets)
     pets.value = nextPets
-    if (resultsChanged) scheduleToast(nextPets[0] ?? null)
+    if (currentUser.value) void syncNotificationPreferences().catch(() => undefined)
   } catch (e) {
     if (requestSequence !== petsRequestSequence) return
     error.value = e instanceof Error ? e.message : 'Failed to load nearby pets'
@@ -363,11 +396,22 @@ async function loadPets() {
 
 function onRadiusChange(value: number) {
   radiusKm.value = value
+  if (currentUser.value) void syncNotificationPreferences().catch(() => undefined)
   schedulePetsReload()
 }
 
 function onSpeciesChange(value: SpeciesFilter) {
   species.value = value
+  schedulePetsReload()
+}
+
+function onBreedChange(value: string) {
+  breed.value = value
+  schedulePetsReload()
+}
+
+function onDistrictChange(value: string) {
+  district.value = value
   schedulePetsReload()
 }
 
@@ -394,7 +438,10 @@ async function restoreSession() {
     return
   }
   try {
-    currentUser.value = await getProfile()
+    const user = await getProfile()
+    currentUser.value = user
+    alertsEnabled.value = user.alertsEnabled !== false
+    radiusKm.value = user.alertRadiusKm || radiusKm.value
   } catch {
     localStorage.removeItem('token')
     authOpen.value = true
@@ -403,19 +450,20 @@ async function restoreSession() {
 
 function handleAuth(user: User) {
   currentUser.value = user
+  alertsEnabled.value = user.alertsEnabled !== false
+  radiusKm.value = user.alertRadiusKm || radiusKm.value
   authOpen.value = false
+  void activateNotifications()
 }
 
 function logout() {
   localStorage.removeItem('token')
   currentUser.value = null
+  notifications.value = []
+  stopNotificationPolling()
   chatPet.value = null
   showInbox.value = false
   authOpen.value = true
-}
-
-function petResultKey(results: Pet[]): string {
-  return results.map((pet) => String(pet.id)).join('|')
 }
 
 function clearToastTimers() {
@@ -506,11 +554,95 @@ async function openPetById(petId: string) {
   }
 }
 
-async function loadNotifications() {
-  try {
-    notifications.value = await getNotifications()
-  } catch {
+async function loadNotifications(showNewAlert = false) {
+  if (!currentUser.value) {
     notifications.value = []
+    return
+  }
+  const knownIds = new Set(notifications.value.map((notification) => notification.id))
+  try {
+    const nextNotifications = await getNotifications()
+    notifications.value = nextNotifications
+    if (showNewAlert) {
+      const fresh = nextNotifications.find(
+        (notification) => !notification.read && !knownIds.has(notification.id),
+      )
+      const alertPet = fresh?.petId
+        ? pets.value.find((pet) => pet.id === fresh.petId) ?? null
+        : null
+      if (alertPet) scheduleToast(alertPet)
+    }
+  } catch {
+    // Preserve the last successful inbox during a transient network failure.
+  }
+}
+
+async function syncNotificationPreferences() {
+  if (!currentUser.value) return
+  const location = userLocation.value
+  await updateNotificationPreferences({
+    enabled: alertsEnabled.value,
+    radiusKm: radiusKm.value,
+    coordinates:
+      location && hasPreciseLocation.value ? [location.lng, location.lat] : undefined,
+  })
+}
+
+function startNotificationPolling() {
+  stopNotificationPolling()
+  notificationPollTimer = setInterval(() => {
+    void loadNotifications(true)
+  }, NOTIFICATION_POLL_MS)
+}
+
+function stopNotificationPolling() {
+  if (notificationPollTimer) clearInterval(notificationPollTimer)
+  notificationPollTimer = null
+}
+
+async function activateNotifications() {
+  try {
+    await syncNotificationPreferences()
+    await loadNotifications()
+    startNotificationPolling()
+  } catch {
+    stopNotificationPolling()
+  }
+}
+
+async function handleAlertsToggle(enabled: boolean) {
+  const previous = alertsEnabled.value
+  alertsEnabled.value = enabled
+  try {
+    await syncNotificationPreferences()
+    startNotificationPolling()
+  } catch {
+    alertsEnabled.value = previous
+  }
+}
+
+async function handleMarkNotificationRead(notificationId: string) {
+  const notification = notifications.value.find((item) => item.id === notificationId)
+  if (!notification || notification.read) return
+  notification.read = true
+  try {
+    await markNotificationRead(notificationId)
+  } catch {
+    notification.read = false
+  }
+}
+
+async function handleMarkAllNotificationsRead() {
+  const unreadIds = new Set(
+    notifications.value.filter((item) => !item.read).map((item) => item.id),
+  )
+  notifications.value.forEach((item) => (item.read = true))
+  try {
+    await markAllNotificationsRead()
+  } catch {
+    notifications.value.forEach((item) => {
+      if (unreadIds.has(item.id)) item.read = false
+    })
   }
 }
 
@@ -585,15 +717,19 @@ function openFromToast() {
 
 function handleUnauthorized() {
   currentUser.value = null
+  notifications.value = []
+  stopNotificationPolling()
   chatPet.value = null
   showInbox.value = false
   authOpen.value = true
 }
 
 onMounted(() => {
-  void loadPets()
-  void loadNotifications()
-  void restoreSession()
+  void (async () => {
+    await restoreSession()
+    await loadPets()
+    if (currentUser.value) await activateNotifications()
+  })()
   window.addEventListener('auth:unauthorized', handleUnauthorized)
 })
 
@@ -606,6 +742,7 @@ onBeforeUnmount(() => {
     petsReloadTimer = null
   }
   clearToastTimers()
+  stopNotificationPolling()
   window.removeEventListener('auth:unauthorized', handleUnauthorized)
 })
 </script>

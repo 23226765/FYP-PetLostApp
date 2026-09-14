@@ -131,7 +131,7 @@ function signToken(user) {
   return jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' })
 }
 
-/** @param {{ _id: unknown, name?: string, email?: string, phone?: string, avatar?: string, role?: string }} user */
+/** @param {{ _id: unknown, name?: string, email?: string, phone?: string, avatar?: string, role?: string, alertsEnabled?: boolean, alertRadiusKm?: number }} user */
 function serializeUser(user) {
   return {
     id: String(user._id),
@@ -140,6 +140,8 @@ function serializeUser(user) {
     phone: user.phone,
     avatar: user.avatar,
     role: user.role,
+    alertsEnabled: user.alertsEnabled !== false,
+    alertRadiusKm: user.alertRadiusKm || 3,
   }
 }
 

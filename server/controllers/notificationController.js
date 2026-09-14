@@ -1,5 +1,20 @@
-import Pet from '../models/Pet.js'
-import Sighting from '../models/Sighting.js'
+import mongoose from 'mongoose'
+import Notification from '../models/Notification.js'
+import User from '../models/User.js'
+
+const MAX_ALERT_RADIUS_KM = 50
+
+function isPointCoordinates(value) {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    value.every((coordinate) => Number.isFinite(Number(coordinate))) &&
+    Number(value[0]) >= -180 &&
+    Number(value[0]) <= 180 &&
+    Number(value[1]) >= -90 &&
+    Number(value[1]) <= 90
+  )
+}
 
 function relativeTime(date) {
   const elapsed = Math.max(0, Date.now() - new Date(date).getTime())
@@ -8,80 +23,193 @@ function relativeTime(date) {
   if (minutes < 60) return `${minutes}m ago`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
+  return `${Math.floor(hours / 24)}d ago`
 }
 
-function isCosmosOrderByIndexError(error) {
-  return error?.code === 2 && String(error.message).includes('order-by item is excluded')
+function distanceKm([lngA, latA], [lngB, latB]) {
+  const toRadians = (degrees) => (degrees * Math.PI) / 180
+  const latDelta = toRadians(latB - latA)
+  const lngDelta = toRadians(lngB - lngA)
+  const a =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) * Math.sin(lngDelta / 2) ** 2
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-async function getRecentSightings() {
-  try {
-    return await Sighting.find()
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .populate('pet', 'name photo status')
-  } catch (error) {
-    if (!isCosmosOrderByIndexError(error)) throw error
-    const sightings = await Sighting.find().populate('pet', 'name photo status')
-    return sightings
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 10)
+function serializeNotification(notification) {
+  return {
+    id: String(notification._id),
+    type: notification.type,
+    title: notification.title,
+    body: notification.body,
+    photo: notification.photo || undefined,
+    petId: String(notification.pet?._id || notification.pet),
+    time: relativeTime(notification.createdAt),
+    read: Boolean(notification.read),
   }
 }
 
-async function getRecentLostPets() {
+async function findAlertRecipients(origin, excludedUserId) {
+  let users
   try {
-    return await Pet.find({ status: 'lost' }).sort({ createdAt: -1 }).limit(5)
-  } catch (error) {
-    if (!isCosmosOrderByIndexError(error)) throw error
-    const pets = await Pet.find({ status: 'lost' })
-    return pets
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5)
-  }
-}
-
-// GET /api/notifications
-export async function listNotifications(_req, res, next) {
-  try {
-    const [sightings, lostPets] = await Promise.all([
-      getRecentSightings(),
-      getRecentLostPets(),
+    users = await User.aggregate([
+      {
+        $geoNear: {
+          near: { type: 'Point', coordinates: origin },
+          distanceField: 'distanceMeters',
+          maxDistance: MAX_ALERT_RADIUS_KM * 1000,
+          spherical: true,
+          key: 'alertLocation',
+          query: { alertsEnabled: { $ne: false } },
+        },
+      },
+      { $project: { _id: 1, alertRadiusKm: 1, distanceMeters: 1 } },
     ])
-
-    const sightingNotifications = sightings
-      .filter((sighting) => sighting.pet)
-      .map((sighting) => ({
-        id: String(sighting._id),
-        type: 'sighting',
-        title: 'New sighting',
-        body: `${sighting.pet.name} spotted near ${sighting.locationName || 'the reported location'}`,
-        photo: sighting.photo || sighting.pet.photo,
-        petId: String(sighting.pet._id),
-        time: relativeTime(sighting.createdAt),
-        timestamp: new Date(sighting.createdAt).getTime(),
-        read: false,
-      }))
-
-    const proximityNotifications = lostPets.map((pet) => ({
-      id: String(pet._id),
-      type: 'proximity',
-      title: 'New lost pet',
-      body: `${pet.name} (${pet.breed || 'Unknown breed'})`,
-      photo: pet.photo,
-      petId: String(pet._id),
-      time: relativeTime(pet.createdAt),
-      timestamp: new Date(pet.createdAt).getTime(),
-      read: false,
+  } catch {
+    // Some Cosmos configurations reject geo aggregation until the new index is
+    // available. This produces the same result while keeping delivery working.
+    const candidates = await User.find({
+      alertsEnabled: { $ne: false },
+      alertLocation: { $exists: true },
+    }).select('_id alertLocation alertRadiusKm')
+    users = candidates.map((user) => ({
+      _id: user._id,
+      alertRadiusKm: user.alertRadiusKm,
+      distanceMeters: isPointCoordinates(user.alertLocation?.coordinates)
+        ? distanceKm(origin, user.alertLocation.coordinates.map(Number)) * 1000
+        : Number.POSITIVE_INFINITY,
     }))
+  }
 
-    const notifications = [...sightingNotifications, ...proximityNotifications]
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .map(({ timestamp: _timestamp, ...notification }) => notification)
+  return users.filter((user) => {
+    if (excludedUserId && String(user._id) === String(excludedUserId)) return false
+    const radius = Math.min(MAX_ALERT_RADIUS_KM, Math.max(1, Number(user.alertRadiusKm) || 3))
+    return Number(user.distanceMeters) <= radius * 1000
+  })
+}
 
-    res.json({ notifications })
+/** Persist alerts for eligible nearby users and the owner of a sighted pet. */
+export async function createRadiusNotifications({ pet, sighting, type, origin, excludeUserId }) {
+  if (!pet?._id || !isPointCoordinates(origin)) return
+
+  const recipients = await findAlertRecipients(origin.map(Number), excludeUserId)
+  const recipientsById = new Map(recipients.map((user) => [String(user._id), user]))
+
+  if (type === 'sighting' && pet.reportedBy && String(pet.reportedBy) !== String(excludeUserId)) {
+    recipientsById.set(String(pet.reportedBy), { _id: pet.reportedBy })
+  }
+  if (recipientsById.size === 0) return
+
+  const isSighting = type === 'sighting'
+  const locationName = sighting?.locationName || pet.locationName || 'the reported location'
+  const documents = [...recipientsById.values()].map((user) => ({
+    user: user._id,
+    pet: pet._id,
+    sighting: sighting?._id,
+    type,
+    title: isSighting ? `New sighting of ${pet.name}` : 'Lost pet near you',
+    body: isSighting
+      ? `${pet.name} was spotted near ${locationName}.`
+      : `${pet.name} (${pet.breed || pet.species}) was reported near ${locationName}.`,
+    photo: sighting?.photo || pet.photo || '',
+  }))
+
+  await Notification.bulkWrite(
+    documents.map((document) => ({
+      updateOne: {
+        filter: {
+          user: document.user,
+          pet: document.pet,
+          type: document.type,
+          sighting: document.sighting,
+        },
+        update: { $setOnInsert: document },
+        upsert: true,
+      },
+    })),
+  )
+}
+
+export async function listNotifications(req, res, next) {
+  try {
+    let notifications
+    try {
+      notifications = await Notification.find({ user: req.user._id })
+        .sort({ createdAt: -1 })
+        .limit(50)
+    } catch (error) {
+      const cosmosOrderByError =
+        error?.code === 2 && String(error.message).includes('order-by item is excluded')
+      if (!cosmosOrderByError) throw error
+      notifications = await Notification.find({ user: req.user._id })
+      notifications.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+      notifications = notifications.slice(0, 50)
+    }
+
+    res.json({ notifications: notifications.map(serializeNotification) })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function updatePreferences(req, res, next) {
+  try {
+    const enabled = req.body?.enabled
+    const radiusKm = Number(req.body?.radiusKm)
+    const coordinates = req.body?.coordinates
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: '`enabled` must be a boolean.' })
+    }
+    if (!Number.isFinite(radiusKm) || radiusKm < 1 || radiusKm > MAX_ALERT_RADIUS_KM) {
+      return res.status(400).json({ error: '`radiusKm` must be between 1 and 50.' })
+    }
+    if (coordinates !== undefined && !isPointCoordinates(coordinates)) {
+      return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
+    }
+
+    req.user.alertsEnabled = enabled
+    req.user.alertRadiusKm = radiusKm
+    if (coordinates !== undefined) {
+      req.user.alertLocation = { type: 'Point', coordinates: coordinates.map(Number) }
+    }
+    await req.user.save()
+
+    res.json({
+      preferences: {
+        enabled: req.user.alertsEnabled,
+        radiusKm: req.user.alertRadiusKm,
+        coordinates: req.user.alertLocation?.coordinates,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function markAllRead(req, res, next) {
+  try {
+    await Notification.updateMany({ user: req.user._id, read: false }, { $set: { read: true } })
+    res.json({ success: true })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function markRead(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid notification id' })
+    }
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { $set: { read: true } },
+      { new: true },
+    )
+    if (!notification) return res.status(404).json({ error: 'Notification not found' })
+    res.json({ notification: serializeNotification(notification) })
   } catch (error) {
     next(error)
   }

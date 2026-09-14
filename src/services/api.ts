@@ -46,6 +46,8 @@ export interface NearbyParams {
   radiusKm?: number
   species?: 'Dog' | 'Cat' | 'Other'
   status?: 'lost' | 'sighted' | 'reunited'
+  breed?: string
+  district?: string
 }
 
 export async function getNearbyPets(
@@ -113,6 +115,26 @@ export async function getNotifications(): Promise<AppNotification[]> {
   return data.notifications
 }
 
+export interface NotificationPreferencesPayload {
+  enabled: boolean
+  radiusKm: number
+  coordinates?: [number, number]
+}
+
+export async function updateNotificationPreferences(
+  payload: NotificationPreferencesPayload,
+): Promise<void> {
+  await http.put('/notifications/preferences', payload)
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await http.patch(`/notifications/${id}/read`)
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await http.patch('/notifications/read-all')
+}
+
 export interface ChatMessage {
   id: string
   petId: string
@@ -178,6 +200,7 @@ export interface ReportPetPayload {
   name: string
   species: 'Dog' | 'Cat' | 'Other'
   breed?: string
+  district?: string
   photo?: string
   description?: string
   details?: string

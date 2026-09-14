@@ -5,4 +5,6 @@ export interface User {
   phone?: string
   avatar?: string
   role?: 'user' | 'shelter_admin'
+  alertsEnabled?: boolean
+  alertRadiusKm?: number
 }

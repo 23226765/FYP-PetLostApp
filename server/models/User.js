@@ -1,5 +1,26 @@
 import mongoose from 'mongoose'
 
+const pointSchema = new mongoose.Schema(
+  {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: {
+      type: [Number],
+      validate: {
+        validator: (value) =>
+          Array.isArray(value) &&
+          value.length === 2 &&
+          value.every(Number.isFinite) &&
+          value[0] >= -180 &&
+          value[0] <= 180 &&
+          value[1] >= -90 &&
+          value[1] <= 90,
+        message: 'coordinates must be [lng, lat]',
+      },
+    },
+  },
+  { _id: false },
+)
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -10,7 +31,12 @@ const userSchema = new mongoose.Schema({
     default: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
   },
   role: { type: String, enum: ['user', 'shelter_admin'], default: 'user' },
+  alertsEnabled: { type: Boolean, default: true },
+  alertRadiusKm: { type: Number, min: 1, max: 50, default: 3 },
+  alertLocation: { type: pointSchema, default: undefined },
   createdAt: { type: Date, default: Date.now },
 })
+
+userSchema.index({ alertLocation: '2dsphere' })
 
 export default mongoose.models.User || mongoose.model('User', userSchema)

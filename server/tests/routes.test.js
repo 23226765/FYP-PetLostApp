@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import chatRouter from '../routes/chat.js'
 import petsRouter from '../routes/pets.js'
+import notificationsRouter from '../routes/notifications.js'
 
 function findRoute(router, path, method) {
   return router.stack.find(
@@ -33,4 +34,18 @@ test('chat inbox, reads, and writes require authentication', () => {
   assert.deepEqual(middlewareNames(inbox), ['requireAuth', 'listConversations'])
   assert.deepEqual(middlewareNames(read), ['requireAuth', 'getMessages'])
   assert.deepEqual(middlewareNames(write), ['requireAuth', 'createMessage'])
+})
+
+test('notification inbox, preferences, and read state require authentication', () => {
+  const authLayer = notificationsRouter.stack.find((layer) => layer.name === 'requireAuth')
+  const inbox = findRoute(notificationsRouter, '/', 'get')
+  const preferences = findRoute(notificationsRouter, '/preferences', 'put')
+  const readAll = findRoute(notificationsRouter, '/read-all', 'patch')
+  const readOne = findRoute(notificationsRouter, '/:id/read', 'patch')
+
+  assert.ok(authLayer, 'notification router must install requireAuth')
+  assert.deepEqual(middlewareNames(inbox), ['listNotifications'])
+  assert.deepEqual(middlewareNames(preferences), ['updatePreferences'])
+  assert.deepEqual(middlewareNames(readAll), ['markAllRead'])
+  assert.deepEqual(middlewareNames(readOne), ['markRead'])
 })

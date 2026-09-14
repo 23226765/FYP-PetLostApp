@@ -16,13 +16,14 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { Pet } from '../data/pets'
+import type { Pet, Sighting } from '../types/pet'
 import { getCurrentLocation } from '../services/geolocation'
 
 const props = defineProps<{
   pets: Pet[]
   center?: { lat: number; lng: number } | null
   radiusKm?: number
+  sightings?: Sighting[]
 }>()
 
 const emit = defineEmits<{ open: [pet: Pet] }>()
@@ -31,12 +32,14 @@ const mapEl = ref<HTMLElement | null>(null)
 
 let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
+let trajectoryLayer: L.LayerGroup | null = null
 let radiusCircle: L.Circle | null = null
 let userMarker: L.Marker | null = null
 let resizeObserver: ResizeObserver | null = null
 let invalidateFrame: number | null = null
 let disposed = false
 let centerRequest = 0
+let trajectoryFitKey = ''
 
 const locationMessage = ref<string | null>(null)
 
@@ -195,6 +198,70 @@ function renderPets() {
   }
 }
 
+function sightingLatLng(sighting: Sighting): [number, number] | null {
+  return validLatLng(sighting.coordinates?.[1], sighting.coordinates?.[0])
+}
+
+function trajectoryPopup(sighting: Sighting, number: number): string {
+  const recordedAt = sighting.createdAt
+    ? new Date(sighting.createdAt).toLocaleString()
+    : 'Time unavailable'
+  return `<div class="pawradar-trajectory-popup">
+    <strong>Sighting ${number}</strong>
+    <span>${esc(sighting.locationName || 'Location not provided')}</span>
+    <time>${esc(recordedAt)}</time>
+    ${sighting.note ? `<p>${esc(sighting.note)}</p>` : ''}
+  </div>`
+}
+
+function renderTrajectory() {
+  if (!map || !trajectoryLayer) return
+  const layer = trajectoryLayer
+  layer.clearLayers()
+
+  const ordered = [...(props.sightings ?? [])]
+    .filter((sighting) => sightingLatLng(sighting))
+    .sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return aTime - bTime
+    })
+  const points = ordered.map((sighting) => sightingLatLng(sighting) as [number, number])
+
+  if (points.length > 1) {
+    L.polyline(points, {
+      color: '#ef6351',
+      weight: 4,
+      opacity: 0.9,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }).addTo(layer)
+  }
+
+  ordered.forEach((sighting, index) => {
+    L.marker(points[index], {
+      icon: L.divIcon({
+        className: '',
+        html: `<span class="pawradar-trajectory-marker">${index + 1}</span>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+        popupAnchor: [0, -15],
+      }),
+      zIndexOffset: 1200,
+    })
+      .bindPopup(trajectoryPopup(sighting, index + 1))
+      .addTo(layer)
+  })
+
+  const fitKey = ordered
+    .map((sighting) => `${sighting.id || sighting.createdAt || ''}:${sighting.coordinates.join(',')}`)
+    .join('|')
+  if (points.length > 1 && fitKey && fitKey !== trajectoryFitKey) {
+    trajectoryFitKey = fitKey
+    map.fitBounds(L.latLngBounds(points).pad(0.2), { maxZoom: 15 })
+  }
+}
+
 function radiusMeters(): number {
   const radiusKm = props.radiusKm ?? 3
   return (Number.isFinite(radiusKm) && radiusKm >= 0 ? radiusKm : 3) * 1000
@@ -260,6 +327,7 @@ async function initialiseMap() {
   }).addTo(map)
 
   markersLayer = L.layerGroup().addTo(map)
+  trajectoryLayer = L.layerGroup().addTo(map)
   radiusCircle = L.circle(center, {
     radius: radiusMeters(),
     color: '#1d6360',
@@ -270,6 +338,7 @@ async function initialiseMap() {
 
   if (showUserMarker) renderUserMarker(center)
   renderPets()
+  renderTrajectory()
 
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(scheduleInvalidateSize)
@@ -283,6 +352,7 @@ onMounted(() => {
 })
 
 watch(() => props.pets, () => renderPets(), { deep: true })
+watch(() => props.sightings, () => renderTrajectory(), { deep: true })
 watch(() => props.radiusKm, () => renderRadius())
 watch(
   () => props.center,
@@ -312,6 +382,7 @@ onBeforeUnmount(() => {
   map?.remove()
   map = null
   markersLayer = null
+  trajectoryLayer = null
   radiusCircle = null
   userMarker = null
 })
@@ -504,5 +575,47 @@ onBeforeUnmount(() => {
 
 .pawradar-view:hover {
   background: #16504e;
+}
+
+.pawradar-trajectory-marker {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #fcf9f2;
+  border-radius: 50%;
+  background: #ef6351;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(61, 56, 53, 0.28);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pawradar-trajectory-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 160px;
+  color: #3d3835;
+}
+
+.pawradar-trajectory-popup strong {
+  color: #ef6351;
+  font-size: 13px;
+}
+
+.pawradar-trajectory-popup span,
+.pawradar-trajectory-popup time,
+.pawradar-trajectory-popup p {
+  font-size: 12px;
+}
+
+.pawradar-trajectory-popup time {
+  color: #8b827a;
+}
+
+.pawradar-trajectory-popup p {
+  margin: 3px 0 0;
+  line-height: 1.4;
 }
 </style>
