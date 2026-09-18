@@ -1,239 +1,244 @@
 <template>
-  <!--
-    ════════════════════════════════════════════════════════════════
-    PosterModal.vue
-    ════════════════════════════════════════════════════════════════
-    Full-screen, print-optimized "MISSING" poster for a single pet.
-
-    Layout (top → bottom):
-      • Toolbar (close + share)          [hidden when printing]
-      • Poster sheet:
-          - Massive MISSING headline
-          - Pet name + species/breed line
-          - Large photo with coral frame
-          - Key stats grid (last seen, location, date, reward)
-          - Description block
-          - Contact strip (owner + phone)
-          - Dummy QR code graphic (pure CSS/SVG, no dependency)
-          - Footer credit line
-      • Sticky action bar: "Save to Camera Roll / Print"
-                                          [hidden when printing]
-
-    Printing:
-      A @media print block strips the app chrome and forces the
-      sheet to fill an A4/Letter page in high contrast.
-    ════════════════════════════════════════════════════════════════
-  -->
-  <div class="poster-overlay">
-
-    <!-- ─────────── Toolbar (screen only) ─────────── -->
+  <div
+    class="poster-overlay"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="`Lost pet flyer for ${pet.name}`"
+  >
     <header class="poster-toolbar no-print">
-      <button class="tool-btn" aria-label="Close poster" @click="emit('close')">
+      <button class="tool-button" type="button" aria-label="Close flyer" @click="emit('close')">
         <AppIcon name="close" :size="21" />
       </button>
-      <span class="toolbar-title">Missing Poster</span>
-      <button class="tool-btn" type="button" aria-label="Share poster" @click="sharePoster">
+      <strong>Lost Pet Flyer</strong>
+      <button class="tool-button" type="button" aria-label="Share pet link" @click="sharePoster">
         <AppIcon name="share" :size="19" />
       </button>
     </header>
 
-    <!-- ─────────── Scrollable poster area ─────────── -->
-    <div class="poster-scroll">
-      <!-- ★ The printable sheet ★ -->
-      <article ref="sheetEl" class="poster-sheet" :aria-label="`Missing poster for ${pet.name}`">
+    <main class="poster-scroll">
+      <article class="poster-sheet">
+        <header class="alert-banner">
+          <span>LOST PET</span>
+          <span lang="zh-Hant">走失協尋</span>
+        </header>
 
-        <!-- Massive headline -->
-        <div class="poster-head">
-          <h1 class="missing-word">MISSING</h1>
-          <div class="head-rule" />
-          <p class="head-species">{{ pet.species.toUpperCase() }} · {{ pet.breed.toUpperCase() }}</p>
-        </div>
+        <section class="identity-block">
+          <p>Please help us find</p>
+          <h1>{{ pet.name }}</h1>
+          <span class="species-tag">{{ speciesBreed }}</span>
+        </section>
 
-        <!-- Pet name -->
-        <h2 class="pet-name">{{ pet.name }}</h2>
-
-        <!-- Photo with coral frame -->
         <div class="poster-photo-frame">
           <img
-            :src="pet.photo"
-            :alt="`Photo of ${pet.name}, a missing ${pet.breed}`"
+            v-if="petPhoto && !photoFailed"
+            :src="petPhoto"
+            :alt="`Photo of ${pet.name}, a missing ${pet.breed || pet.species}`"
             class="poster-photo"
             crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+            @error="photoFailed = true"
           />
+          <div
+            v-else
+            class="photo-placeholder"
+            role="img"
+            :aria-label="`Photo unavailable for ${pet.name}`"
+          >
+            <AppIcon name="paw" :size="64" />
+          </div>
         </div>
 
-        <!-- Reward ribbon (only when a reward exists) -->
-        <div v-if="pet.reward" class="reward-ribbon">
-          <span class="reward-label">REWARD</span>
-          <span class="reward-amount">{{ pet.reward }}</span>
-        </div>
+        <p v-if="rewardLabel" class="reward-badge">{{ rewardLabel }}</p>
 
-        <!-- Key stats grid -->
-        <dl class="stats-grid">
-          <div class="stat-cell">
-            <dt>Last Seen</dt>
-            <dd>{{ pet.lastSeen }}</dd>
+        <dl class="detail-grid">
+          <div>
+            <dt>Last seen</dt>
+            <dd>{{ pet.lastSeen || 'Not provided' }}</dd>
           </div>
-          <div class="stat-cell">
-            <dt>Location</dt>
-            <dd>{{ pet.location }}</dd>
-          </div>
-          <div class="stat-cell">
-            <dt>Reported</dt>
-            <dd>{{ pet.postedAgo }}</dd>
-          </div>
-          <div class="stat-cell">
-            <dt>Distance</dt>
-            <dd>{{ pet.distanceKm }} km from you</dd>
+          <div>
+            <dt>District / Location</dt>
+            <dd>{{ districtLocation }}</dd>
           </div>
         </dl>
 
-        <!-- Description -->
-        <section class="poster-desc">
-          <h3>Distinguishing Features</h3>
-          <p>{{ pet.details || 'No additional details provided.' }}</p>
+        <section class="description-block">
+          <h2>Identifying details</h2>
+          <p>{{ pet.details || pet.description || 'No additional details provided.' }}</p>
         </section>
 
-        <!-- Contact + QR row -->
-        <div class="contact-row">
+        <section class="recovery-block">
           <div class="contact-block">
-            <h3>If You See {{ pet.name }}</h3>
-            <p class="contact-name">Call {{ pet.owner }}</p>
-            <p class="contact-phone">{{ pet.ownerPhone || 'Contact via app' }}</p>
-            <p class="contact-note">Please do not chase — call immediately.</p>
+            <p class="contact-heading">If you see {{ pet.name }}</p>
+            <strong>{{ pet.ownerPhone || 'Report through PawRadar' }}</strong>
+            <span>{{ pet.owner ? `Contact ${pet.owner}` : 'Please submit a sighting immediately' }}</span>
+            <small>Please do not chase. Note the location and direction of travel.</small>
           </div>
 
-          <!-- ★ Dummy QR code, generated as a deterministic CSS grid ★ -->
           <div class="qr-block">
-            <div class="qr-code" role="img" :aria-label="`QR code linking to ${pet.name}'s PawRadar listing`">
-              <!-- 21×21 module grid, pattern derived from the pet id -->
-              <span
-                v-for="(on, i) in qrModules"
-                :key="i"
-                class="qr-cell"
-                :class="{ on }"
-              />
-              <!-- Three finder patterns overlaid at the corners -->
-              <span class="qr-finder tl" />
-              <span class="qr-finder tr" />
-              <span class="qr-finder bl" />
+            <div
+              v-if="qrSvg"
+              class="qr-code"
+              role="img"
+              :aria-label="`Scannable QR code linking to ${deepLink}`"
+              v-html="qrSvg"
+            />
+            <div v-else class="qr-loading" role="status">
+              {{ qrError || 'Generating QR code…' }}
             </div>
-            <p class="qr-caption">Scan for live updates</p>
+            <p>Scan to report sighting on PawRadar</p>
           </div>
-        </div>
+        </section>
 
-        <!-- Tear-off phone strips (classic missing-poster detail) -->
-        <div class="tear-strips" aria-hidden="true">
-          <span v-for="n in 6" :key="n" class="strip">{{ pet.ownerPhone || 'Contact via app' }}</span>
-        </div>
-
-        <!-- Footer -->
         <footer class="poster-footer">
-          <span class="footer-brand">
-            <AppIcon name="paw" :size="14" />
-            PawRadar
-          </span>
-          <span class="footer-note">Posted by the Maplewood community · pawradar.app</span>
+          <span><AppIcon name="paw" :size="16" /> PawRadar</span>
+          <span>Live report: {{ shortDeepLink }}</span>
         </footer>
       </article>
-    </div>
+    </main>
 
-    <!-- ─────────── Sticky action bar (screen only) ─────────── -->
-    <div class="poster-actions no-print">
-      <!-- Save feedback toast -->
+    <footer class="poster-actions no-print">
       <Transition name="feedback">
-        <p v-if="feedback" class="action-feedback" role="status">
-          <AppIcon name="check" :size="15" />
-          {{ feedback }}
-        </p>
+        <p v-if="feedback" class="feedback" role="status">{{ feedback }}</p>
       </Transition>
-
-      <div class="action-row">
-        <button class="secondary-btn" type="button" @click="savePoster">
-          <AppIcon name="camera" :size="18" />
-          Save as PDF
-        </button>
-        <button class="primary-btn" type="button" @click="printPoster">
-          <AppIcon name="list" :size="18" />
-          Print
-        </button>
-      </div>
-    </div>
-
+      <button class="share-button" type="button" @click="sharePoster">
+        <AppIcon name="share" :size="18" />
+        Share Link
+      </button>
+      <button class="print-button" type="button" :disabled="!qrSvg" @click="printPoster">
+        <AppIcon name="list" :size="18" />
+        Print / Save PDF
+      </button>
+    </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import QRCode from 'qrcode'
 import AppIcon from './AppIcon.vue'
-import type { Pet } from '../data/pets'
+import type { Pet } from '../types/pet'
 
 const props = defineProps<{ pet: Pet }>()
 const emit = defineEmits<{ close: [] }>()
 
-const sheetEl = ref<HTMLElement | null>(null)
+const qrSvg = ref('')
+const qrError = ref('')
+const photoFailed = ref(false)
 const feedback = ref('')
+let qrRequestSequence = 0
 let feedbackTimer: ReturnType<typeof setTimeout> | null = null
 
-/* ── Dummy QR generation ────────────────────────────────
-   Builds a 21×21 boolean grid from a small deterministic
-   hash of the pet id + name. Purely decorative — it is
-   NOT a scannable code, exactly as specified.
-   ────────────────────────────────────────────────────── */
-const qrModules = computed<boolean[]>(() => {
-  const size = 21
-  const total = size * size
-  const seedStr = `${props.pet.id}-${props.pet.name}`
-  let seed = 0
-  for (let i = 0; i < seedStr.length; i++) {
-    seed = (seed * 31 + seedStr.charCodeAt(i)) % 100000
-  }
-
-  const cells: boolean[] = []
-  for (let i = 0; i < total; i++) {
-    const row = Math.floor(i / size)
-    const col = i % size
-
-    // Leave the three finder-pattern zones blank; overlaid separately
-    const inFinder =
-      (row < 8 && col < 8) ||
-      (row < 8 && col >= size - 8) ||
-      (row >= size - 8 && col < 8)
-    if (inFinder) { cells.push(false); continue }
-
-    // Simple xorshift-ish pseudo-random per cell
-    let v = seed + row * 73856093 + col * 19349663
-    v ^= v << 13
-    v ^= v >> 17
-    v ^= v << 5
-    cells.push((Math.abs(v) % 100) < 46)
-  }
-  return cells
+const petIdentifier = computed(() => {
+  const legacyId = (props.pet as Pet & { _id?: unknown })._id
+  return String(props.pet.id || legacyId || '').trim()
 })
 
-/* ── Actions ───────────────────────────────────────── */
-function printPoster() {
-  window.print()
+const deepLink = computed(() => {
+  const path = `/pets/${encodeURIComponent(petIdentifier.value)}`
+  return new URL(path, window.location.origin).toString()
+})
+
+const shortDeepLink = computed(() => {
+  try {
+    const url = new URL(deepLink.value)
+    return `${url.host}${url.pathname}`
+  } catch {
+    return deepLink.value
+  }
+})
+
+const petPhoto = computed(() =>
+  normalizeImageUrl(props.pet.photo || props.pet.photos?.[0] || ''),
+)
+
+const speciesBreed = computed(() =>
+  [props.pet.species, props.pet.breed].filter((value) => value?.trim()).join(' · '),
+)
+
+const districtLocation = computed(() => {
+  const parts = [props.pet.district, props.pet.location].filter(
+    (value): value is string => Boolean(value?.trim()),
+  )
+  return [...new Set(parts)].join(' · ') || 'Location not provided'
+})
+
+const rewardLabel = computed(() => {
+  const reward = props.pet.reward?.trim()
+  if (!reward) return ''
+  return /reward/i.test(reward) ? reward : `${reward} Reward`
+})
+
+watch(petPhoto, () => {
+  photoFailed.value = false
+})
+
+watch(
+  deepLink,
+  async (targetUrl) => {
+    const sequence = ++qrRequestSequence
+    qrSvg.value = ''
+    qrError.value = ''
+
+    if (!petIdentifier.value) {
+      qrError.value = 'Pet link unavailable'
+      return
+    }
+
+    try {
+      const svg = await QRCode.toString(targetUrl, {
+        type: 'svg',
+        width: 140,
+        margin: 4,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#1a1a1a', light: '#ffffff' },
+      })
+      if (sequence === qrRequestSequence) qrSvg.value = svg
+    } catch {
+      if (sequence === qrRequestSequence) qrError.value = 'Unable to generate QR code'
+    }
+  },
+  { immediate: true },
+)
+
+function normalizeImageUrl(value: string): string {
+  const photo = value.trim()
+  if (!photo) return ''
+
+  try {
+    const apiUrl = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin)
+    const resolved = new URL(photo, `${apiUrl.origin}/`)
+    return ['http:', 'https:', 'data:', 'blob:'].includes(resolved.protocol) ? resolved.href : ''
+  } catch {
+    return ''
+  }
 }
 
-function savePoster() {
-  showFeedback('Choose “Save as PDF” in the print dialog.')
+function printPoster() {
+  if (!qrSvg.value) {
+    showFeedback('Please wait for the QR code to finish generating.')
+    return
+  }
   window.print()
 }
 
 async function sharePoster() {
-  const text = `${props.pet.name} is missing. Last seen near ${props.pet.location}. Contact ${props.pet.owner}${props.pet.ownerPhone ? ` at ${props.pet.ownerPhone}` : ' through PawRadar'}.`
+  const shareData = {
+    title: `Missing: ${props.pet.name}`,
+    text: `${props.pet.name} is missing. Open the live PawRadar report to view details or submit a sighting.`,
+    url: deepLink.value,
+  }
+
   try {
     if (navigator.share) {
-      await navigator.share({ title: `Missing: ${props.pet.name}`, text })
-      showFeedback('Poster details shared.')
+      await navigator.share(shareData)
+      showFeedback('Pet report shared.')
       return
     }
-    await navigator.clipboard.writeText(text)
-    showFeedback('Poster details copied to clipboard.')
+    await navigator.clipboard.writeText(deepLink.value)
+    showFeedback('Pet report link copied.')
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return
-    showFeedback('Unable to share. Please use Print instead.')
+    showFeedback('Unable to share. Copy the link from the flyer instead.')
   }
 }
 
@@ -247,428 +252,362 @@ function showFeedback(message: string) {
 }
 
 onBeforeUnmount(() => {
+  qrRequestSequence += 1
   if (feedbackTimer) clearTimeout(feedbackTimer)
 })
 </script>
 
 <style scoped>
-/* ═══════════════════════════════════════════
-   Overlay shell
-═══════════════════════════════════════════ */
 .poster-overlay {
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: var(--ink);
   display: flex;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
   flex-direction: column;
+  background: #252321;
 }
 
-/* ── Toolbar ── */
 .poster-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(var(--safe-top) + 12px) 16px 12px;
-  background: rgba(61, 56, 53, 0.96);
-  backdrop-filter: blur(10px);
   flex-shrink: 0;
+  padding: calc(var(--safe-top) + 10px) 16px 10px;
+  background: rgba(37, 35, 33, 0.97);
+  color: #fff;
 }
 
-.tool-btn {
-  width: 38px;
-  height: 38px;
+.poster-toolbar strong { font-size: 15px; letter-spacing: 0.01em; }
+
+.tool-button {
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.13);
   color: #fff;
-  transition: background 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.tool-btn:active { background: rgba(255, 255, 255, 0.26); }
+.tool-button:active { transform: scale(0.96); background: rgba(255, 255, 255, 0.22); }
 
-.toolbar-title {
-  font-size: 15px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: 0.02em;
-}
-
-/* ── Scroll area ── */
 .poster-scroll {
   flex: 1;
   overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 18px 14px 20px;
-  display: flex;
-  justify-content: center;
+  padding: 16px 12px 20px;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* ═══════════════════════════════════════════
-   THE POSTER SHEET
-═══════════════════════════════════════════ */
 .poster-sheet {
   width: 100%;
   max-width: 452px;
-  background: #fff;
-  border-radius: var(--radius-md);
-  padding: 26px 24px 20px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.42);
-  /* Slight paper texture via a very subtle gradient */
-  background-image: linear-gradient(180deg, #ffffff 0%, #fffefb 100%);
-}
-
-/* ── Massive headline ── */
-.poster-head { text-align: center; }
-
-.missing-word {
-  font-size: clamp(52px, 17vw, 76px);
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.03em;
-  color: var(--coral);
-  text-transform: uppercase;
-}
-
-.head-rule {
-  height: 5px;
-  background: var(--ink);
-  border-radius: 999px;
-  margin: 10px 0 8px;
-}
-
-.head-species {
-  font-size: 12.5px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  color: var(--ink-muted);
-}
-
-/* ── Pet name ── */
-.pet-name {
-  text-align: center;
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-  margin: 14px 0 12px;
-}
-
-/* ── Photo ── */
-.poster-photo-frame {
-  border: 5px solid var(--coral);
-  border-radius: var(--radius-sm);
+  margin: 0 auto;
   overflow: hidden;
-  aspect-ratio: 4 / 3;
-  background: var(--line);
+  border-radius: 14px;
+  background: #fff;
+  color: #1a1a1a;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
 }
 
-.poster-photo { width: 100%; height: 100%; object-fit: cover; }
-
-/* ── Reward ribbon ── */
-.reward-ribbon {
+.alert-banner {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin-top: 14px;
-  padding: 11px 0;
-  background: var(--ink);
-  border-radius: var(--radius-sm);
-}
-
-.reward-label {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.reward-amount {
-  font-size: 22px;
-  font-weight: 800;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #d9362b;
   color: #fff;
-  letter-spacing: -0.01em;
+  font-size: clamp(23px, 8vw, 34px);
+  font-weight: 950;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
-/* ── Stats grid ── */
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--line);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  margin-top: 16px;
-}
-
-.stat-cell {
-  background: #fff;
-  padding: 11px 13px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.stat-cell dt {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-.stat-cell dd {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--ink);
-  line-height: 1.3;
-}
-
-/* ── Description ── */
-.poster-desc { margin-top: 18px; }
-
-.poster-desc h3 {
-  font-size: 11.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-  margin-bottom: 5px;
-}
-
-.poster-desc p {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.55;
-  color: var(--ink);
-  text-wrap: pretty;
-}
-
-/* ── Contact + QR ── */
-.contact-row {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 2.5px dashed var(--line);
-}
-
-.contact-block { flex: 1; min-width: 0; }
-
-.contact-block h3 {
-  font-size: 11.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-  margin-bottom: 5px;
-}
-
-.contact-name { font-size: 15px; font-weight: 800; color: var(--ink); }
-
-.contact-phone {
-  font-size: 25px;
-  font-weight: 800;
-  color: var(--coral);
-  letter-spacing: -0.01em;
-  line-height: 1.15;
-  margin: 2px 0 4px;
-}
-
-.contact-note { font-size: 11.5px; font-weight: 700; color: var(--ink-muted); }
-
-/* ── Dummy QR code ── */
-.qr-block { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; }
-
-.qr-code {
-  position: relative;
-  width: 96px;
-  height: 96px;
-  display: grid;
-  grid-template-columns: repeat(21, 1fr);
-  grid-template-rows: repeat(21, 1fr);
-  padding: 5px;
-  background: #fff;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-}
-
-.qr-cell { background: transparent; }
-.qr-cell.on { background: var(--ink); }
-
-/* Finder patterns — the three squares in a real QR code */
-.qr-finder {
-  position: absolute;
-  width: 26px;
-  height: 26px;
-  border: 5px solid var(--ink);
-  background: #fff;
-}
-
-.qr-finder::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  background: var(--ink);
-}
-
-.qr-finder.tl { top: 5px; left: 5px; }
-.qr-finder.tr { top: 5px; right: 5px; }
-.qr-finder.bl { bottom: 5px; left: 5px; }
-
-.qr-caption {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--ink-muted);
-  text-align: center;
-  max-width: 96px;
-}
-
-/* ── Tear-off strips ── */
-.tear-strips {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 1px;
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 2.5px dashed var(--line);
-}
-
-.strip {
-  font-size: 8px;
-  font-weight: 800;
-  color: var(--ink-muted);
-  text-align: center;
-  padding: 12px 0;
-  border-left: 1px dashed var(--line);
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  justify-self: center;
+.alert-banner span:last-child {
+  padding-left: 12px;
+  border-left: 2px solid rgba(255, 255, 255, 0.55);
+  font-size: 0.72em;
   letter-spacing: 0.04em;
 }
 
-.strip:first-child { border-left: none; }
+.identity-block { padding: 18px 22px 14px; text-align: center; }
 
-/* ── Footer ── */
+.identity-block > p {
+  color: #5e5a56;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.identity-block h1 {
+  margin: 2px 0 8px;
+  font-size: clamp(42px, 15vw, 64px);
+  font-weight: 950;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.species-tag {
+  display: inline-flex;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.poster-photo-frame {
+  position: relative;
+  width: calc(100% - 36px);
+  aspect-ratio: 4 / 3;
+  margin: 0 18px;
+  overflow: hidden;
+  border: 5px solid #ef6351;
+  border-radius: 14px;
+  background: #fcf9f2;
+}
+
+.poster-photo,
+.photo-placeholder { width: 100%; height: 100%; }
+.poster-photo { display: block; object-fit: cover; }
+
+.photo-placeholder {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(29, 99, 96, 0.14), transparent 46%), #fcf9f2;
+  color: rgba(29, 99, 96, 0.58);
+}
+
+.reward-badge {
+  width: fit-content;
+  margin: 12px auto 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #ef6351;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  box-shadow: 0 5px 14px rgba(239, 99, 81, 0.25);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 1px;
+  margin: 16px 18px 0;
+  overflow: hidden;
+  border: 1px solid #dedbd4;
+  border-radius: 12px;
+  background: #dedbd4;
+}
+
+.detail-grid div { padding: 11px 12px; background: #fcf9f2; }
+
+.detail-grid dt,
+.description-block h2 {
+  margin-bottom: 3px;
+  color: #68625d;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.detail-grid dd { font-size: 13px; font-weight: 850; line-height: 1.35; }
+.description-block { margin: 15px 20px 0; }
+.description-block p { font-size: 12.5px; font-weight: 650; line-height: 1.48; }
+
+.recovery-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 166px;
+  gap: 16px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 17px 18px;
+  border-top: 2px dashed #d6d1c8;
+  border-bottom: 2px dashed #d6d1c8;
+}
+
+.contact-block { min-width: 0; }
+.contact-heading { color: #d9362b; font-size: 13px; font-weight: 900; }
+.contact-block strong, .contact-block span, .contact-block small { display: block; }
+
+.contact-block strong {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+  color: #1a1a1a;
+  font-size: clamp(20px, 6vw, 28px);
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.contact-block span { color: #1d6360; font-size: 12px; font-weight: 850; }
+
+.contact-block small {
+  margin-top: 8px;
+  color: #68625d;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.qr-block { display: flex; flex-direction: column; align-items: center; text-align: center; }
+
+.qr-code,
+.qr-loading {
+  width: 148px;
+  height: 148px;
+  padding: 4px;
+  border: 1px solid #dedbd4;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.qr-code :deep(svg) { display: block; width: 140px; height: 140px; }
+
+.qr-loading {
+  display: grid;
+  place-items: center;
+  color: #68625d;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.qr-block p {
+  max-width: 155px;
+  margin-top: 6px;
+  color: #1d6360;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
 .poster-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  gap: 12px;
+  padding: 12px 18px 15px;
+  color: #68625d;
+  font-size: 8.5px;
+  font-weight: 750;
 }
 
-.footer-brand {
+.poster-footer span:first-child {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--teal);
+  color: #1d6360;
+  font-size: 11px;
+  font-weight: 900;
 }
 
-.footer-note { font-size: 10px; font-weight: 700; color: var(--ink-muted); text-align: right; }
+.poster-footer span:last-child { overflow-wrap: anywhere; text-align: right; }
 
-/* ═══════════════════════════════════════════
-   Sticky action bar
-═══════════════════════════════════════════ */
 .poster-actions {
+  position: relative;
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 10px;
   flex-shrink: 0;
   padding: 12px 16px calc(var(--safe-bottom) + 14px);
-  background: rgba(61, 56, 53, 0.96);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(37, 35, 33, 0.97);
 }
 
-.action-feedback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #9be5da;
-  margin-bottom: 10px;
-}
-
-.feedback-enter-active, .feedback-leave-active { transition: all 0.25s ease; }
-.feedback-enter-from, .feedback-leave-to { opacity: 0; transform: translateY(6px); }
-
-.action-row { display: flex; gap: 10px; }
-
-.secondary-btn,
-.primary-btn {
-  flex: 1;
-  display: flex;
+.poster-actions button {
+  min-height: 48px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 15px 0;
-  border-radius: var(--radius-md);
-  font-size: 14.5px;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 850;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.share-button { background: rgba(255, 255, 255, 0.14); }
+.print-button { background: #ef6351; box-shadow: 0 6px 18px rgba(239, 99, 81, 0.34); }
+.poster-actions button:active:not(:disabled) { transform: scale(0.98); }
+.poster-actions button:disabled { opacity: 0.55; }
+
+.feedback {
+  position: absolute;
+  right: 18px;
+  bottom: calc(100% + 8px);
+  left: 18px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: #1d6360;
+  color: #fff;
+  font-size: 12px;
   font-weight: 800;
-  transition: transform 0.15s ease;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
-.secondary-btn {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+.feedback-enter-active, .feedback-leave-active { transition: all 0.2s ease; }
+.feedback-enter-from, .feedback-leave-to { opacity: 0; transform: translateY(6px); }
+
+@media (max-width: 380px) {
+  .recovery-block { grid-template-columns: 1fr; }
+  .contact-block { text-align: center; }
 }
 
-.primary-btn {
-  background: var(--coral);
-  color: #fff;
-  box-shadow: 0 6px 18px rgba(239, 99, 81, 0.42);
-}
-
-.secondary-btn:active,
-.primary-btn:active { transform: scale(0.97); }
-
-/* ═══════════════════════════════════════════
-   PRINT OPTIMIZATION
-   Strips all app chrome and fills the page.
-═══════════════════════════════════════════ */
 @media print {
-  .no-print { display: none !important; }
-
-  .poster-overlay {
-    position: static;
-    background: #fff;
-    display: block;
+  :global(html),
+  :global(body),
+  :global(#app) {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
   }
 
+  :global(.app > :not(.poster-overlay)),
+  .no-print { display: none !important; }
+
+  .poster-overlay,
   .poster-scroll {
-    overflow: visible;
+    position: static;
+    width: 210mm;
+    max-width: none;
+    min-height: 297mm;
+    margin: 0;
     padding: 0;
-    display: block;
+    overflow: visible;
+    background: #fff;
   }
 
   .poster-sheet {
+    box-sizing: border-box;
+    width: 210mm;
     max-width: none;
-    width: 100%;
-    box-shadow: none;
+    min-height: 297mm;
     border-radius: 0;
-    padding: 0;
-    background-image: none;
+    box-shadow: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
-  /* Force high-contrast ink for laser printers */
-  .missing-word { font-size: 96pt; color: #000 !important; }
-  .head-rule { background: #000 !important; }
-  .poster-photo-frame { border-color: #000 !important; }
-  .reward-ribbon { background: #000 !important; }
-  .contact-phone { color: #000 !important; }
-  .qr-cell.on, .qr-finder, .qr-finder::after { background: #000 !important; border-color: #000 !important; }
+  .alert-banner,
+  .reward-badge,
+  .qr-code,
+  .qr-code :deep(svg) {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 
-  /* Never split the poster across pages */
-  .poster-sheet { page-break-inside: avoid; break-inside: avoid; }
+  .poster-photo-frame { height: 102mm; aspect-ratio: auto; }
 
-  @page { margin: 12mm; }
+  @page { size: A4 portrait; margin: 0; }
 }
 </style>

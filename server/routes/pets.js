@@ -4,6 +4,7 @@ import {
   listMyPets,
   listMySightings,
   getNearbyPets,
+  smartMatch,
   getPet,
   listSightings,
   confirmSighting,
@@ -19,6 +20,7 @@ const router = Router()
 router.get('/', listPets)
 router.get('/mine', requireAuth, listMyPets)
 router.get('/nearby', getNearbyPets)
+router.post('/smart-match', smartMatch)
 router.post('/report', optionalAuth, reportPet)
 router.get('/sightings/mine', requireAuth, listMySightings)
 

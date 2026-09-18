@@ -5,6 +5,7 @@ import petsRouter from '../routes/pets.js'
 import notificationsRouter from '../routes/notifications.js'
 import straysRouter from '../routes/strays.js'
 import authRouter from '../routes/auth.js'
+import matchesRouter from '../routes/matches.js'
 
 function findRoute(router, path, method) {
   return router.stack.find(
@@ -26,6 +27,18 @@ test('sighting confirmation requires authentication', () => {
   const route = findRoute(petsRouter, '/:id/sightings/:sightingId/confirm', 'post')
   assert.ok(route, 'confirmation route must be registered')
   assert.deepEqual(middlewareNames(route), ['requireAuth', 'confirmSighting'])
+})
+
+test('smart match is exposed as one public static endpoint', () => {
+  const route = findRoute(petsRouter, '/smart-match', 'post')
+  assert.ok(route, 'POST /smart-match must be registered')
+  assert.deepEqual(middlewareNames(route), ['smartMatch'])
+})
+
+test('candidate matching is available at the frontend contract path', () => {
+  const route = findRoute(matchesRouter, '/candidates', 'post')
+  assert.ok(route, 'POST /candidates must be registered')
+  assert.deepEqual(middlewareNames(route), ['smartMatch'])
 })
 
 test('chat inbox, reads, and writes require authentication', () => {

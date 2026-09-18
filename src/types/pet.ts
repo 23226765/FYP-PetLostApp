@@ -28,6 +28,7 @@ export interface Pet {
   breed: string
   district?: HongKongDistrict | string
   photo: string
+  photos?: string[]
   description: string
   details?: string
   reward?: string

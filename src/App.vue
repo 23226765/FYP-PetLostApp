@@ -42,20 +42,70 @@
         @auth-needed="authOpen = true"
       />
       <PostPetScreen v-if="tab === 'post'" :user="currentUser" @done="onPosted" />
+      <ChatInboxScreen
+        v-show="tab === 'messages'"
+        :user="currentUser"
+        @auth-needed="openLogin"
+        @explore-radar="goTab('radar')"
+        @open-chat="openChatFromInbox"
+        @unread-change="messageUnreadCount = $event"
+      />
       <ProfileScreen
         v-if="tab === 'profile'"
         :user="currentUser"
-        :alerts-enabled="alertsEnabled"
-        :radius-km="radiusKm"
-        @login="authOpen = true"
-        @logout="logout"
-        @open-settings="openSettings"
-        @open-activity="openActivity"
-        @open-inbox="openInbox"
-        @open-boost="openBoost"
-        @toggle-alerts="handleAlertsToggle"
+        @login="openLogin"
       />
     </main>
+
+    <RouterView v-slot="{ Component, route: currentRoute }">
+      <Transition name="page">
+        <component
+          :is="Component"
+          v-if="currentRoute.name === 'settings'"
+          :user="currentUser"
+          :alerts-enabled="alertsEnabled"
+          :radius-km="radiusKm"
+          @auth-needed="openLogin"
+          @logout="logout"
+          @updated="handleUserUpdated"
+          @open-boost="openBoost"
+          @toggle-alerts="handleAlertsToggle"
+          @radius-change="onRadiusChange"
+        />
+        <component
+          :is="Component"
+          v-else-if="currentRoute.name === 'saved'"
+          @open-pet="openPet"
+          @found="openSighting"
+        />
+        <component
+          :is="Component"
+          v-else-if="currentRoute.name === 'my-reports'"
+          @close="router.back()"
+        />
+      </Transition>
+    </RouterView>
+
+    <Transition name="page">
+      <section
+        v-if="route.name === 'pet-detail' && !selectedPet && (deepLinkLoading || deepLinkError)"
+        class="deep-link-state"
+        aria-live="polite"
+      >
+        <span v-if="deepLinkLoading" class="deep-link-spinner" aria-hidden="true" />
+        <template v-else>
+          <span class="deep-link-icon" aria-hidden="true">
+            <AppIcon name="paw" :size="30" />
+          </span>
+          <h1>Pet report unavailable</h1>
+          <p>{{ deepLinkError }}</p>
+          <div class="deep-link-actions">
+            <button type="button" @click="retryDeepLinkedPet">Try again</button>
+            <button type="button" class="secondary" @click="closePetDetail">Explore Radar</button>
+          </div>
+        </template>
+      </section>
+    </Transition>
 
     <!-- Pet detail overlay -->
     <Transition name="page">
@@ -63,7 +113,7 @@
         v-if="selectedPet"
         :pet="selectedPet"
         :user="currentUser"
-        @close="selectedPet = null"
+        @close="closePetDetail"
         @found="openSighting(selectedPet)"
         @poster="posterPet = selectedPet"
         @chat="openChat(selectedPet)"
@@ -76,6 +126,7 @@
       <SmartMatchScreen
         v-if="showSmartMatch"
         :pets="pets"
+        :user-location="userLocation"
         @close="showSmartMatch = false"
         @open-match="openPet"
         @confirm-match="confirmSmartMatch"
@@ -95,15 +146,6 @@
         :pet="chatPet"
         :user="currentUser"
         @close="chatPet = null"
-      />
-    </Transition>
-
-    <!-- Conversation inbox overlay -->
-    <Transition name="page">
-      <ChatInboxScreen
-        v-if="showInbox"
-        @close="showInbox = false"
-        @open-chat="openChatFromInbox"
       />
     </Transition>
 
@@ -186,21 +228,6 @@
       />
     </Transition>
 
-    <!-- Settings overlay -->
-    <Transition name="page">
-      <UserSettingsScreen
-        v-if="showSettings"
-        :user="currentUser"
-        :alerts-enabled="alertsEnabled"
-        :radius-km="radiusKm"
-        @close="showSettings = false"
-        @logout="logout"
-        @updated="handleUserUpdated"
-        @toggle-alerts="handleAlertsToggle"
-        @radius-change="onRadiusChange"
-      />
-    </Transition>
-
     <!-- Activity history overlay -->
     <Transition name="page">
       <AdoptionHistoryScreen v-if="showActivity" @close="showActivity = false" />
@@ -257,6 +284,41 @@
       <button
         type="button"
         class="nav-item"
+        :class="{ active: tab === 'messages' }"
+        :aria-current="tab === 'messages' ? 'page' : undefined"
+        :aria-label="messageUnreadCount ? `Messages, ${messageUnreadCount} unread` : 'Messages'"
+        @click="goTab('messages')"
+      >
+        <span class="nav-icon-wrap">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="nav-icon"
+            aria-hidden="true"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span
+            v-if="messageUnreadCount > 0"
+            class="nav-unread"
+            aria-hidden="true"
+          >
+            {{ messageUnreadCount > 9 ? '9+' : messageUnreadCount }}
+          </span>
+        </span>
+        <span>Messages</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
         :class="{ active: tab === 'profile' }"
         :aria-current="tab === 'profile' ? 'page' : undefined"
         @click="goTab('profile')"
@@ -269,7 +331,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import type { Pet } from './types/pet'
 import type { AppNotification } from './types/notification'
@@ -292,7 +355,6 @@ import PostPetScreen from './components/PostPetScreen.vue'
 import ProfileScreen from './components/ProfileScreen.vue'
 import PetDetail from './components/PetDetail.vue'
 import AuthScreen from './components/AuthScreen.vue'
-import UserSettingsScreen from './components/UserSettingsScreen.vue'
 import SmartMatchScreen from './components/SmartMatchScreen.vue'
 import PosterModal from './components/PosterModal.vue'
 import Chatscreen from './components/Chatscreen.vue'
@@ -302,14 +364,17 @@ import AdoptionHistoryScreen from './components/AdoptionHistoryScreen.vue'
 import BoostScreen from './components/BoostScreen.vue'
 import StrayRescueScreen from './components/StrayRescueScreen.vue'
 
-type Tab = 'radar' | 'strays' | 'post' | 'profile'
+type Tab = 'radar' | 'strays' | 'post' | 'messages' | 'profile'
+
+const router = useRouter()
+const route = useRoute()
 
 // Hong Kong centre — fallback when geolocation is unavailable/denied.
 const DEFAULT_CENTER = { lat: 22.2825, lng: 114.1897 }
 
 type SpeciesFilter = 'All' | 'Dogs' | 'Cats' | 'Other'
 
-const tab = ref<Tab>('radar')
+const tab = ref<Tab>(route.name === 'profile' ? 'profile' : 'radar')
 const pets = ref<Pet[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -322,16 +387,17 @@ const hasPreciseLocation = ref(false)
 const currentUser = ref<User | null>(null)
 const alertsEnabled = ref(true)
 const authOpen = ref(false)
-const showSettings = ref(false)
 const showSmartMatch = ref(false)
 const showNotifications = ref(false)
 const showActivity = ref(false)
-const showInbox = ref(false)
 const showBoost = ref(false)
 const notifications = ref<AppNotification[]>([])
 const selectedPet = ref<Pet | null>(null)
+const deepLinkLoading = ref(false)
+const deepLinkError = ref('')
 const posterPet = ref<Pet | null>(null)
 const chatPet = ref<ChatPet | null>(null)
+const messageUnreadCount = ref(0)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
 const sightingPhoto = ref('')
@@ -340,6 +406,27 @@ const sightingError = ref('')
 const toastPet = ref<Pet | null>(null)
 const unreadCount = computed(
   () => notifications.value.filter((notification) => !notification.read).length,
+)
+let deepLinkRequestSequence = 0
+
+watch(
+  () => ({ name: route.name, petId: route.params.id }),
+  ({ name: routeName, petId }, previousRoute) => {
+    if (routeName === 'profile') tab.value = 'profile'
+    if (routeName === 'login') authOpen.value = true
+    if (routeName === 'pet-detail') {
+      authOpen.value = false
+      const id = Array.isArray(petId) ? petId[0] : petId
+      if (typeof id === 'string' && id.trim()) void openDeepLinkedPet(id)
+      else deepLinkError.value = 'This pet link is invalid.'
+    } else {
+      deepLinkRequestSequence += 1
+      if (previousRoute?.name === 'pet-detail') selectedPet.value = null
+      deepLinkLoading.value = false
+      deepLinkError.value = ''
+    }
+  },
+  { immediate: true },
 )
 
 const PET_RELOAD_DEBOUNCE_MS = 300
@@ -463,7 +550,7 @@ function schedulePetsReload() {
 async function restoreSession() {
   const token = localStorage.getItem('token')
   if (!token) {
-    authOpen.value = true
+    if (route.name !== 'pet-detail') authOpen.value = true
     return
   }
   try {
@@ -473,7 +560,7 @@ async function restoreSession() {
     radiusKm.value = user.alertRadiusKm || radiusKm.value
   } catch {
     localStorage.removeItem('token')
-    authOpen.value = true
+    if (route.name !== 'pet-detail') authOpen.value = true
   }
 }
 
@@ -482,6 +569,7 @@ function handleAuth(user: User) {
   alertsEnabled.value = user.alertsEnabled !== false
   radiusKm.value = user.alertRadiusKm || radiusKm.value
   authOpen.value = false
+  if (route.name === 'login') void router.replace('/')
   void activateNotifications()
 }
 
@@ -491,11 +579,12 @@ function logout() {
   notifications.value = []
   stopNotificationPolling()
   chatPet.value = null
-  showInbox.value = false
-  showSettings.value = false
+  messageUnreadCount.value = 0
   showActivity.value = false
   showBoost.value = false
+  tab.value = 'radar'
   authOpen.value = true
+  void router.replace('/login')
 }
 
 function clearToastTimers() {
@@ -523,6 +612,17 @@ function scheduleToast(pet: Pet | null) {
 function goTab(t: Tab) {
   tab.value = t
   selectedPet.value = null
+  if (t === 'profile') {
+    if (route.name !== 'profile') void router.push('/profile')
+  } else if (route.name === 'profile') {
+    void router.push('/')
+  }
+  if (t === 'messages' && !currentUser.value) openLogin()
+}
+
+function openLogin() {
+  if (route.name !== 'login') void router.push('/login')
+  authOpen.value = true
 }
 
 function openPet(petOrId: Pet | string | number) {
@@ -536,6 +636,39 @@ function openPet(petOrId: Pet | string | number) {
   showNotifications.value = false
 }
 
+async function openDeepLinkedPet(petId: string) {
+  const sequence = ++deepLinkRequestSequence
+  const normalizedId = petId.trim()
+  selectedPet.value = null
+  deepLinkLoading.value = true
+  deepLinkError.value = ''
+
+  try {
+    const pet = await getPet(normalizedId)
+    if (sequence !== deepLinkRequestSequence || route.name !== 'pet-detail') return
+    selectedPet.value = pet
+  } catch (cause) {
+    if (sequence !== deepLinkRequestSequence || route.name !== 'pet-detail') return
+    deepLinkError.value =
+      cause instanceof Error ? cause.message : 'This pet report could not be loaded.'
+  } finally {
+    if (sequence === deepLinkRequestSequence) deepLinkLoading.value = false
+  }
+}
+
+function retryDeepLinkedPet() {
+  const id = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
+  if (typeof id === 'string' && id.trim()) void openDeepLinkedPet(id)
+}
+
+function closePetDetail() {
+  deepLinkRequestSequence += 1
+  selectedPet.value = null
+  deepLinkLoading.value = false
+  deepLinkError.value = ''
+  if (route.name === 'pet-detail') void router.push('/')
+}
+
 function openChat(pet: ChatPet | null) {
   if (!pet) return
   if (!currentUser.value) {
@@ -543,26 +676,10 @@ function openChat(pet: ChatPet | null) {
     return
   }
   if (pet.reportedBy === currentUser.value.id && !pet.participantId) {
-    showInbox.value = true
+    tab.value = 'messages'
     return
   }
   chatPet.value = pet
-}
-
-function openInbox() {
-  if (!currentUser.value) {
-    authOpen.value = true
-    return
-  }
-  showInbox.value = true
-}
-
-function openSettings() {
-  if (!currentUser.value) {
-    authOpen.value = true
-    return
-  }
-  showSettings.value = true
 }
 
 function openActivity() {
@@ -586,7 +703,6 @@ function handleUserUpdated(user: User) {
 }
 
 function openChatFromInbox(pet: ChatPet) {
-  showInbox.value = false
   openChat(pet)
 }
 
@@ -780,11 +896,12 @@ function handleUnauthorized() {
   notifications.value = []
   stopNotificationPolling()
   chatPet.value = null
-  showInbox.value = false
-  showSettings.value = false
+  messageUnreadCount.value = 0
   showActivity.value = false
   showBoost.value = false
+  tab.value = 'radar'
   authOpen.value = true
+  void router.replace('/login')
 }
 
 onMounted(() => {
@@ -797,6 +914,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  deepLinkRequestSequence += 1
   petsRequestSequence += 1
   petsAbortController?.abort()
   petsAbortController = null
@@ -818,6 +936,80 @@ onBeforeUnmount(() => {
 
 main {
   min-height: 100dvh;
+}
+
+.deep-link-state {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  display: flex;
+  width: 100%;
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 32px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fcf9f2;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.deep-link-state h1 {
+  margin-top: 14px;
+  color: var(--ink);
+  font-size: 21px;
+}
+
+.deep-link-state p {
+  max-width: 310px;
+  margin-top: 7px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.deep-link-icon {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+}
+
+.deep-link-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(29, 99, 96, 0.14);
+  border-top-color: #1d6360;
+  border-radius: 50%;
+  animation: deep-link-spin 0.75s linear infinite;
+}
+
+.deep-link-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.deep-link-actions button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background: #1d6360;
+  color: #fff;
+  font-weight: 800;
+}
+
+.deep-link-actions button.secondary {
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+}
+
+@keyframes deep-link-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Proximity toast */
@@ -1081,14 +1273,14 @@ main {
   transform: translateX(-50%);
 
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   align-items: end;
-  gap: 8px;
+  gap: 2px;
 
   box-sizing: border-box;
   width: 100%;
   max-width: 480px;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
 
   border: 1px solid rgba(29, 99, 96, 0.09);
   border-bottom: 0;
@@ -1114,7 +1306,7 @@ main {
   min-width: 44px;
   min-height: 52px;
   margin: 0;
-  padding: 7px 10px;
+  padding: 7px 4px;
   border: 0;
   border-radius: 16px;
   background: transparent;
@@ -1140,6 +1332,34 @@ main {
   color: var(--nav-teal);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
   font-weight: 750;
+}
+
+.nav-icon-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+}
+
+.nav-unread {
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  right: -10px;
+  min-width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border: 2.5px solid var(--nav-base);
+  border-radius: 999px;
+  background: var(--nav-coral);
+  color: #fff;
+  box-shadow: 0 2px 7px rgba(239, 99, 81, 0.42);
+  font-size: 9.5px;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .tabbar .report-item {

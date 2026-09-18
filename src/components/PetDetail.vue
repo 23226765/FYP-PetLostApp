@@ -15,6 +15,29 @@
       <button class="back" aria-label="Go back" @click="emit('close')">
         <AppIcon name="back" :size="20" />
       </button>
+      <button
+        class="save"
+        :class="{ saved: isSaved(pet.id) }"
+        type="button"
+        :aria-label="isSaved(pet.id) ? `Remove ${pet.name} from saved posts` : `Save ${pet.name}`"
+        :aria-pressed="isSaved(pet.id)"
+        @click="toggleSave(pet.id)"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          :fill="isSaved(pet.id) ? 'currentColor' : 'none'"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
+        </svg>
+      </button>
       <button class="share" aria-label="Share this pet's poster" @click="emit('poster')">
         <AppIcon name="share" :size="19" />
       </button>
@@ -187,6 +210,7 @@ import { computed, ref, watch } from 'vue'
 import type { Pet, Sighting } from '../types/pet'
 import type { User } from '../types/user'
 import { confirmSighting, getPetSightings } from '../services/api'
+import { useSavedPets } from '../composables/useSavedPets'
 import { createContactActions } from '../utils/contact'
 import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
@@ -199,6 +223,8 @@ const emit = defineEmits<{
   chat: []
   'auth-needed': []
 }>()
+
+const { isSaved, toggleSave } = useSavedPets()
 
 const sightings = ref<Sighting[]>([])
 const sightingsLoading = ref(true)
@@ -354,6 +380,7 @@ watch(() => props.pet.id, loadSightings, { immediate: true })
 }
 
 .back,
+.save,
 .share {
   position: absolute;
   top: calc(var(--safe-top) + 14px);
@@ -369,6 +396,21 @@ watch(() => props.pet.id, loadSightings, { immediate: true })
 
 .back {
   left: 16px;
+}
+
+.save {
+  right: 66px;
+  color: #1d6360;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.save.saved {
+  background: #1d6360;
+  color: #fff;
+}
+
+.save:active {
+  transform: scale(0.94);
 }
 
 .share {

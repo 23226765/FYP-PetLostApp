@@ -30,7 +30,7 @@ http.interceptors.response.use(
     }
     if (axios.isCancel(error)) return Promise.reject(error)
 
-    const responseMessage = error?.response?.data?.error
+    const responseMessage = error?.response?.data?.error ?? error?.response?.data?.message
     const message =
       typeof responseMessage === 'string'
         ? responseMessage
@@ -62,6 +62,42 @@ export async function getNearbyPets(
 export async function getAllPets(): Promise<Pet[]> {
   const { data } = await http.get<{ pets: Pet[] }>('/pets')
   return data.pets
+}
+
+export interface SmartMatchCriteria {
+  species: Pet['species']
+  breed?: string
+  /** GeoJSON coordinate order: [longitude, latitude]. */
+  coordinates: [number, number]
+  limit?: number
+}
+
+export interface SmartMatchBreakdown {
+  species: number
+  breed: number
+  distance: number
+  recency: number
+  distanceKm: number | null
+  daysAgo: number | null
+}
+
+export type SmartMatchCandidate = Pet & {
+  confidence: number
+  totalScore: number
+  breakdown: SmartMatchBreakdown
+  sightingCount: number
+}
+
+export async function getSmartMatches(
+  criteria: SmartMatchCriteria,
+  signal?: AbortSignal,
+): Promise<SmartMatchCandidate[]> {
+  const { data } = await http.post<{ matches: SmartMatchCandidate[] }>(
+    '/matches/candidates',
+    criteria,
+    { signal },
+  )
+  return data.matches
 }
 
 export async function getMyPets(): Promise<Pet[]> {
@@ -336,11 +372,16 @@ export async function getProfile(): Promise<User> {
   return data.user
 }
 
-export async function updateProfile(payload: {
-  name: string
-  email: string
-  phone: string
-}): Promise<User> {
-  const { data } = await http.patch<{ user: User }>('/auth/me', payload)
+export interface UpdateProfilePayload {
+  name?: string
+  displayName?: string
+  realName?: string
+  email?: string
+  phone?: string
+  avatar?: string
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+  const { data } = await http.patch<{ success: boolean; user: User }>('/auth/me', payload)
   return data.user
 }

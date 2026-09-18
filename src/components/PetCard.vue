@@ -7,15 +7,39 @@
         alt=""
         aria-hidden="true"
         loading="lazy"
-        @error="imageFailed = true"
+        referrerpolicy="no-referrer"
+        @error="handleImageError"
       />
       <div v-else class="photo-placeholder" aria-hidden="true">
         <AppIcon name="paw" :size="42" />
       </div>
-      <span class="sr-only">Photo of {{ pet.name }}, a missing {{ pet.breed }}</span>
+      <span class="sr-only">Photo of {{ pet.name }}, a missing {{ pet.breed || pet.species }}</span>
       <span class="badge" :class="pet.status">
         {{ pet.status === 'lost' ? 'LOST' : 'SIGHTED' }}
       </span>
+      <button
+        class="save-button"
+        :class="{ saved: isSaved(pet.id) }"
+        type="button"
+        :aria-label="isSaved(pet.id) ? `Remove ${pet.name} from saved posts` : `Save ${pet.name}`"
+        :aria-pressed="isSaved(pet.id)"
+        @click.stop="toggleSave(pet.id)"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="21"
+          height="21"
+          viewBox="0 0 24 24"
+          :fill="isSaved(pet.id) ? 'currentColor' : 'none'"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
+        </svg>
+      </button>
       <span class="distance">
         <AppIcon name="pin" :size="14" />
         {{ pet.distanceKm }} km
@@ -26,7 +50,7 @@
         <h3>{{ pet.name }}</h3>
         <span class="posted">{{ pet.postedAgo }}</span>
       </div>
-      <p class="meta">{{ pet.breed }} · Last seen {{ pet.lastSeen }}</p>
+      <p class="meta"><template v-if="pet.breed">{{ pet.breed }} &middot; </template>Last seen {{ formatTime(pet.lastSeen) }}</p>
       <div class="actions">
         <button class="found-btn" @click.stop="emit('found')">
           <AppIcon name="eye" :size="17" />
@@ -41,13 +65,18 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { Pet } from '../data/pets'
+import { useSavedPets } from '../composables/useSavedPets'
 import AppIcon from './AppIcon.vue'
 
 const props = defineProps<{ pet: Pet }>()
 const emit = defineEmits<{ open: []; found: [] }>()
+const { isSaved, toggleSave } = useSavedPets()
 
 const imageFailed = ref(false)
-const photoUrl = computed(() => normalizeImageUrl(props.pet.photo))
+const petImage = computed(
+  () => props.pet.photo || (props.pet.photos && props.pet.photos[0]) || null,
+)
+const photoUrl = computed(() => normalizeImageUrl(petImage.value))
 
 watch(photoUrl, () => {
   imageFailed.value = false
@@ -65,6 +94,30 @@ function normalizeImageUrl(value: string | null | undefined): string {
   } catch {
     return ''
   }
+}
+
+function handleImageError(event: Event) {
+  const image = event.currentTarget as HTMLImageElement | null
+  if (image && (image.currentSrc === photoUrl.value || image.src === photoUrl.value)) {
+    imageFailed.value = true
+  }
+}
+
+function formatTime(value: string): string {
+  const time = value?.trim()
+  if (!time) return 'recently'
+
+  const timestamp = Date.parse(time)
+  if (Number.isNaN(timestamp)) return time
+
+  const elapsed = Math.max(0, Date.now() - timestamp)
+  const minutes = Math.floor(elapsed / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return days === 1 ? 'Yesterday' : `${days}d ago`
 }
 </script>
 
@@ -123,6 +176,33 @@ function normalizeImageUrl(value: string | null | undefined): string {
 
 .badge.sighted {
   background: var(--teal);
+}
+
+.save-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(29, 99, 96, 0.08);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1d6360;
+  box-shadow: 0 5px 16px rgba(29, 99, 96, 0.15);
+  backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.save-button.saved {
+  border-color: #1d6360;
+  background: #1d6360;
+  color: #fff;
+}
+
+.save-button:active {
+  transform: scale(0.94);
 }
 
 .distance {
@@ -196,5 +276,11 @@ h3 {
   font-size: 13.5px;
   font-weight: 800;
   color: var(--coral);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-button {
+    transition: none;
+  }
 }
 </style>

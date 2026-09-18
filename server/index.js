@@ -17,12 +17,14 @@ const [
   { default: notificationsRouter },
   { default: chatRouter },
   { default: straysRouter },
+  { default: matchesRouter },
 ] = await Promise.all([
   import('./routes/pets.js'),
   import('./routes/auth.js'),
   import('./routes/notifications.js'),
   import('./routes/chat.js'),
   import('./routes/strays.js'),
+  import('./routes/matches.js'),
 ])
 
 const app = express()
@@ -51,7 +53,8 @@ app.use(
     credentials: true,
   }),
 )
-app.use(express.json({ limit: '2mb' }))
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 app.get('/api/health', (_req, res) => {
   const state = mongoose.connection.readyState
@@ -67,6 +70,7 @@ app.use('/api/auth', authRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/chat', chatRouter)
 app.use('/api/strays', straysRouter)
+app.use('/api/matches', matchesRouter)
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }))
 app.use(errorHandler)

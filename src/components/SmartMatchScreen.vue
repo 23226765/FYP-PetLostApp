@@ -3,12 +3,10 @@
     ════════════════════════════════════════════════════════════════
     SmartMatchScreen.vue
     ════════════════════════════════════════════════════════════════
-    Photo-assisted manual comparison screen. Three visual states:
+    Photo-assisted manual comparison screen. Two visual states:
 
       1. IDLE      → dashed upload dropzone with paw icon
-      2. SCANNING  → uploaded photo with a glowing teal scan line
-                     sweeping top→bottom, plus a progress readout
-      3. RESULTS   → "Potential Matches" list reusing the exact
+      2. RESULTS   → "Potential Matches" list reusing the exact
                      PetCard visual language, with an added coral
                      review-priority badge on every card
 
@@ -17,7 +15,7 @@
       --ink-muted, --line, --radius-lg/md/sm, --shadow-card/float
     ════════════════════════════════════════════════════════════════
   -->
-  <div class="smart-match">
+  <div ref="screenRoot" class="smart-match">
 
     <!-- ─────────── Sticky header ─────────── -->
     <header class="top">
@@ -33,7 +31,7 @@
       <h2>Found a pet? Let's identify them.</h2>
       <p>
         Keep your photo beside active nearby reports and compare markings manually.
-        Candidates are ranked using real distance and sighting activity.
+        Candidates are ranked by species, breed similarity, distance, and report recency.
       </p>
     </section>
 
@@ -41,20 +39,72 @@
          STATE 1 — IDLE: upload dropzone
     ═══════════════════════════════════════════ -->
     <div v-if="state === 'idle'" class="upload-zone-wrap">
+      <div class="criteria-card">
+        <label class="criteria-field">
+          <span>Observed species</span>
+          <select v-model="observationSpecies">
+            <option value="Dog">Dog</option>
+            <option value="Cat">Cat</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+        <label class="criteria-field">
+          <span>Observed breed <small>(optional)</small></span>
+          <input
+            v-model.trim="observationBreed"
+            type="text"
+            maxlength="120"
+            placeholder="e.g. Shiba Inu"
+          />
+        </label>
+      </div>
+
+      <div class="location-context">
+        <span class="location-context-icon" aria-hidden="true">
+          <AppIcon name="pin" :size="18" />
+        </span>
+        <label for="match-location">
+          <strong>Sighting Location: {{ selectedDistrict || 'Current GPS' }}</strong>
+          <span>Distance scoring uses this point</span>
+        </label>
+        <select id="match-location" v-model="selectedDistrict" aria-label="Sighting location">
+          <option value="">Current GPS</option>
+          <option v-for="district in HK_DISTRICTS" :key="district" :value="district">
+            {{ district }}
+          </option>
+        </select>
+      </div>
+
       <button
         class="upload-zone"
-        :class="{ dragging: isDragging }"
+        :class="{ dragging: isDragging, 'has-photo': uploadedPhoto }"
+        :disabled="isLoading"
         aria-label="Upload a photo to find matches"
         @click="triggerFilePicker"
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
         @drop.prevent="onDrop"
       >
-        <span class="upload-icon">
-          <AppIcon name="camera" :size="30" />
+        <img
+          v-if="normalizedImageUrl(uploadedPhoto) && !uploadedPhotoFailed"
+          :src="normalizedImageUrl(uploadedPhoto)"
+          class="selected-upload-photo"
+          alt="Selected sighting"
+          @error="uploadedPhotoFailed = true"
+        />
+        <template v-else>
+          <span class="upload-icon">
+            <AppIcon name="camera" :size="30" />
+          </span>
+          <span class="upload-title">
+            {{ uploadedPhoto ? 'Photo unavailable — choose another' : 'Tap to upload a photo' }}
+          </span>
+          <span class="upload-sub">or drag &amp; drop · JPG, PNG up to 10 MB</span>
+        </template>
+        <span v-if="uploadedPhoto && !uploadedPhotoFailed" class="change-photo">
+          <AppIcon name="camera" :size="15" />
+          Change photo
         </span>
-        <span class="upload-title">Tap to upload a photo</span>
-        <span class="upload-sub">or drag &amp; drop · JPG, PNG up to 10 MB</span>
       </button>
 
       <!-- Hidden native file input -->
@@ -67,63 +117,24 @@
       />
 
       <!-- Demo shortcut so the flow is testable without a real file -->
-      <button class="demo-btn" @click="startScan(demoPhoto)">
+      <button class="demo-btn" :disabled="isLoading" @click="selectPhoto(demoPhoto)">
         <AppIcon name="paw" :size="17" />
         Use a sample photo instead
       </button>
+
+      <button
+        class="btn-primary"
+        :disabled="isLoading || !uploadedPhoto"
+        @click="handleFindMatches"
+      >
+        <span v-if="isLoading" class="button-spinner" aria-hidden="true" />
+        {{ isLoading ? 'Finding matches…' : 'Find Matching Pets' }}
+      </button>
+      <p v-if="matchError" class="form-error" role="alert">{{ matchError }}</p>
     </div>
 
     <!-- ═══════════════════════════════════════════
-         STATE 2 — SCANNING: photo + glowing scan line
-    ═══════════════════════════════════════════ -->
-    <div v-else-if="state === 'scanning'" class="scan-stage">
-      <div class="scan-frame">
-        <img
-          v-if="normalizedImageUrl(uploadedPhoto) && !uploadedPhotoFailed"
-          :src="normalizedImageUrl(uploadedPhoto)"
-          alt=""
-          aria-hidden="true"
-          class="scan-photo"
-          @error="uploadedPhotoFailed = true"
-        />
-        <div v-else class="photo-placeholder" aria-hidden="true">
-          <AppIcon name="paw" :size="52" />
-        </div>
-        <span class="sr-only">Photo being prepared for comparison</span>
-
-        <!-- Dimming veil so the glow reads clearly -->
-        <div class="scan-veil" />
-
-        <!-- ★ The glowing teal scanning line ★ -->
-        <div class="scan-line" />
-
-        <!-- Corner brackets for a viewfinder feel -->
-        <span class="bracket tl" />
-        <span class="bracket tr" />
-        <span class="bracket bl" />
-        <span class="bracket br" />
-
-        <!-- Pulsing ring badge (reuses pulse-ring keyframe from style.css) -->
-        <div class="scan-pulse">
-          <span class="pulse-ring" />
-          <span class="pulse-core">
-            <AppIcon name="radar" :size="22" />
-          </span>
-        </div>
-      </div>
-
-      <!-- Live status readout -->
-      <div class="scan-status" role="status" aria-live="polite">
-        <p class="scan-label">{{ scanStage }}</p>
-        <div class="scan-bar">
-          <div class="scan-bar-fill" :style="{ width: scanProgress + '%' }" />
-        </div>
-        <p class="scan-pct">{{ scanProgress }}% ready</p>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════
-         STATE 3 — RESULTS: Potential Matches list
+         STATE 2 — RESULTS: Potential Matches list
     ═══════════════════════════════════════════ -->
     <template v-else>
 
@@ -144,8 +155,8 @@
         <div class="scanned-info">
           <span class="scanned-title">Comparison ready</span>
           <span class="scanned-sub">
-            {{ matches.length }} nearby {{ matches.length === 1 ? 'report' : 'reports' }} found
-            nearby
+            {{ matches.length }} {{ matches.length === 1 ? 'report' : 'reports' }} ranked
+            from {{ resolvedLocationLabel }}
           </span>
         </div>
         <button class="rescan-btn" aria-label="Scan a different photo" @click="reset">
@@ -153,7 +164,7 @@
         </button>
       </div>
 
-      <h2 class="section-title">Nearby reports to review</h2>
+      <h2 class="section-title">Top Matches</h2>
 
       <!-- Match feed — PetCard structure + confidence badge -->
       <TransitionGroup name="match" tag="div" class="match-feed">
@@ -186,12 +197,12 @@
             <!-- ★ NEW: prominent coral Confidence Score badge ★ -->
             <span class="confidence-badge" :class="confidenceTier(m.confidence)">
               <span class="conf-pct">{{ m.confidence }}%</span>
-              <span class="conf-label">priority</span>
+              <span class="conf-label">match</span>
             </span>
 
-            <span class="distance">
+            <span v-if="m.breakdown.distanceKm !== null" class="distance">
               <AppIcon name="pin" :size="14" />
-              {{ m.distanceKm }} km
+              {{ m.breakdown.distanceKm }} km
             </span>
           </div>
 
@@ -200,7 +211,9 @@
               <h3>{{ m.name }}</h3>
               <span class="posted">{{ m.postedAgo }}</span>
             </div>
-            <p class="meta">{{ m.breed }} · Last seen {{ m.lastSeen }}</p>
+            <p class="meta">
+              {{ m.breed ? `${m.breed} · ` : '' }}Last seen {{ m.lastSeen }}
+            </p>
 
             <!-- Confidence meter bar -->
             <div class="conf-meter">
@@ -212,8 +225,14 @@
             </div>
             <p class="conf-reason">
               <AppIcon name="check" :size="13" />
-              {{ m.reason }}
+              {{ matchReason(m) }}
             </p>
+            <dl class="score-breakdown" aria-label="Match score breakdown">
+              <div><dt>Species</dt><dd>{{ m.breakdown.species }}/30</dd></div>
+              <div><dt>Breed</dt><dd>{{ m.breakdown.breed }}/25</dd></div>
+              <div><dt>Distance</dt><dd>{{ m.breakdown.distance }}/25</dd></div>
+              <div><dt>Recency</dt><dd>{{ m.breakdown.recency }}/20</dd></div>
+            </dl>
             <p class="sighting-count">
               <AppIcon name="eye" :size="13" />
               {{ m.sightingCount }} sightings logged
@@ -232,7 +251,9 @@
 
       <!-- No-match footer -->
       <div class="no-match">
-        <p>None of these look right?</p>
+        <p v-if="matchError" class="match-error" role="alert">{{ matchError }}</p>
+        <p v-else-if="matches.length === 0">No close matches found within your area.</p>
+        <p v-else>None of these look right?</p>
         <button class="no-match-btn" @click="emit('post-instead')">
           <AppIcon name="plus" :size="17" />
           Post as a new sighting
@@ -244,13 +265,18 @@
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, ref } from 'vue'
+import { nextTick, onUnmounted, ref } from 'vue'
 import { Camera, CameraResultType } from '@capacitor/camera'
-import type { Pet } from '../types/pet'
-import { getNearbyPets, getPetSightings } from '../services/api'
+import { HK_DISTRICTS, type HongKongDistrict, type Pet } from '../types/pet'
+import { getSmartMatches, type SmartMatchCandidate } from '../services/api'
+import { getCurrentLocation } from '../services/geolocation'
 import AppIcon from './AppIcon.vue'
 
-const props = defineProps<{ pets?: Pet[] }>()
+const props = defineProps<{
+  /** Retained for backwards compatibility; candidates now come from one server request. */
+  pets?: Pet[]
+  userLocation?: { lat: number; lng: number } | null
+}>()
 
 /* ── Emits ──────────────────────────────────────────────
    close          → dismiss the screen
@@ -266,36 +292,56 @@ const emit = defineEmits<{
 }>()
 
 /* ── Types ─────────────────────────────────────────── */
-type MatchResult = Pet & {
-  /** Review-priority score derived from distance and sighting activity, 0–100 */
-  confidence: number
-  /** Human-readable explanation of the match */
-  reason: string
-  /** Number of sightings submitted for this pet */
-  sightingCount: number
-}
+type MatchResult = SmartMatchCandidate
 
-type ScreenState = 'idle' | 'scanning' | 'results'
+type ScreenState = 'idle' | 'results'
+
+type Coordinates = { lat: number; lng: number }
+
+const DISTRICT_CENTERS: Record<HongKongDistrict, Coordinates> = {
+  'Central and Western': { lat: 22.2867, lng: 114.145 },
+  Eastern: { lat: 22.2841, lng: 114.2242 },
+  Southern: { lat: 22.2472, lng: 114.1588 },
+  'Wan Chai': { lat: 22.2774, lng: 114.1738 },
+  'Kowloon City': { lat: 22.3282, lng: 114.1916 },
+  'Kwun Tong': { lat: 22.3133, lng: 114.2258 },
+  'Sham Shui Po': { lat: 22.3307, lng: 114.1622 },
+  'Wong Tai Sin': { lat: 22.342, lng: 114.193 },
+  'Yau Tsim Mong': { lat: 22.3117, lng: 114.1693 },
+  Islands: { lat: 22.2622, lng: 113.9461 },
+  'Kwai Tsing': { lat: 22.3549, lng: 114.104 },
+  North: { lat: 22.4947, lng: 114.1381 },
+  'Sai Kung': { lat: 22.383, lng: 114.2708 },
+  'Sha Tin': { lat: 22.3872, lng: 114.1953 },
+  'Tai Po': { lat: 22.4509, lng: 114.1642 },
+  'Tsuen Wan': { lat: 22.3717, lng: 114.1134 },
+  'Tuen Mun': { lat: 22.391, lng: 113.9771 },
+  'Yuen Long': { lat: 22.4456, lng: 114.0222 },
+}
 
 /* ── State ─────────────────────────────────────────── */
 const state = ref<ScreenState>('idle')
 const uploadedPhoto = ref<string>('')
 const uploadedPhotoFailed = ref(false)
 const isDragging = ref(false)
+const isLoading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const screenRoot = ref<HTMLElement | null>(null)
 const failedMatchImages = ref<Set<string>>(new Set())
+const observationSpecies = ref<Pet['species']>('Dog')
+const observationBreed = ref('')
+const selectedDistrict = ref<HongKongDistrict | ''>('')
+const resolvedLocationLabel = ref('Current GPS')
+const matchError = ref('')
 
-const scanProgress = ref(0)
-const scanStage = ref('Initializing…')
-
-let progressTimer: ReturnType<typeof setInterval> | null = null
-let finishTimer: ReturnType<typeof setTimeout> | null = null
+let matchRequest: AbortController | null = null
+let requestSequence = 0
 
 /* Sample photo so the flow is demoable without a real upload */
 const demoPhoto =
   'https://images.unsplash.com/photo-1552053831-71594a27632d?w=800&q=80'
 
-/* Nearby reports ordered by real distance and sighting activity. */
+/* Server-ranked reports with an explainable score for every factor. */
 const matches = ref<MatchResult[]>([])
 
 function normalizedImageUrl(value: string | null | undefined): string {
@@ -327,7 +373,7 @@ async function triggerFilePicker() {
       allowEditing: false,
     })
 
-    if (image.dataUrl) startScan(image.dataUrl)
+    if (image.dataUrl) selectPhoto(image.dataUrl)
   } catch {
     // Preserve the browser file picker when the Camera plugin is unavailable.
     fileInput.value?.click()
@@ -336,102 +382,127 @@ async function triggerFilePicker() {
 
 function onFileSelected(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
-  if (file) readAndScan(file)
+  if (file) readAndSelect(file)
 }
 
 function onDrop(e: DragEvent) {
   isDragging.value = false
   const file = e.dataTransfer?.files?.[0]
-  if (file && file.type.startsWith('image/')) readAndScan(file)
+  if (file && file.type.startsWith('image/')) readAndSelect(file)
 }
 
-function readAndScan(file: File) {
+function readAndSelect(file: File) {
+  if (file.size > 10 * 1024 * 1024) {
+    matchError.value = 'Choose an image smaller than 10 MB.'
+    return
+  }
+
   const reader = new FileReader()
-  reader.onload = () => startScan(reader.result as string)
+  reader.onload = () => {
+    if (typeof reader.result === 'string') selectPhoto(reader.result)
+  }
+  reader.onerror = () => {
+    matchError.value = 'The selected image could not be read.'
+  }
   reader.readAsDataURL(file)
 }
 
-/* Brief preparation sequence while nearby report details are loaded. */
-function startScan(photoSrc: string) {
+function selectPhoto(photoSrc: string) {
   uploadedPhoto.value = photoSrc
   uploadedPhotoFailed.value = false
   failedMatchImages.value = new Set()
-  state.value = 'scanning'
-  scanProgress.value = 0
-  scanStage.value = 'Loading active reports…'
+  matchError.value = ''
+}
 
-  // Progress ticks every 40 ms → reaches 100 in ~2000 ms
-  progressTimer = setInterval(() => {
-    scanProgress.value = Math.min(100, scanProgress.value + 2)
+async function handleFindMatches() {
+  if (isLoading.value || !uploadedPhoto.value) return
 
-    if (scanProgress.value > 25 && scanProgress.value <= 55) {
-      scanStage.value = 'Loading sighting histories…'
-    } else if (scanProgress.value > 55 && scanProgress.value <= 85) {
-      scanStage.value = 'Ordering reports by distance…'
-    } else if (scanProgress.value > 85) {
-      scanStage.value = 'Preparing side-by-side review…'
+  cancelMatchRequest()
+  const sequence = ++requestSequence
+  const controller = new AbortController()
+  matchRequest = controller
+  isLoading.value = true
+  matchError.value = ''
+
+  try {
+    const coordinates = await resolveObservationCoordinates()
+    const rankedMatches = await getSmartMatches(
+      {
+        species: observationSpecies.value,
+        breed: observationBreed.value || undefined,
+        coordinates: [coordinates.lng, coordinates.lat],
+        limit: 20,
+      },
+      controller.signal,
+    )
+    if (sequence !== requestSequence) return
+    matches.value = rankedMatches
+    state.value = 'results'
+    await nextTick()
+    screenRoot.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch (error) {
+    if (sequence !== requestSequence) return
+    matches.value = []
+    matchError.value =
+      error instanceof Error ? error.message : 'Could not calculate matches. Please try again.'
+  } finally {
+    if (sequence === requestSequence) {
+      if (matchRequest === controller) matchRequest = null
+      isLoading.value = false
     }
-  }, 40)
+  }
+}
 
-  // Reveal results after exactly 2 seconds
-  finishTimer = setTimeout(async () => {
-    clearTimers()
-    scanProgress.value = 100
-    try {
-      const lostPets = props.pets
-        ? props.pets.filter((pet) => pet.status === 'lost')
-        : await getNearbyPets({
-            lat: 22.3193,
-            lng: 114.1694,
-            radiusKm: 20,
-            status: 'lost',
-          })
+async function resolveObservationCoordinates(): Promise<Coordinates> {
+  if (selectedDistrict.value) {
+    resolvedLocationLabel.value = `${selectedDistrict.value} district centre`
+    return DISTRICT_CENTERS[selectedDistrict.value]
+  }
 
-      const rankedMatches = await Promise.all(
-        lostPets.map(async (pet) => {
-          let sightingCount = 0
-          try {
-            sightingCount = (await getPetSightings(pet.id)).length
-          } catch {
-            // Keep the match visible if its supporting history cannot be loaded.
-          }
+  if (props.userLocation) {
+    resolvedLocationLabel.value = 'Current GPS'
+    return props.userLocation
+  }
 
-          const distance = Number.isFinite(pet.distanceKm) ? pet.distanceKm || 0 : 20
-          const reviewPriority = Math.max(35, Math.min(95, Math.round(95 - distance * 3 + Math.min(sightingCount, 5))))
-          return {
-            ...pet,
-            confidence: reviewPriority,
-            reason: `Prioritized by ${distance.toFixed(1)} km distance and ${sightingCount} recorded sightings. Compare coat and markings manually.`,
-            sightingCount,
-          }
-        }),
-      )
-
-      matches.value = rankedMatches.sort((a, b) => b.confidence - a.confidence)
-    } catch {
-      matches.value = []
-    } finally {
-      state.value = 'results'
-    }
-  }, 2000)
+  try {
+    const coordinates = await getCurrentLocation()
+    resolvedLocationLabel.value = 'Current GPS'
+    return coordinates
+  } catch {
+    resolvedLocationLabel.value = 'Hong Kong centre (GPS unavailable)'
+    return { lat: 22.3193, lng: 114.1694 }
+  }
 }
 
 function reset() {
-  clearTimers()
+  cancelMatchRequest()
   state.value = 'idle'
+  isLoading.value = false
   uploadedPhoto.value = ''
   uploadedPhotoFailed.value = false
   failedMatchImages.value = new Set()
-  scanProgress.value = 0
+  matchError.value = ''
   if (fileInput.value) fileInput.value.value = ''
 }
 
-function clearTimers() {
-  if (progressTimer) { clearInterval(progressTimer); progressTimer = null }
-  if (finishTimer) { clearTimeout(finishTimer); finishTimer = null }
+function cancelMatchRequest() {
+  requestSequence += 1
+  matchRequest?.abort()
+  matchRequest = null
 }
 
-onUnmounted(clearTimers)
+onUnmounted(cancelMatchRequest)
+
+function matchReason(match: MatchResult): string {
+  const breedText = observationBreed.value
+    ? `${match.breakdown.breed}/25 breed similarity`
+    : 'no breed supplied'
+  const ageText =
+    match.breakdown.daysAgo === null
+      ? 'unknown report age'
+      : `${match.breakdown.daysAgo} days since reporting`
+  return `${breedText}, ${match.breakdown.distance}/25 proximity, and ${ageText}. Compare the uploaded photo manually.`
+}
 
 /* ── Confidence tiering (drives badge + meter colour) ── */
 function confidenceTier(score: number): 'high' | 'mid' | 'low' {
@@ -501,7 +572,115 @@ h1 { font-size: 17px; font-weight: 800; }
 ═══════════════════════════════════════════ */
 .upload-zone-wrap { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 
+.criteria-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.criteria-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.criteria-field > span {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.criteria-field small {
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--ink-muted);
+}
+
+.criteria-field select,
+.criteria-field input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0 11px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.criteria-field select:focus,
+.criteria-field input:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(29, 99, 96, 0.12);
+}
+
+.location-context {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) minmax(112px, 0.8fr);
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(29, 99, 96, 0.14);
+  border-radius: 12px;
+  background: rgba(29, 99, 96, 0.08);
+  color: #1d6360;
+}
+
+.location-context-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(29, 99, 96, 0.12);
+}
+
+.location-context label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.location-context strong {
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-context label span {
+  font-size: 10.5px;
+  color: var(--ink-muted);
+}
+
+.location-context select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(29, 99, 96, 0.18);
+  border-radius: 10px;
+  padding: 0 8px;
+  background: #fff;
+  color: #1d6360;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  outline: none;
+}
+
 .upload-zone {
+  position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
   display: flex;
@@ -512,15 +691,43 @@ h1 { font-size: 17px; font-weight: 800; }
   background: var(--surface);
   border: 2px dashed var(--line);
   border-radius: var(--radius-lg);
+  overflow: hidden;
   transition: border-color 0.18s ease, background 0.18s ease, transform 0.15s ease;
 }
 
 .upload-zone:active { transform: scale(0.985); }
 
 .upload-zone.dragging,
-.upload-zone:hover {
+.upload-zone:not(:disabled):hover {
   border-color: var(--teal);
   background: #f7fcfb;
+}
+
+.upload-zone.has-photo { border-style: solid; border-color: rgba(29, 99, 96, 0.2); }
+.upload-zone:disabled { cursor: wait; }
+
+.selected-upload-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.change-photo {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(29, 99, 96, 0.9);
+  color: #fff;
+  box-shadow: 0 5px 16px rgba(29, 99, 96, 0.24);
+  font-size: 12px;
+  font-weight: 800;
+  backdrop-filter: blur(6px);
 }
 
 .upload-icon {
@@ -553,6 +760,50 @@ h1 { font-size: 17px; font-weight: 800; }
 }
 
 .demo-btn:active { background: #c2e7e1; }
+.demo-btn:disabled { opacity: 0.58; cursor: wait; }
+
+.btn-primary {
+  display: flex;
+  width: 100%;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: 12px;
+  background: #1d6360;
+  color: #fff;
+  box-shadow:
+    0 8px 18px rgba(29, 99, 96, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  font-size: 15px;
+  font-weight: 800;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
+.btn-primary:not(:disabled):active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.52; cursor: not-allowed; }
+
+.button-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: button-spin 0.7s linear infinite;
+}
+
+.form-error {
+  margin: -2px 4px 0;
+  color: #ef6351;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
 
 /* ═══════════════════════════════════════════
    STATE 2 — Scanning stage
@@ -900,6 +1151,28 @@ h3 { font-size: 19px; font-weight: 800; }
 
 .conf-reason svg { color: var(--teal); flex-shrink: 0; margin-top: 2px; }
 
+.score-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.score-breakdown div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  font-size: 11.5px;
+  font-weight: 750;
+}
+
+.score-breakdown dd { margin: 0; font-weight: 850; }
+
 .sighting-count {
   display: flex;
   align-items: center;
@@ -948,6 +1221,7 @@ h3 { font-size: 19px; font-weight: 800; }
 }
 
 .no-match p { font-size: 13.5px; font-weight: 600; color: var(--ink-muted); }
+.no-match .match-error { color: var(--coral); text-align: center; }
 
 .no-match-btn {
   display: inline-flex;
@@ -970,5 +1244,12 @@ h3 { font-size: 19px; font-weight: 800; }
   .scan-line { animation: none; top: 50%; }
   .pulse-ring { animation: none; }
   .match-enter-active { transition: none; }
+  .button-spinner { animation-duration: 1.4s; }
+}
+
+@media (max-width: 360px) {
+  .criteria-card { grid-template-columns: 1fr; }
+  .location-context { grid-template-columns: 38px minmax(0, 1fr); }
+  .location-context select { grid-column: 1 / -1; }
 }
 </style>

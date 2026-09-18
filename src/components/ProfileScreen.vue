@@ -1,6 +1,33 @@
 <template>
   <div class="profile">
-    <header class="head">
+    <header class="profile-topbar">
+      <strong>{{ userHandle }}</strong>
+      <button
+        class="menu-button"
+        type="button"
+        aria-label="Open settings"
+        @click="router.push('/settings')"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+    </header>
+
+    <section class="head">
       <img
         class="avatar"
         :src="user?.avatar || '/avatar.svg'"
@@ -8,15 +35,28 @@
       />
       <h1>{{ user ? user.name : 'Guest' }}</h1>
       <p class="area">
-        <AppIcon name="pin" :size="14" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <path d="m3 7 9 6 9-6" />
+        </svg>
         {{ user ? user.email : 'Sign in to sync your alerts across devices' }}
       </p>
       <p v-if="user?.phone" class="area phone">{{ user.phone }}</p>
       <button v-if="!user" class="auth-btn primary" @click="emit('login')">
         Sign in / Create account
       </button>
-      <button v-else class="auth-btn" @click="emit('logout')">Log out</button>
-    </header>
+    </section>
 
     <div class="stats">
       <div class="stat">
@@ -56,85 +96,34 @@
       </div>
     </div>
 
-    <h2>Settings</h2>
-    <ul class="settings">
-      <li>
-        <div class="setting-label">
-          <AppIcon name="radar" :size="19" />
-          <span>Radar radius</span>
-        </div>
-        <span class="setting-value">{{ radiusKm }} km <AppIcon name="chevron" :size="15" /></span>
-      </li>
-      <li>
-        <div class="setting-label">
-          <AppIcon name="bell" :size="19" />
-          <span>Proximity alerts</span>
-        </div>
-        <button
-          class="switch"
-          :class="{ on: alertsEnabled }"
-          role="switch"
-          :aria-checked="alertsEnabled"
-          aria-label="Toggle proximity alerts"
-          @click="emit('toggle-alerts', !alertsEnabled)"
-        >
-          <span class="knob" />
-        </button>
-      </li>
-      <li class="row-link" @click="emit('open-activity')">
-        <div class="setting-label">
-          <AppIcon name="list" :size="19" />
-          <span>Activity</span>
-        </div>
-        <span class="setting-value"><AppIcon name="chevron" :size="15" /></span>
-      </li>
-      <li class="row-link" @click="emit('open-inbox')">
-        <div class="setting-label">
-          <AppIcon name="send" :size="19" />
-          <span>Messages</span>
-        </div>
-        <span class="setting-value"><AppIcon name="chevron" :size="15" /></span>
-      </li>
-      <li class="row-link" @click="emit('open-boost')">
-        <div class="setting-label">
-          <AppIcon name="radar" :size="19" />
-          <span>Boost alert</span>
-        </div>
-        <span class="setting-value"><AppIcon name="chevron" :size="15" /></span>
-      </li>
-      <li class="row-link" @click="emit('open-settings')">
-        <div class="setting-label">
-          <AppIcon name="user" :size="19" />
-          <span>Account &amp; privacy</span>
-        </div>
-        <span class="setting-value"><AppIcon name="chevron" :size="15" /></span>
-      </li>
-    </ul>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
 import { getMyPets, getMySightings } from '../services/api'
 import type { Pet } from '../types/pet'
 import type { User } from '../types/user'
 
-const props = defineProps<{ user: User | null; alertsEnabled: boolean; radiusKm: number }>()
+const props = defineProps<{ user: User | null }>()
 const emit = defineEmits<{
   login: []
-  logout: []
-  'open-settings': []
-  'open-activity': []
-  'open-inbox': []
-  'open-boost': []
-  'toggle-alerts': [enabled: boolean]
 }>()
 
+const router = useRouter()
 const myPets = ref<Pet[]>([])
 const sightingCount = ref(0)
 const reunitedCount = computed(() => myPets.value.filter((pet) => pet.status === 'reunited').length)
 const activePostCount = computed(() => myPets.value.filter((pet) => pet.status !== 'reunited').length)
+const userHandle = computed(() => {
+  const emailHandle = props.user?.email?.split('@')[0]?.replace(/[^a-zA-Z0-9._]/g, '')
+  if (emailHandle) return `@${emailHandle}`
+
+  const nameHandle = props.user?.name?.trim().toLowerCase().replace(/\s+/g, '.')
+  return nameHandle ? `@${nameHandle}` : '@guest'
+})
 const loading = ref(false)
 const error = ref('')
 let requestId = 0
@@ -175,15 +164,57 @@ watch(() => props.user?.id, loadMyPets, { immediate: true })
 
 <style scoped>
 .profile {
-  padding: calc(var(--safe-top) + 26px) 20px 120px;
+  padding: 0 20px 120px;
   max-width: 480px;
   margin: 0 auto;
+}
+
+.profile-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 -4px;
+  padding: calc(var(--safe-top) + 10px) 4px 10px;
+  background: rgba(252, 249, 242, 0.94);
+  backdrop-filter: blur(16px);
+}
+
+.profile-topbar strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #1d6360;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-button:active {
+  transform: scale(0.96);
+  background: rgba(29, 99, 96, 0.09);
 }
 
 .head {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-top: 18px;
   margin-bottom: 22px;
 }
 
@@ -232,12 +263,6 @@ h1 {
   background: var(--teal);
   color: #fff;
   box-shadow: var(--shadow-float);
-}
-
-.auth-btn:not(.primary) {
-  background: var(--surface);
-  color: var(--coral);
-  border: 1.5px solid var(--line);
 }
 
 .stats {
@@ -369,80 +394,9 @@ h2 {
   background: var(--teal);
 }
 
-.settings {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  background: var(--line);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.settings li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface);
-  padding: 15px 16px;
-}
-
-.setting-label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 700;
-  font-size: 14.5px;
-}
-
-.setting-label svg {
-  color: var(--teal);
-}
-
-.setting-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--ink-muted);
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.row-link {
-  cursor: pointer;
-  transition: background 0.12s ease;
-}
-
-.row-link:active {
-  background: var(--teal-soft) !important;
-}
-
-.switch {
-  width: 50px;
-  height: 30px;
-  border-radius: 999px;
-  background: var(--line);
-  position: relative;
-  transition: background 0.2s ease;
-}
-
-.switch.on {
-  background: var(--teal);
-}
-
-.knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: var(--shadow-card);
-  transition: transform 0.2s ease;
-}
-
-.switch.on .knob {
-  transform: translateX(20px);
+@media (prefers-reduced-motion: reduce) {
+  .menu-button {
+    transition: none;
+  }
 }
 </style>

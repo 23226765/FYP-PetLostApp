@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
+import { scoreCandidate } from '../services/matchEngine.js'
 import { createRadiusNotifications } from './notificationController.js'
 
 /* ───────────────────────── Helpers ───────────────────────── */
@@ -86,13 +87,20 @@ function serializePet(pet, distanceMeters) {
     typeof distanceMeters === 'number'
       ? Math.max(0.1, Math.round((distanceMeters / 1000) * 10) / 10)
       : undefined
+  const listedPhotos = Array.isArray(pet.photos)
+    ? pet.photos.filter((photo) => typeof photo === 'string' && photo.trim())
+    : []
+  const primaryPhoto =
+    (typeof pet.photo === 'string' && pet.photo.trim()) || listedPhotos[0] || ''
+  const photos = primaryPhoto ? [...new Set([primaryPhoto, ...listedPhotos])] : []
   return {
     id: String(pet._id),
     name: pet.name,
     species: pet.species,
     breed: pet.breed,
     district: pet.district || '',
-    photo: pet.photo,
+    photo: primaryPhoto,
+    photos,
     description: pet.description,
     details: pet.details || '',
     reward: pet.reward || undefined,
@@ -237,6 +245,88 @@ export async function getNearbyPets(req, res, next) {
   }
 }
 
+// POST /api/pets/smart-match
+export async function smartMatch(req, res, next) {
+  try {
+    if (!hasRequestBody(req)) return invalidRequestBody(res)
+
+    const { species, breed, coordinates, limit } = req.body
+    const normalizedBreed = normalizedText(breed, 120)
+    const parsedLimit = Number(limit)
+    const resultLimit = Number.isFinite(parsedLimit)
+      ? Math.min(50, Math.max(1, Math.floor(parsedLimit)))
+      : 20
+
+    if (!['Dog', 'Cat', 'Other'].includes(species)) {
+      return res.status(400).json({
+        success: false,
+        message: '`species` must be Dog, Cat, or Other.',
+      })
+    }
+    if (!isPoint({ type: 'Point', coordinates })) {
+      return res.status(400).json({
+        success: false,
+        message: '`coordinates` must be [lng, lat].',
+      })
+    }
+
+    // One pet query plus one grouped sighting query replaces the previous
+    // client-side request-per-pet loop.
+    const pets = await Pet.find({ species, status: { $in: ['lost', 'sighted'] } })
+    const petIds = pets.map((pet) => pet._id)
+    const sightingCounts = new Map()
+
+    if (petIds.length > 0) {
+      try {
+        const groups = await Sighting.aggregate([
+          { $match: { pet: { $in: petIds } } },
+          { $group: { _id: '$pet', count: { $sum: 1 } } },
+        ])
+        groups.forEach((group) => sightingCounts.set(String(group._id), group.count))
+      } catch (error) {
+        // Cosmos DB deployments may reject an otherwise valid grouping query.
+        // The fallback remains a single database request and counts in memory.
+        const sightings = await Sighting.find({ pet: { $in: petIds } }).select('pet')
+        sightings.forEach((sighting) => {
+          const petId = String(sighting.pet)
+          sightingCounts.set(petId, (sightingCounts.get(petId) || 0) + 1)
+        })
+      }
+    }
+
+    const observation = {
+      species,
+      breed: normalizedBreed,
+      coordinates: coordinates.map(Number),
+    }
+    const matches = pets
+      .map((pet) => {
+        const score = scoreCandidate(observation, pet)
+        const distanceMeters =
+          typeof score.breakdown.distanceKm === 'number'
+            ? score.breakdown.distanceKm * 1000
+            : undefined
+        return {
+          ...serializePet(pet, distanceMeters),
+          ...score,
+          confidence: score.totalScore,
+          sightingCount: sightingCounts.get(String(pet._id)) || 0,
+        }
+      })
+      .sort(
+        (left, right) =>
+          right.totalScore - left.totalScore ||
+          (left.breakdown.distanceKm ?? Number.POSITIVE_INFINITY) -
+            (right.breakdown.distanceKm ?? Number.POSITIVE_INFINITY),
+      )
+      .slice(0, resultLimit)
+
+    res.json({ matches })
+  } catch (err) {
+    next(err)
+  }
+}
+
 // GET /api/pets/:id
 export async function getPet(req, res, next) {
   try {
@@ -358,6 +448,7 @@ export async function reportPet(req, res, next) {
       breed: normalizedText(breed, 120),
       district: normalizedDistrict,
       photo: photo || '',
+      photos: photo ? [photo] : [],
       description: normalizedText(description, 2000),
       details: normalizedText(details, 2000),
       reward: normalizedText(reward, 100),

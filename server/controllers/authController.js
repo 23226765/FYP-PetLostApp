@@ -7,6 +7,10 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_EMAIL_LENGTH = 254
 const MIN_PASSWORD_LENGTH = 6
 const MAX_NAME_LENGTH = 100
+const MAX_REAL_NAME_LENGTH = 100
+const MAX_AVATAR_URL_LENGTH = 2048
+const MAX_AVATAR_DATA_URL_LENGTH = 1_400_000
+const MAX_AVATAR_BYTES = 1_000_000
 const LOGIN_WINDOW_MS = 15 * 60 * 1000
 const LOGIN_IP_LIMIT = 10
 const LOGIN_EMAIL_LIMIT = 5
@@ -22,6 +26,60 @@ const loginAttempts = new Map()
  */
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : ''
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+function normalizeRealName(value) {
+  return typeof value === 'string'
+    ? value.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim()
+    : ''
+}
+
+/**
+ * Accept a normal HTTP(S) image URL or a bounded raster-image data URL.
+ * SVG data is intentionally rejected because it can contain executable markup.
+ * @param {unknown} value
+ * @returns {{ value?: string, error?: string }}
+ */
+function validateAvatar(value) {
+  if (typeof value !== 'string') return { error: 'Avatar must be an image URL.' }
+
+  const avatar = value.trim()
+  if (!avatar) return { value: '' }
+
+  if (/^data:/i.test(avatar)) {
+    if (avatar.length > MAX_AVATAR_DATA_URL_LENGTH) {
+      return { error: 'Avatar image must be 1 MB or smaller.' }
+    }
+
+    const match = avatar.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/i)
+    if (!match || match[2].length % 4 === 1) {
+      return { error: 'Avatar must be a JPEG, PNG, or WebP image.' }
+    }
+    if (Buffer.byteLength(match[2], 'base64') > MAX_AVATAR_BYTES) {
+      return { error: 'Avatar image must be 1 MB or smaller.' }
+    }
+
+    const mime = match[1].toLowerCase() === 'jpg' ? 'jpeg' : match[1].toLowerCase()
+    return { value: `data:image/${mime};base64,${match[2]}` }
+  }
+
+  if (avatar.length > MAX_AVATAR_URL_LENGTH) {
+    return { error: 'Avatar URL is too long.' }
+  }
+
+  try {
+    const url = new URL(avatar)
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+      return { error: 'Avatar must use a valid HTTP or HTTPS URL.' }
+    }
+    return { value: url.href }
+  } catch {
+    return { error: 'Avatar must use a valid HTTP or HTTPS URL.' }
+  }
 }
 
 /**
@@ -131,11 +189,12 @@ function signToken(user) {
   return jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' })
 }
 
-/** @param {{ _id: unknown, name?: string, email?: string, phone?: string, avatar?: string, role?: string, alertsEnabled?: boolean, alertRadiusKm?: number }} user */
+/** @param {{ _id: unknown, name?: string, realName?: string, email?: string, phone?: string, avatar?: string, role?: string, alertsEnabled?: boolean, alertRadiusKm?: number }} user */
 function serializeUser(user) {
   return {
     id: String(user._id),
     name: user.name,
+    realName: user.realName || '',
     email: user.email,
     phone: user.phone,
     avatar: user.avatar,
@@ -210,7 +269,7 @@ export async function login(req, res, next) {
       return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` })
     }
 
-    const user = await User.findOne({ email })
+    const user = await User.findOne({ email }).select('+realName')
     if (!user) {
       recordLoginFailure(keys, now)
       return res.status(401).json({ error: 'Invalid email or password.' })
@@ -234,36 +293,77 @@ export async function login(req, res, next) {
 /**
  * @param {import('express').Request & { user: Parameters<typeof serializeUser>[0] }} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function me(req, res) {
-  res.json({ user: serializeUser(req.user) })
+export async function me(req, res, next) {
+  try {
+    const user = await User.findById(req.user._id).select('+realName')
+    if (!user) return res.status(404).json({ error: 'User not found.' })
+    res.json({ user: serializeUser(user) })
+  } catch (error) {
+    next(error)
+  }
 }
 
 // PATCH /api/auth/me
 export async function updateMe(req, res, next) {
   try {
-    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : ''
-    const email = normalizeEmail(req.body?.email)
-    const phone = typeof req.body?.phone === 'string' ? req.body.phone.trim() : ''
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}
+    const hasName =
+      Object.prototype.hasOwnProperty.call(body, 'name') ||
+      Object.prototype.hasOwnProperty.call(body, 'displayName')
+    const hasEmail = Object.prototype.hasOwnProperty.call(body, 'email')
+    const hasPhone = Object.prototype.hasOwnProperty.call(body, 'phone')
+    const hasRealName = Object.prototype.hasOwnProperty.call(body, 'realName')
+    const hasAvatar = Object.prototype.hasOwnProperty.call(body, 'avatar')
+    const submittedName = typeof body.name === 'string' ? body.name.trim() : ''
+    const submittedDisplayName =
+      typeof body.displayName === 'string' ? body.displayName.trim() : ''
+    const resolvedName = submittedName || submittedDisplayName
+    const email = normalizeEmail(body.email)
+    const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
+    const realName = normalizeRealName(body.realName)
+    const avatarValidation = hasAvatar ? validateAvatar(body.avatar) : null
 
-    if (!name || name.length > MAX_NAME_LENGTH) {
+    if (!hasName && !hasEmail && !hasPhone && !hasRealName && !hasAvatar) {
+      return res.status(400).json({ error: 'Provide at least one profile field to update.' })
+    }
+    if (hasName && (!resolvedName || resolvedName.length > MAX_NAME_LENGTH)) {
       return res.status(400).json({ error: `Name is required and must be ${MAX_NAME_LENGTH} characters or fewer.` })
     }
-    if (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
+    if (hasEmail && (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email))) {
       return res.status(400).json({ error: 'Enter a valid email address.' })
     }
-    if (phone.length > 30) {
+    if (hasPhone && typeof body.phone !== 'string') {
+      return res.status(400).json({ error: 'Phone must be a string.' })
+    }
+    if (hasPhone && phone.length > 30) {
       return res.status(400).json({ error: 'Phone must be 30 characters or fewer.' })
     }
+    if (hasRealName && typeof body.realName !== 'string') {
+      return res.status(400).json({ error: 'Real name must be a string.' })
+    }
+    if (realName.length > MAX_REAL_NAME_LENGTH) {
+      return res.status(400).json({ error: `Real name must be ${MAX_REAL_NAME_LENGTH} characters or fewer.` })
+    }
+    if (avatarValidation?.error) {
+      return res.status(400).json({ error: avatarValidation.error })
+    }
 
-    const existing = await User.findOne({ email, _id: { $ne: req.user._id } }).select('_id')
-    if (existing) return res.status(409).json({ error: 'That email address is already in use.' })
+    if (hasEmail) {
+      const existing = await User.findOne({ email, _id: { $ne: req.user._id } }).select('_id')
+      if (existing) return res.status(409).json({ error: 'That email address is already in use.' })
+    }
 
-    req.user.name = name
-    req.user.email = email
-    req.user.phone = phone
+    if (hasName) req.user.name = resolvedName
+    if (hasEmail) req.user.email = email
+    if (hasPhone) req.user.phone = phone
+    if (hasRealName) req.user.realName = realName
+    if (hasAvatar) req.user.avatar = avatarValidation.value
     await req.user.save()
-    res.json({ user: serializeUser(req.user) })
+    const updatedUser = await User.findById(req.user._id).select('+realName')
+    if (!updatedUser) return res.status(404).json({ error: 'User not found.' })
+    res.json({ success: true, user: serializeUser(updatedUser) })
   } catch (error) {
     next(error)
   }

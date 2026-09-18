@@ -8,6 +8,7 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "seed": "node seed.js",
+    "fix:pet-photos": "node scripts/fixPetPhotos.js",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
