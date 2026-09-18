@@ -25,6 +25,7 @@ const [
   { default: straysRouter },
   { default: matchesRouter },
   { default: analyticsRouter },
+  { default: uploadsRouter },
 ] = await Promise.all([
   import('./routes/pets.js'),
   import('./routes/auth.js'),
@@ -33,6 +34,7 @@ const [
   import('./routes/strays.js'),
   import('./routes/matches.js'),
   import('./routes/analytics.js'),
+  import('./routes/uploads.js'),
 ])
 
 const app = express()
@@ -63,6 +65,11 @@ app.use(
 )
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use('/uploads', express.static(path.resolve(serverDirectory, 'uploads'), {
+  fallthrough: false,
+  immutable: true,
+  maxAge: '30d',
+}))
 
 app.get('/api/health', async (_req, res) => {
   const database = await databaseHealth()
@@ -82,6 +89,7 @@ app.use('/api/chat', chatRouter)
 app.use('/api/strays', straysRouter)
 app.use('/api/matches', matchesRouter)
 app.use('/api/analytics', analyticsRouter)
+app.use('/api/uploads', uploadsRouter)
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }))
 app.use(errorHandler)

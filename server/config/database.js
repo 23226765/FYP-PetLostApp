@@ -59,6 +59,9 @@ export function databaseErrorMessage(error) {
   if (code === 'DATABASE_NAME_MISMATCH') {
     return `MongoDB must connect to the "${DATABASE_NAME}" database.`
   }
+  if (code === 'COLLECTION_INITIALIZATION_FAILED') {
+    return `MongoDB could not initialize the "${error.collection || 'application'}" collection.`
+  }
   if (
     code === 18 ||
     code === 'AuthenticationFailed' ||

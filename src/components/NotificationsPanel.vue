@@ -70,6 +70,7 @@ const props = defineProps<{ notifications: AppNotification[] }>()
 const emit = defineEmits<{
   close: []
   'open-pet': [petId: string, sightingId?: string]
+  'open-stray': [strayId: string]
   'mark-read': [notificationId: string]
   'mark-all': []
 }>()
@@ -77,16 +78,17 @@ const emit = defineEmits<{
 const unread = computed(() => props.notifications.filter((n) => !n.read).length)
 
 function typeIcon(type: AppNotification['type']): string {
-  return { proximity: 'radar', sighting: 'eye', message: 'phone', reunited: 'check' }[type]
+  return { proximity: 'radar', sighting: 'eye', message: 'message', reunited: 'check', comment: 'message' }[type]
 }
 
 function typeBadge(type: AppNotification['type']): string {
-  return { proximity: 'Nearby', sighting: 'Sighting', message: 'Message', reunited: 'Reunited' }[type]
+  return { proximity: 'Nearby', sighting: 'Sighting', message: 'Message', reunited: 'Reunited', comment: 'Comment' }[type]
 }
 
 function onTap(n: AppNotification) {
   if (!n.read) emit('mark-read', n.id)
-  if (n.petId) emit('open-pet', n.petId, n.sightingId)
+  if (n.strayId) emit('open-stray', n.strayId)
+  else if (n.petId) emit('open-pet', n.petId, n.sightingId)
   else emit('close')
 }
 
@@ -238,6 +240,7 @@ h1 { font-size: 17px; font-weight: 800; }
 .type-badge.sighting  { background: var(--teal-soft); color: var(--teal); }
 .type-badge.message   { background: #fde8e4; color: var(--coral); }
 .type-badge.reunited  { background: #e8f5e9; color: #388e3c; }
+.type-badge.comment   { background: var(--teal-soft); color: var(--teal); }
 
 /* Empty state */
 .empty {

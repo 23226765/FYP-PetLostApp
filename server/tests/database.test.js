@@ -12,6 +12,8 @@ import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import Stray from '../models/Stray.js'
 import User from '../models/User.js'
+import StrayComment from '../models/StrayComment.js'
+import SavedStray from '../models/SavedStray.js'
 
 test('database configuration always selects the expected Atlas database', () => {
   assert.equal(DATABASE_NAME, 'petlostapp')
@@ -33,14 +35,14 @@ test('database startup errors never expose a MongoDB URI', () => {
 })
 
 test('application models map only to PawRadar collections', () => {
-  const modelCollections = [User, Pet, Sighting, Stray, Message, Notification].map(
+  const modelCollections = [User, Pet, Sighting, Stray, Message, Notification, StrayComment, SavedStray].map(
     (model) => model.collection.name,
   )
   assert.deepEqual(modelCollections, APPLICATION_COLLECTIONS)
 })
 
 test('all application models use timestamps', () => {
-  for (const model of [User, Pet, Sighting, Stray, Message, Notification]) {
+  for (const model of [User, Pet, Sighting, Stray, Message, Notification, StrayComment, SavedStray]) {
     assert.equal(model.schema.options.timestamps, true)
   }
 })

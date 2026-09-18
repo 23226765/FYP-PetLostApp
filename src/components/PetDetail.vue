@@ -97,15 +97,21 @@
         <template v-else>
           <div class="trajectory-card">
             <div class="trajectory-heading">
-              <strong>Movement trace</strong>
+              <strong>Reported sighting route</strong>
               <span>{{ trajectorySightings.length }} recorded locations</span>
             </div>
+            <p class="trajectory-disclaimer">
+              This dashed line connects community reports in time order; it does not prove the
+              pet’s exact movement.
+            </p>
             <MapView
               class="trajectory-map"
               :pets="[pet]"
               :sightings="trajectorySightings"
               :center="trajectoryCenter"
               :radius-km="0"
+              :focused-sighting-id="activeSightingId"
+              @sighting-open="focusTimelineSighting"
             />
           </div>
         <ol class="timeline">
@@ -114,14 +120,21 @@
             :id="`sighting-${sighting.id}`"
             :key="sighting.id"
             class="timeline-item"
-            :class="{ focused: focusSightingId === sighting.id }"
+            :class="{ focused: activeSightingId === sighting.id }"
+            tabindex="0"
+            @click="focusMapSighting(sighting.id)"
+            @keydown.enter.prevent="focusMapSighting(sighting.id)"
+            @keydown.space.prevent="focusMapSighting(sighting.id)"
           >
             <span class="timeline-dot" aria-hidden="true" />
             <div class="timeline-content">
               <div class="timeline-head">
                 <strong>{{ sighting.locationName || 'Location not provided' }}</strong>
-                <time v-if="sighting.createdAt" :datetime="String(sighting.createdAt)">
-                  {{ relativeTime(sighting.createdAt) }}
+                <time
+                  v-if="sighting.sightedAt || sighting.createdAt"
+                  :datetime="String(sighting.sightedAt || sighting.createdAt)"
+                >
+                  {{ relativeTime(sighting.sightedAt || sighting.createdAt || '') }}
                 </time>
               </div>
               <p v-if="sighting.note">{{ sighting.note }}</p>
@@ -353,6 +366,7 @@ const showReunionConfirm = ref(false)
 const reunionSaving = ref(false)
 const reunionError = ref('')
 const showCelebration = ref(false)
+const activeSightingId = ref<string | undefined>(props.focusSightingId)
 const heroPhotoUrl = computed(() => normalizedImageUrl(props.pet.photo))
 const isOwner = computed(() => {
   const legacyUserId = (props.user as (User & { _id?: string }) | null | undefined)?._id
@@ -517,8 +531,24 @@ let sightingsRequestSequence = 0
 
 async function focusRequestedSighting() {
   if (!props.focusSightingId) return
+  activeSightingId.value = props.focusSightingId
   await nextTick()
   document.getElementById(`sighting-${props.focusSightingId}`)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'center',
+  })
+}
+
+async function focusMapSighting(sightingId: string) {
+  activeSightingId.value = undefined
+  await nextTick()
+  activeSightingId.value = sightingId
+}
+
+async function focusTimelineSighting(sightingId: string) {
+  activeSightingId.value = sightingId
+  await nextTick()
+  document.getElementById(`sighting-${sightingId}`)?.scrollIntoView({
     behavior: 'smooth',
     block: 'center',
   })
@@ -800,6 +830,14 @@ h2 {
   font-weight: 700;
 }
 
+.trajectory-disclaimer {
+  margin: -4px 2px 10px;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .trajectory-map :deep(.leaflet-map) {
   height: 280px;
 }
@@ -817,6 +855,12 @@ h2 {
   grid-template-columns: 18px 1fr;
   gap: 10px;
   padding-bottom: 14px;
+}
+
+.timeline-item:focus-visible {
+  outline: 3px solid rgba(29, 99, 96, 0.22);
+  outline-offset: 3px;
+  border-radius: 14px;
 }
 
 .timeline-item.focused .timeline-content {

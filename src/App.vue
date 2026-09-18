@@ -75,14 +75,22 @@
         <component
           :is="Component"
           v-else-if="currentRoute.name === 'saved'"
+          :user="currentUser"
           @open-pet="openPet"
           @found="openSighting"
+          @open-stray="openStrayById"
         />
         <component
           :is="Component"
           v-else-if="currentRoute.name === 'my-reports'"
           @close="router.back()"
           @message-pet="openChatByPetId"
+        />
+        <component
+          :is="Component"
+          v-else-if="currentRoute.name === 'stray-detail'"
+          :user="currentUser"
+          @auth-needed="openLogin"
         />
       </Transition>
     </RouterView>
@@ -160,6 +168,7 @@
         :notifications="notifications"
         @close="showNotifications = false"
         @open-pet="openPetById"
+        @open-stray="openStrayFromNotification"
         @mark-read="handleMarkNotificationRead"
         @mark-all="handleMarkAllNotificationsRead"
       />
@@ -191,6 +200,21 @@
                 :placeholder="`e.g. Spotted near the bakery on Elm Street, heading north\u2026`"
               />
             </label>
+            <SightingLocationPicker
+              v-model="sightingCoordinates"
+              :initial-center="sightingPet.coordinates ?? null"
+            />
+            <label class="sheet-field">
+              <span>Location name or nearby landmark</span>
+              <input
+                v-model.trim="sightingLocationName"
+                type="text"
+                maxlength="200"
+                autocomplete="off"
+                placeholder="e.g. Mong Kok MTR Exit E2"
+              />
+              <small>This label describes the confirmed point; it does not move the marker.</small>
+            </label>
             <button class="sheet-photo" type="button" @click="attachSightingPhoto">
               <AppIcon name="camera" :size="19" />
               {{ sightingPhoto ? 'Change photo' : 'Attach a photo' }}
@@ -205,11 +229,11 @@
             <button
               class="sheet-send"
               type="button"
-              :disabled="sightingSubmitting"
+              :disabled="sightingSubmitting || !sightingCoordinates || !sightingLocationName"
               @click="sendSighting"
             >
               <AppIcon name="pin" :size="19" />
-              {{ sightingSubmitting ? 'Sending sighting...' : 'Send sighting to owner' }}
+              {{ sightingSubmitting ? 'Sending sighting...' : 'Send confirmed sighting' }}
             </button>
           </template>
           <div v-else class="sheet-success" role="status">
@@ -218,7 +242,7 @@
             </span>
             <h2>Sighting sent!</h2>
             <p>
-              {{ sightingPet.owner }} has been notified with your location. Thank you for
+              {{ sightingPet.owner }} has been notified with the selected sighting point. Thank you for
               helping!
             </p>
             <button class="sheet-send" @click="closeSighting">Done</button>
@@ -362,6 +386,7 @@ import {
   updateNotificationPreferences,
 } from './services/api'
 import { getCurrentLocation } from './services/geolocation'
+import { buildSightingPayload } from './utils/sightingSubmission'
 import AppIcon from './components/AppIcon.vue'
 import RadarScreen from './components/RadarScreen.vue'
 import PostPetScreen from './components/PostPetScreen.vue'
@@ -376,6 +401,7 @@ import NotificationsPanel from './components/NotificationsPanel.vue'
 import AdoptionHistoryScreen from './components/AdoptionHistoryScreen.vue'
 import BoostScreen from './components/BoostScreen.vue'
 import StrayRescueScreen from './components/StrayRescueScreen.vue'
+import SightingLocationPicker from './components/SightingLocationPicker.vue'
 
 type Tab = 'radar' | 'strays' | 'post' | 'messages' | 'profile'
 
@@ -415,6 +441,8 @@ const messageUnreadCount = ref(0)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
 const sightingPhoto = ref('')
+const sightingCoordinates = ref<[number, number] | null>(null)
+const sightingLocationName = ref('')
 const sightingSent = ref(false)
 const sightingError = ref('')
 const sightingSubmitting = ref(false)
@@ -798,6 +826,15 @@ async function openPetById(petId: string, sightingId?: string) {
   }
 }
 
+function openStrayById(strayId: string) {
+  void router.push(`/strays/${strayId}`)
+}
+
+function openStrayFromNotification(strayId: string) {
+  showNotifications.value = false
+  openStrayById(strayId)
+}
+
 async function loadNotifications(showNewAlert = false) {
   if (!currentUser.value) {
     notifications.value = []
@@ -896,6 +933,8 @@ function openSighting(pet: Pet | null) {
   sightingSent.value = false
   sightingNote.value = ''
   sightingPhoto.value = ''
+  sightingCoordinates.value = null
+  sightingLocationName.value = ''
   sightingError.value = ''
   sightingSubmitting.value = false
   sightingSubmissionId.value = createSightingSubmissionId()
@@ -909,6 +948,8 @@ function closeSighting() {
   }
   sightingPet.value = null
   sightingPhoto.value = ''
+  sightingCoordinates.value = null
+  sightingLocationName.value = ''
   sightingSubmitting.value = false
   sightingSubmissionId.value = ''
 }
@@ -939,19 +980,26 @@ async function attachSightingPhoto() {
 async function sendSighting() {
   const pet = sightingPet.value
   if (!pet || sightingSubmitting.value) return
+  if (!sightingCoordinates.value) {
+    sightingError.value = 'Select and confirm where the pet was sighted.'
+    return
+  }
+  if (!sightingLocationName.value.trim()) {
+    sightingError.value = 'Add a location name or nearby landmark.'
+    return
+  }
   sightingSubmitting.value = true
   sightingError.value = ''
   try {
-    const { lat, lng } = await getUserLocation()
     const submissionId = sightingSubmissionId.value || createSightingSubmissionId()
     sightingSubmissionId.value = submissionId
-    await reportSighting(pet.id, {
-      coordinates: [lng, lat],
+    await reportSighting(pet.id, buildSightingPayload({
+      coordinates: sightingCoordinates.value,
       note: sightingNote.value,
-      locationName: pet.location,
-      photo: sightingPhoto.value || undefined,
+      locationName: sightingLocationName.value.trim(),
+      photo: sightingPhoto.value,
       submissionId,
-    })
+    }))
     sightingSent.value = true
     const p = pets.value.find((x) => x.id === pet.id)
     if (p) p.status = 'sighted'
@@ -1198,6 +1246,9 @@ main {
 .sheet {
   width: 100%;
   max-width: 480px;
+  max-height: min(94dvh, 880px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--bg);
   border-radius: 26px 26px 0 0;
   padding: 10px 20px calc(var(--safe-bottom) + 24px);
@@ -1249,7 +1300,8 @@ main {
   font-weight: 800;
 }
 
-.sheet-field textarea {
+.sheet-field textarea,
+.sheet-field input {
   width: 100%;
   padding: 13px 15px;
   border-radius: var(--radius-md);
@@ -1259,7 +1311,8 @@ main {
   resize: none;
 }
 
-.sheet-field textarea:focus {
+.sheet-field textarea:focus,
+.sheet-field input:focus {
   border-color: var(--teal);
 }
 
@@ -1276,6 +1329,13 @@ main {
   font-weight: 800;
   font-size: 14.5px;
   margin-bottom: 12px;
+}
+
+.sheet-field small {
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .sighting-photo-preview {

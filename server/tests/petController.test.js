@@ -4,10 +4,13 @@ import mongoose from 'mongoose'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import User from '../models/User.js'
+import Notification from '../models/Notification.js'
 import {
   getNearbyPets,
   listPets,
   listSightings,
+  submitSighting,
+  validateSightingLocation,
 } from '../controllers/petController.js'
 
 function responseRecorder() {
@@ -178,7 +181,7 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
 
   try {
     Pet.findById = () => ({ select: async () => ({ _id: petId, reportedBy: ownerId }) })
-    Sighting.find = () => ({ sort: async () => [sighting] })
+    Sighting.find = () => ({ sort: async () => [sighting, { ...sighting }] })
     User.find = () => ({
       select: async () => [
         {
@@ -196,6 +199,7 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
       assert.equal(response.payload.sightings[0].id, String(sightingId))
       assert.equal(response.payload.sightings[0].reporterName, 'FYP Finder')
       assert.equal(response.payload.sightings[0].reporterPhone, '+852 5555 0102')
+      assert.equal(response.payload.sightings.length, 1)
     }
 
     const unrelatedResponse = responseRecorder()
@@ -211,5 +215,132 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
     Pet.findById = originalFindById
     Sighting.find = originalFind
     User.find = originalUserFind
+  }
+})
+
+test('sighting GeoJSON validation rejects missing, malformed, reversed, and string coordinates', () => {
+  assert.equal(validateSightingLocation(undefined).error, 'A confirmed sighting location is required.')
+  assert.match(validateSightingLocation({ type: 'LineString', coordinates: [114, 22] }).error, /Point/)
+  assert.match(validateSightingLocation({ type: 'Point', coordinates: ['114.1', 22.3] }).error, /numbers/)
+  assert.match(validateSightingLocation({ type: 'Point', coordinates: [22.3, 114.1] }).error, /latitude/)
+  assert.match(validateSightingLocation({ type: 'Point', coordinates: [181, 22.3] }).error, /longitude/)
+  assert.match(validateSightingLocation({ type: 'Point', coordinates: [114.1, Number.NaN] }).error, /numbers/)
+  assert.deepEqual(
+    validateSightingLocation({ type: 'Point', coordinates: [114.1694, 22.3193] }),
+    { coordinates: [114.1694, 22.3193] },
+  )
+})
+
+test('valid selected coordinates preserve lng/lat order and retries create one sighting', async () => {
+  const originalFindById = Pet.findById
+  const originalCreate = Sighting.create
+  const originalFindOne = Sighting.findOne
+  const originalUserFind = User.find
+  const originalUserAggregate = User.aggregate
+  const originalBulkWrite = Notification.bulkWrite
+  const petId = new mongoose.Types.ObjectId()
+  const ownerId = new mongoose.Types.ObjectId()
+  const reporterId = new mongoose.Types.ObjectId()
+  const sightingId = new mongoose.Types.ObjectId()
+  let storedSighting = null
+  let createCount = 0
+  let saveCount = 0
+  const pet = petRecord({
+    _id: petId,
+    reportedBy: ownerId,
+    async save() { saveCount += 1 },
+  })
+
+  try {
+    Pet.findById = async () => pet
+    Sighting.findOne = () => ({
+      select: async () => storedSighting,
+    })
+    Sighting.create = async (data) => {
+      createCount += 1
+      storedSighting = {
+        _id: sightingId,
+        ...data,
+        confirmedBy: [],
+        createdAt: new Date('2026-09-18T08:00:00.000Z'),
+      }
+      return storedSighting
+    }
+    User.aggregate = async () => []
+    User.find = () => ({
+      select: async () => [
+        {
+          _id: ownerId,
+          phone: '+852 5555 0101',
+          privacy: { contactVisibility: 'private' },
+        },
+      ],
+    })
+    Notification.bulkWrite = async () => undefined
+
+    const request = {
+      params: { id: String(petId) },
+      user: { _id: reporterId, name: 'Finder', phone: '+852 5555 0102' },
+      body: {
+        location: { type: 'Point', coordinates: [114.1694, 22.3193] },
+        locationName: 'Mong Kok MTR Exit E2',
+        note: 'Seen walking north',
+        submissionId: 'sighting_test_retry_001',
+      },
+    }
+
+    const firstResponse = responseRecorder()
+    await submitSighting(request, firstResponse, failOnNext)
+    assert.equal(firstResponse.statusCode, 201)
+    assert.deepEqual(storedSighting.location, {
+      type: 'Point',
+      coordinates: [114.1694, 22.3193],
+    })
+    assert.equal(storedSighting.locationName, 'Mong Kok MTR Exit E2')
+
+    const retryResponse = responseRecorder()
+    await submitSighting(request, retryResponse, failOnNext)
+    assert.equal(retryResponse.statusCode, 200)
+    assert.equal(retryResponse.payload.duplicate, true)
+    assert.equal(createCount, 1)
+    assert.equal(saveCount, 1)
+  } finally {
+    Pet.findById = originalFindById
+    Sighting.create = originalCreate
+    Sighting.findOne = originalFindOne
+    User.find = originalUserFind
+    User.aggregate = originalUserAggregate
+    Notification.bulkWrite = originalBulkWrite
+  }
+})
+
+test('missing selected location is rejected without inserting a fallback coordinate', async () => {
+  const originalFindById = Pet.findById
+  const originalCreate = Sighting.create
+  let createCount = 0
+  try {
+    Pet.findById = async () => petRecord()
+    Sighting.create = async () => {
+      createCount += 1
+    }
+    const response = responseRecorder()
+    await submitSighting(
+      {
+        params: { id: String(new mongoose.Types.ObjectId()) },
+        body: {
+          locationName: 'Mong Kok',
+          note: 'The note must not determine coordinates',
+          submissionId: 'sighting_missing_location_001',
+        },
+      },
+      response,
+      failOnNext,
+    )
+    assert.equal(response.statusCode, 400)
+    assert.equal(response.payload.error, 'A confirmed sighting location is required.')
+    assert.equal(createCount, 0)
+  } finally {
+    Pet.findById = originalFindById
+    Sighting.create = originalCreate
   }
 })

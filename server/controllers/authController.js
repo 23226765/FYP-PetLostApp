@@ -5,6 +5,10 @@ import {
   CONTACT_VISIBILITIES,
   contactVisibilityFor,
 } from '../services/contactPrivacy.js'
+import {
+  preferencesFor,
+  validatePreferenceUpdate,
+} from '../services/userPreferences.js'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pawradar_dev_secret'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -193,7 +197,7 @@ function signToken(user) {
   return jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' })
 }
 
-/** @param {{ _id: unknown, name?: string, realName?: string, email?: string, phone?: string, avatar?: string, role?: string, alertsEnabled?: boolean, alertRadiusKm?: number, privacy?: { contactVisibility?: string } }} user */
+/** @param {{ _id: unknown, name?: string, realName?: string, email?: string, phone?: string, avatar?: string, role?: string, alertsEnabled?: boolean, alertRadiusKm?: number, privacy?: { contactVisibility?: string }, preferences?: { language?: string, theme?: string } }} user */
 function serializeUser(user) {
   return {
     id: String(user._id),
@@ -206,6 +210,42 @@ function serializeUser(user) {
     alertsEnabled: user.alertsEnabled !== false,
     alertRadiusKm: user.alertRadiusKm || 3,
     privacy: { contactVisibility: contactVisibilityFor(user) },
+    preferences: preferencesFor(user),
+  }
+}
+
+// GET /api/auth/me/preferences
+export async function getPreferences(req, res, next) {
+  try {
+    const user = await User.findById(req.user._id).select('preferences')
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.', code: 'USER_NOT_FOUND' })
+    }
+    res.json({ preferences: preferencesFor(user) })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// PATCH /api/auth/me/preferences
+export async function updatePreferences(req, res, next) {
+  try {
+    const validation = validatePreferenceUpdate(req.body)
+    if (!validation.value) {
+      return res.status(400).json({
+        error: validation.error,
+        code: validation.code,
+        ...(validation.field ? { field: validation.field } : {}),
+        ...(validation.fields ? { fields: validation.fields } : {}),
+      })
+    }
+
+    const current = preferencesFor(req.user)
+    req.user.preferences = { ...current, ...validation.value }
+    await req.user.save()
+    res.json({ success: true, preferences: preferencesFor(req.user) })
+  } catch (error) {
+    next(error)
   }
 }
 

@@ -60,6 +60,11 @@
             alt=""
           />
           <div class="bubble" :class="msg.sender === currentSender ? 'out' : 'in'">
+            <button v-if="msg.sharedStray" class="shared-post" type="button" @click="openSharedPost(msg.sharedStray.id)">
+              <img v-if="msg.sharedStray.photo" :src="imageUrl(msg.sharedStray.photo)" alt="" />
+              <span><strong>{{ msg.sharedStray.species }} rescue post</strong><small>{{ msg.sharedStray.location }}, {{ msg.sharedStray.district }}</small><span>{{ msg.sharedStray.description }}</span></span>
+            </button>
+            <div v-else-if="msg.sharedStrayUnavailable" class="shared-unavailable">This post is no longer available.</div>
             <img
               v-if="msg.photo"
               class="bubble-photo"
@@ -113,6 +118,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import {
@@ -126,6 +132,7 @@ import { createContactActions } from '../utils/contact'
 
 const props = defineProps<{ pet: ChatPet; user?: User | null }>()
 const emit = defineEmits<{ close: [] }>()
+const router = useRouter()
 
 const messages = ref<ChatMessage[]>([])
 const draft = ref('')
@@ -257,6 +264,15 @@ async function send() {
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+function imageUrl(value: string) {
+  try { const api = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin); return new URL(value, `${api.origin}/`).href } catch { return '' }
+}
+
+function openSharedPost(id: string) {
+  emit('close')
+  void router.push(`/strays/${id}`)
 }
 
 onMounted(async () => {
@@ -489,6 +505,13 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   flex-wrap: wrap;
 }
+
+.shared-post { width: min(250px, 66vw); overflow: hidden; border-radius: 12px; background: rgba(252,249,242,.96); color: #3d3835; text-align: left; }
+.shared-post > img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+.shared-post > span { display: grid; gap: 3px; padding: 10px; }
+.shared-post strong { color: #1d6360; font-size: 12px; }
+.shared-post small,.shared-post span span { overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+.shared-unavailable { padding: 10px; border-radius: 10px; background: rgba(239,99,81,.1); color: #ef6351; font-size: 12px; font-weight: 750; }
 
 .attachment-input {
   display: none;

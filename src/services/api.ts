@@ -2,7 +2,8 @@ import axios from 'axios'
 import type { Pet, Sighting } from '../types/pet'
 import type { AppNotification } from '../types/notification'
 import type { User } from '../types/user'
-import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
+import type { UserPreferences } from '../types/user'
+import type { RescueStatus, StrayComment, StrayCondition, StrayReport } from '../types/stray'
 import type { HotspotResponse } from '../types/analytics'
 
 // Use the same-origin Vite proxy by default. Deployments can provide an
@@ -38,7 +39,10 @@ http.interceptors.response.use(
         : error?.response
           ? `Request failed with status ${error.response.status}.`
           : 'Cannot reach the PawRadar server. Check that the backend is running.'
-    return Promise.reject(new Error(message))
+    const clientError = new Error(message) as Error & { apiCode?: string; field?: string }
+    clientError.apiCode = error?.response?.data?.code
+    clientError.field = error?.response?.data?.field
+    return Promise.reject(clientError)
   },
 )
 
@@ -140,6 +144,7 @@ export interface MySighting {
   locationName: string
   note: string
   photo?: string
+  sightedAt?: string
   createdAt: string
 }
 
@@ -205,12 +210,16 @@ export interface ChatMessage {
   text: string
   photo?: string
   createdAt: string
+  sharedStray?: Pick<StrayReport, 'id' | 'species' | 'description' | 'photo' | 'district' | 'rescueStatus'> & { location: string }
+  sharedStrayUnavailable?: boolean
 }
 
 export interface SendMessagePayload {
   text: string
   photo?: string
   participantId?: string
+  sharedStrayId?: string
+  clientRequestId?: string
 }
 
 export interface ChatPet {
@@ -284,8 +293,11 @@ export async function reportLostPet(payload: ReportPetPayload): Promise<Pet> {
 }
 
 export interface SightingPayload {
-  coordinates: [number, number]
-  locationName?: string
+  location: {
+    type: 'Point'
+    coordinates: [number, number]
+  }
+  locationName: string
   note?: string
   photo?: string
   submissionId: string
@@ -345,12 +357,16 @@ export interface ReportStrayPayload {
   species: StrayReport['species']
   description: string
   photo?: string
+  photos: string[]
   condition: StrayCondition
   district: string
   locationName: string
   coordinates: [number, number]
   reporterName?: string
   reporterPhone?: string
+  observedAt: string
+  rescueStatus?: RescueStatus
+  submissionId: string
 }
 
 export async function reportStray(payload: ReportStrayPayload): Promise<StrayReport> {
@@ -366,6 +382,51 @@ export async function updateStrayStatus(
     status,
   })
   return data.stray
+}
+
+export async function getStrayComments(id: string): Promise<StrayComment[]> {
+  const { data } = await http.get<{ comments: StrayComment[] }>(`/strays/${id}/comments`, { params: { limit: 50 } })
+  return data.comments
+}
+
+export async function addStrayComment(id: string, text: string, submissionId: string): Promise<StrayComment> {
+  const { data } = await http.post<{ comment: StrayComment }>(`/strays/${id}/comments`, { text, submissionId })
+  return data.comment
+}
+
+export async function editStrayComment(id: string, commentId: string, text: string): Promise<StrayComment> {
+  const { data } = await http.patch<{ comment: StrayComment }>(`/strays/${id}/comments/${commentId}`, { text })
+  return data.comment
+}
+
+export async function removeStrayComment(id: string, commentId: string): Promise<void> {
+  await http.delete(`/strays/${id}/comments/${commentId}`)
+}
+
+export async function setStraySaved(id: string, saved: boolean): Promise<boolean> {
+  const { data } = saved
+    ? await http.put<{ saved: boolean }>(`/strays/${id}/saved`)
+    : await http.delete<{ saved: boolean }>(`/strays/${id}/saved`)
+  return data.saved
+}
+
+export async function getSavedStrays(): Promise<{ strays: StrayReport[]; unavailableCount: number }> {
+  const { data } = await http.get<{ strays: StrayReport[]; unavailableCount: number }>('/strays/saved')
+  return data
+}
+
+export async function updateStray(id: string, payload: Pick<StrayReport, 'description' | 'species' | 'condition'>): Promise<StrayReport> {
+  const { data } = await http.patch<{ stray: StrayReport }>(`/strays/${id}`, payload)
+  return data.stray
+}
+
+export async function deleteStray(id: string): Promise<void> {
+  await http.delete(`/strays/${id}`)
+}
+
+export async function uploadImage(dataUrl: string): Promise<string> {
+  const { data } = await http.post<{ url: string }>('/uploads/image', { dataUrl })
+  return data.url
 }
 
 /* ── Auth ── */
@@ -428,4 +489,19 @@ export async function updateContactPrivacy(
     { contactVisibility },
   )
   return data.privacy
+}
+
+export async function getUserPreferences(): Promise<UserPreferences> {
+  const { data } = await http.get<{ preferences: UserPreferences }>('/auth/me/preferences')
+  return data.preferences
+}
+
+export async function updateUserPreferences(
+  preferences: Partial<UserPreferences>,
+): Promise<UserPreferences> {
+  const { data } = await http.patch<{ success: boolean; preferences: UserPreferences }>(
+    '/auth/me/preferences',
+    preferences,
+  )
+  return data.preferences
 }

@@ -26,6 +26,39 @@ function isPoint(obj) {
   )
 }
 
+export function validateSightingLocation(location) {
+  if (!location || typeof location !== 'object' || Array.isArray(location)) {
+    return { error: 'A confirmed sighting location is required.' }
+  }
+  if (location.type !== 'Point') {
+    return { error: '`location.type` must be exactly `Point`.' }
+  }
+  const coordinates = location.coordinates
+  if (!Array.isArray(coordinates) || coordinates.length !== 2) {
+    return { error: '`location.coordinates` must contain [longitude, latitude].' }
+  }
+  if (
+    coordinates.some(
+      (coordinate) => typeof coordinate !== 'number' || !Number.isFinite(coordinate),
+    )
+  ) {
+    return { error: 'Sighting coordinates must be finite numbers, not strings.' }
+  }
+  const [longitude, latitude] = coordinates
+  if (longitude < -180 || longitude > 180) {
+    return { error: 'Sighting longitude must be between -180 and 180.' }
+  }
+  if (latitude < -90 || latitude > 90) {
+    return { error: 'Sighting latitude must be between -90 and 90.' }
+  }
+  return { coordinates: [longitude, latitude] }
+}
+
+function sightingTime(sighting) {
+  const timestamp = new Date(sighting.sightedAt || sighting.createdAt).getTime()
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
 const MAX_PHOTO_LENGTH = 1_500_000
 const DEFAULT_PAGE_SIZE = 50
 const MAX_PAGE_SIZE = 100
@@ -244,23 +277,15 @@ export async function listMyPets(req, res, next) {
 // GET /api/pets/sightings/mine
 export async function listMySightings(req, res, next) {
   try {
-    let sightings
-    try {
-      sightings = await Sighting.find({ reportedBy: req.user._id })
-        .sort({ createdAt: -1 })
-        .populate('pet', 'name photo status ownerName reportedBy')
-    } catch (error) {
-      const isUnsupportedOrderByError =
-        error?.code === 2 && String(error.message).includes('order-by item is excluded')
-      if (!isUnsupportedOrderByError) throw error
-      sightings = await Sighting.find({ reportedBy: req.user._id }).populate(
-        'pet',
-        'name photo status ownerName reportedBy',
-      )
-      sightings.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-    }
+    const sightings = await Sighting.find({ reportedBy: req.user._id }).populate(
+      'pet',
+      'name photo status ownerName reportedBy',
+    )
+    sightings.sort(
+      (left, right) =>
+        sightingTime(right) - sightingTime(left) ||
+        String(right._id).localeCompare(String(left._id)),
+    )
     const petDocuments = sightings.map((sighting) => sighting.pet).filter(Boolean)
     const owners = await loadContactOwners(petDocuments)
     res.json({
@@ -286,6 +311,7 @@ export async function listMySightings(req, res, next) {
           locationName: sighting.locationName,
           note: sighting.note,
           photo: sighting.photo || undefined,
+          sightedAt: sighting.sightedAt || sighting.createdAt,
           createdAt: sighting.createdAt,
         }
       }),
@@ -473,20 +499,16 @@ export async function listSightings(req, res, next) {
     const pet = await Pet.findById(req.params.id).select('reportedBy')
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
 
-    let docs
-    try {
-      docs = await Sighting.find({ pet: req.params.id }).sort({ createdAt: 1, _id: 1 })
-    } catch (error) {
-      const isUnsupportedOrderByError =
-        error?.code === 2 && String(error.message).includes('order-by item is excluded')
-      if (!isUnsupportedOrderByError) throw error
-
-      docs = await Sighting.find({ pet: req.params.id })
-      docs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-    }
+    const docs = await Sighting.find({ pet: req.params.id }).sort({ createdAt: 1, _id: 1 })
     const currentUserId = req.user?._id ? String(req.user._id) : null
     const ownerId = pet.reportedBy ? String(pet.reportedBy) : null
-    const uniqueDocs = [...new Map(docs.map((sighting) => [String(sighting._id), sighting])).values()]
+    const uniqueDocs = [
+      ...new Map(docs.map((sighting) => [String(sighting._id), sighting])).values(),
+    ].sort(
+      (left, right) =>
+        sightingTime(left) - sightingTime(right) ||
+        String(left._id).localeCompare(String(right._id)),
+    )
     const reporters = await loadContactOwners(uniqueDocs)
     const sightings = uniqueDocs.map((sighting) => {
       const confirmedBy = Array.isArray(sighting.confirmedBy) ? sighting.confirmedBy : []
@@ -502,6 +524,7 @@ export async function listSightings(req, res, next) {
         locationName: sighting.locationName,
         note: sighting.note,
         photo: sighting.photo,
+        sightedAt: sighting.sightedAt || sighting.createdAt,
         createdAt: sighting.createdAt,
         confirmationCount: confirmedBy.length,
         confirmedByMe:
@@ -641,7 +664,7 @@ export async function submitSighting(req, res, next) {
     }
 
     const {
-      coordinates,
+      location,
       locationName,
       note,
       photo,
@@ -649,8 +672,13 @@ export async function submitSighting(req, res, next) {
       reporterPhone,
       submissionId,
     } = req.body
-    if (!isPoint({ type: 'Point', coordinates })) {
-      return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
+    const locationValidation = validateSightingLocation(location)
+    if (locationValidation.error) {
+      return res.status(400).json({ error: locationValidation.error })
+    }
+    const normalizedLocationName = normalizedText(locationName, 200)
+    if (!normalizedLocationName) {
+      return res.status(400).json({ error: '`locationName` is required.' })
     }
     if (typeof photo === 'string' && photo.length > MAX_PHOTO_LENGTH) {
       return res.status(413).json({ error: 'Photo is too large. Choose a smaller image.' })
@@ -666,13 +694,14 @@ export async function submitSighting(req, res, next) {
     const sightingData = {
       pet: pet._id,
       reportedBy: req.user?._id || undefined,
-      location: { type: 'Point', coordinates: coordinates.map(Number) },
-      locationName: normalizedText(locationName, 200),
+      location: { type: 'Point', coordinates: locationValidation.coordinates },
+      locationName: normalizedLocationName,
       note: normalizedText(note, 2000),
       photo: photo || '',
       reporterName: normalizedText(req.user?.name || reporterName, 100),
       reporterPhone: normalizedText(req.user?.phone || reporterPhone, 30),
       submissionId: normalizedSubmissionId || undefined,
+      sightedAt: new Date(),
     }
 
     let sighting = null
@@ -730,6 +759,7 @@ export async function submitSighting(req, res, next) {
         locationName: sighting.locationName,
         note: sighting.note,
         photo: sighting.photo || undefined,
+        sightedAt: sighting.sightedAt || sighting.createdAt,
         createdAt: sighting.createdAt,
         confirmationCount: 0,
         confirmedByMe: false,

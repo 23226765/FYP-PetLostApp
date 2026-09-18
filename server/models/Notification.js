@@ -3,11 +3,14 @@ import mongoose from 'mongoose'
 const notificationSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    pet: { type: mongoose.Schema.Types.ObjectId, ref: 'Pet', required: true },
+    pet: { type: mongoose.Schema.Types.ObjectId, ref: 'Pet', default: null },
     sighting: { type: mongoose.Schema.Types.ObjectId, ref: 'Sighting' },
+    stray: { type: mongoose.Schema.Types.ObjectId, ref: 'Stray', default: null },
+    comment: { type: mongoose.Schema.Types.ObjectId, ref: 'StrayComment', default: null },
+    message: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
     type: {
       type: String,
-      enum: ['proximity', 'sighting', 'message', 'reunited'],
+      enum: ['proximity', 'sighting', 'message', 'reunited', 'comment'],
       required: true,
     },
     title: { type: String, required: true, trim: true, maxlength: 200 },
@@ -21,5 +24,7 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ user: 1, createdAt: -1 })
 notificationSchema.index({ user: 1, pet: 1, type: 1, sighting: 1 })
+notificationSchema.index({ user: 1, stray: 1, type: 1, comment: 1 })
+notificationSchema.index({ user: 1, type: 1, message: 1 })
 
 export default mongoose.models.Notification || mongoose.model('Notification', notificationSchema)

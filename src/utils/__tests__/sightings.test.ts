@@ -29,4 +29,16 @@ describe('normalizeSightingHistory', () => {
     const secondFetch = normalizeSightingHistory([...firstFetch, entry])
     expect(secondFetch.map((item) => item.id)).toEqual(['one-id'])
   })
+
+  it('orders by actual sighting time and falls back to creation time', () => {
+    const reportedEarlier = {
+      ...sighting('reported-earlier', '2026-09-18T11:00:00.000Z'),
+      sightedAt: '2026-09-18T07:00:00.000Z',
+    }
+    const createdEarlier = sighting('created-earlier', '2026-09-18T08:00:00.000Z')
+    expect(normalizeSightingHistory([createdEarlier, reportedEarlier])).toEqual([
+      reportedEarlier,
+      createdEarlier,
+    ])
+  })
 })

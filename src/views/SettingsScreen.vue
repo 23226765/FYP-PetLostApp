@@ -1,16 +1,61 @@
 <template>
   <div class="settings-page">
     <header class="settings-header">
-      <button class="back-button" type="button" aria-label="Back to profile" @click="router.back()">
+      <button class="back-button" type="button" :aria-label="t('settings.backLabel')" @click="router.back()">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="m15 18-6-6 6-6" />
         </svg>
       </button>
-      <h1>Settings and activity</h1>
+      <h1>{{ t('settings.title') }}</h1>
       <span class="header-spacer" aria-hidden="true" />
     </header>
 
     <main class="settings-content">
+      <section class="settings-group" aria-labelledby="language-appearance-heading">
+        <h2 id="language-appearance-heading">{{ t('settings.languageAppearance') }}</h2>
+        <div class="settings-card preference-selector-card" :aria-busy="preferenceSaving">
+          <p class="preference-help">{{ t('settings.languageAppearanceHelp') }}</p>
+          <fieldset class="preference-fieldset" :disabled="preferenceSaving">
+            <legend>{{ t('settings.language') }}</legend>
+            <div class="segmented-control language-control">
+              <label
+                v-for="option in languageOptions"
+                :key="option.value"
+                :class="{ active: language === option.value }"
+              >
+                <input
+                  type="radio"
+                  name="app-language"
+                  :value="option.value"
+                  :checked="language === option.value"
+                  @change="changeLanguage(option.value)"
+                />
+                <span>{{ t(option.labelKey) }}</span>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="preference-fieldset" :disabled="preferenceSaving">
+            <legend>{{ t('settings.appearance') }}</legend>
+            <div class="segmented-control">
+              <label :class="{ active: theme === 'light' }">
+                <input type="radio" name="app-theme" value="light" :checked="theme === 'light'" @change="changeTheme('light')" />
+                <span aria-hidden="true">☀</span><span>{{ t('settings.light') }}</span>
+              </label>
+              <label :class="{ active: theme === 'dark' }">
+                <input type="radio" name="app-theme" value="dark" :checked="theme === 'dark'" @change="changeTheme('dark')" />
+                <span aria-hidden="true">☾</span><span>{{ t('settings.dark') }}</span>
+              </label>
+            </div>
+          </fieldset>
+          <p class="preference-account-help">
+            {{ user ? t('settings.accountPreferenceHelp') : t('settings.guestPreferenceHelp') }}
+          </p>
+          <p v-if="preferenceSaving" class="preference-message" role="status">{{ t('settings.savingPreferences') }}</p>
+          <p v-else-if="preferenceError" class="preference-message error" role="alert">{{ preferenceError }}</p>
+          <p v-else-if="preferenceMessage" class="preference-message" role="status">{{ preferenceMessage }}</p>
+        </div>
+      </section>
+
       <template v-if="user">
         <section class="settings-group" aria-labelledby="account-heading">
           <h2 id="account-heading">Your account</h2>

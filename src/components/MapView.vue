@@ -12,13 +12,19 @@
     <p v-if="locationMessage" class="location-notice" role="status">
       {{ locationMessage }}
     </p>
+    <p v-if="showTrajectoryEmpty" class="trajectory-empty" role="status">
+      No sightings with valid map coordinates are available.
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import type { Pet, Sighting } from '../types/pet'
 import type { StrayReport } from '../types/stray'
 import type { HotspotPoint } from '../types/analytics'
@@ -32,15 +38,21 @@ const props = defineProps<{
   strays?: StrayReport[]
   heatPoints?: HotspotPoint[]
   showHeatmap?: boolean
+  focusedSightingId?: string
 }>()
 
-const emit = defineEmits<{ open: [pet: Pet]; 'open-stray': [stray: StrayReport] }>()
+const emit = defineEmits<{
+  open: [pet: Pet]
+  'open-stray': [stray: StrayReport]
+  'sighting-open': [sightingId: string]
+}>()
 
 const mapEl = ref<HTMLElement | null>(null)
 
 let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
-let trajectoryLayer: L.LayerGroup | null = null
+let trajectoryLayer: L.MarkerClusterGroup | null = null
+let trajectoryRouteLayer: L.LayerGroup | null = null
 let straysLayer: L.LayerGroup | null = null
 let radiusCircle: L.Circle | null = null
 let userMarker: L.Marker | null = null
@@ -52,9 +64,14 @@ let centerRequest = 0
 let heatRenderRequest = 0
 let trajectoryFitKey = ''
 let heatPluginPromise: Promise<void> | null = null
+const trajectoryMarkers = new Map<string, L.Marker>()
 
 const locationMessage = ref<string | null>(null)
 const heatmapError = ref('')
+const trajectoryPointCount = ref(0)
+const showTrajectoryEmpty = computed(
+  () => props.sightings !== undefined && props.sightings.length > 0 && trajectoryPointCount.value === 0,
+)
 
 const HK_CENTER: [number, number] = [22.2825, 114.1897]
 const PAW_PLACEHOLDER = `<span class="pawradar-image-fallback" aria-hidden="true">
@@ -339,8 +356,9 @@ async function renderHeatmap() {
 }
 
 function trajectoryPopup(sighting: Sighting, number: number): string {
-  const recordedAt = sighting.createdAt
-    ? new Date(sighting.createdAt).toLocaleString()
+  const reportTime = sighting.sightedAt || sighting.createdAt
+  const recordedAt = reportTime
+    ? new Date(reportTime).toLocaleString()
     : 'Time unavailable'
   return `<div class="pawradar-trajectory-popup">
     <strong>Sighting ${number}</strong>
@@ -351,31 +369,38 @@ function trajectoryPopup(sighting: Sighting, number: number): string {
 }
 
 function renderTrajectory() {
-  if (!map || !trajectoryLayer) return
+  if (!map || !trajectoryLayer || !trajectoryRouteLayer) return
   const layer = trajectoryLayer
   layer.clearLayers()
+  trajectoryRouteLayer.clearLayers()
+  trajectoryMarkers.clear()
 
   const ordered = [...(props.sightings ?? [])]
     .filter((sighting) => sightingLatLng(sighting))
     .sort((a, b) => {
-      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
-      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      const aValue = a.sightedAt || a.createdAt
+      const bValue = b.sightedAt || b.createdAt
+      const aTime = aValue ? new Date(aValue).getTime() : 0
+      const bTime = bValue ? new Date(bValue).getTime() : 0
       return aTime - bTime
     })
   const points = ordered.map((sighting) => sightingLatLng(sighting) as [number, number])
+  trajectoryPointCount.value = points.length
+  if (points.length === 0) trajectoryFitKey = ''
 
   if (points.length > 1) {
     L.polyline(points, {
       color: '#ef6351',
-      weight: 4,
-      opacity: 0.9,
+      weight: 3,
+      opacity: 0.72,
+      dashArray: '8 10',
       lineCap: 'round',
       lineJoin: 'round',
-    }).addTo(layer)
+    }).addTo(trajectoryRouteLayer)
   }
 
   ordered.forEach((sighting, index) => {
-    L.marker(points[index], {
+    const marker = L.marker(points[index], {
       icon: L.divIcon({
         className: '',
         html: `<span class="pawradar-trajectory-marker">${index + 1}</span>`,
@@ -386,7 +411,9 @@ function renderTrajectory() {
       zIndexOffset: 1200,
     })
       .bindPopup(trajectoryPopup(sighting, index + 1))
-      .addTo(layer)
+      .on('click', () => emit('sighting-open', sighting.id))
+    trajectoryMarkers.set(sighting.id, marker)
+    layer.addLayer(marker)
   })
 
   const fitKey = ordered
@@ -395,7 +422,22 @@ function renderTrajectory() {
   if (points.length > 1 && fitKey && fitKey !== trajectoryFitKey) {
     trajectoryFitKey = fitKey
     map.fitBounds(L.latLngBounds(points).pad(0.2), { maxZoom: 15 })
+  } else if (points.length === 1 && fitKey && fitKey !== trajectoryFitKey) {
+    trajectoryFitKey = fitKey
+    map.setView(points[0], 15)
   }
+
+  focusSightingMarker(props.focusedSightingId)
+}
+
+function focusSightingMarker(sightingId?: string) {
+  if (!map || !trajectoryLayer || !sightingId) return
+  const marker = trajectoryMarkers.get(sightingId)
+  if (!marker) return
+  trajectoryLayer.zoomToShowLayer(marker, () => {
+    marker.openPopup()
+    map?.panTo(marker.getLatLng())
+  })
 }
 
 function radiusMeters(): number {
@@ -463,8 +505,35 @@ async function initialiseMap() {
   }).addTo(map)
 
   markersLayer = L.layerGroup().addTo(map)
-  trajectoryLayer = L.layerGroup().addTo(map)
-  straysLayer = L.layerGroup().addTo(map)
+  trajectoryRouteLayer = L.layerGroup().addTo(map)
+  trajectoryLayer = L.markerClusterGroup({
+    maxClusterRadius: 26,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+    zoomToBoundsOnClick: true,
+    removeOutsideVisibleBounds: false,
+    iconCreateFunction: (cluster) =>
+      L.divIcon({
+        className: '',
+        html: `<span class="pawradar-sighting-cluster" aria-label="${cluster.getChildCount()} overlapping sighting reports">${cluster.getChildCount()}</span>`,
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+      }),
+  }).addTo(map)
+  straysLayer = props.strays !== undefined
+    ? L.markerClusterGroup({
+        maxClusterRadius: 42,
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        zoomToBoundsOnClick: true,
+        iconCreateFunction: (cluster) => L.divIcon({
+          className: '',
+          html: `<span class="pawradar-sighting-cluster" aria-label="${cluster.getChildCount()} stray animal posts">${cluster.getChildCount()}</span>`,
+          iconSize: [38, 38],
+          iconAnchor: [19, 19],
+        }),
+      }).addTo(map)
+    : L.layerGroup().addTo(map)
   radiusCircle = L.circle(center, {
     radius: radiusMeters(),
     color: '#1d6360',
@@ -492,6 +561,7 @@ onMounted(() => {
 
 watch(() => props.pets, () => renderPets(), { deep: true })
 watch(() => props.sightings, () => renderTrajectory(), { deep: true })
+watch(() => props.focusedSightingId, (id) => focusSightingMarker(id))
 watch(() => props.strays, () => renderStrays(), { deep: true })
 watch([() => props.heatPoints, () => props.showHeatmap], () => void renderHeatmap(), { deep: true })
 watch(() => props.radiusKm, () => renderRadius())
@@ -525,6 +595,8 @@ onBeforeUnmount(() => {
   map = null
   markersLayer = null
   trajectoryLayer = null
+  trajectoryRouteLayer = null
+  trajectoryMarkers.clear()
   straysLayer = null
   radiusCircle = null
   userMarker = null
@@ -572,6 +644,23 @@ onBeforeUnmount(() => {
   color: #ef6351;
   font-size: 12px;
   font-weight: 700;
+  box-shadow: var(--shadow-card);
+}
+
+.trajectory-empty {
+  position: absolute;
+  z-index: 500;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(252, 249, 242, 0.96);
+  color: #1d6360;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
   box-shadow: var(--shadow-card);
 }
 
@@ -804,6 +893,20 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 12px rgba(61, 56, 53, 0.28);
   font-size: 12px;
   font-weight: 800;
+}
+
+.pawradar-sighting-cluster {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 4px solid #fcf9f2;
+  border-radius: 50%;
+  background: #1d6360;
+  color: #fff;
+  box-shadow: 0 5px 15px rgba(29, 99, 96, 0.34);
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .pawradar-trajectory-popup {

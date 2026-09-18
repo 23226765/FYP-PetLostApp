@@ -34,8 +34,8 @@
         <button type="button" @click="loadSavedPets">Try again</button>
       </div>
 
-      <section v-else-if="savedPets.length" class="saved-list" aria-label="Saved pet posts">
-        <p>{{ savedPets.length }} {{ savedPets.length === 1 ? 'saved post' : 'saved posts' }}</p>
+      <section v-else-if="savedPets.length || savedStrays.length" class="saved-list" aria-label="Saved posts">
+        <p v-if="savedPets.length">Lost pet posts</p>
         <PetCard
           v-for="pet in savedPets"
           :key="pet.id"
@@ -43,6 +43,12 @@
           @open="emit('open-pet', pet)"
           @found="emit('found', pet)"
         />
+        <p v-if="savedStrays.length">Stray community posts</p>
+        <button v-for="stray in savedStrays" :key="stray.id" class="saved-stray" type="button" @click="emit('open-stray', stray.id)">
+          <img v-if="stray.photo" :src="imageUrl(stray.photo)" :alt="`${stray.species} post`" />
+          <span class="saved-stray-copy"><strong>{{ stray.species }} · {{ stray.district }}</strong><span>{{ stray.description }}</span><small>{{ stray.author.name }} · {{ stray.reportedAgo }}</small></span>
+        </button>
+        <p v-if="unavailableCount" class="unavailable">{{ unavailableCount }} saved {{ unavailableCount === 1 ? 'post is' : 'posts are' }} no longer available.</p>
       </section>
 
       <div v-else class="empty-state" role="status">
@@ -62,7 +68,7 @@
           </svg>
         </span>
         <h2>No saved posts yet</h2>
-        <p>Tap the bookmark icon on any pet card to save it here.</p>
+        <p>Tap the bookmark icon on any pet or stray post to save it here.</p>
       </div>
     </main>
   </div>
@@ -73,17 +79,24 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PetCard from '../components/PetCard.vue'
 import { useSavedPets } from '../composables/useSavedPets'
-import { getPet } from '../services/api'
+import { getPet, getSavedStrays } from '../services/api'
 import type { Pet } from '../types/pet'
+import type { StrayReport } from '../types/stray'
+import type { User } from '../types/user'
+
+const props = defineProps<{ user?: User | null }>()
 
 const emit = defineEmits<{
   'open-pet': [pet: Pet]
   found: [pet: Pet]
+  'open-stray': [strayId: string]
 }>()
 
 const router = useRouter()
 const { savedPetIds } = useSavedPets()
 const savedPets = ref<Pet[]>([])
+const savedStrays = ref<StrayReport[]>([])
+const unavailableCount = ref(0)
 const loading = ref(false)
 const error = ref('')
 let requestSequence = 0
@@ -93,39 +106,46 @@ async function loadSavedPets() {
   const ids = [...savedPetIds.value]
   error.value = ''
 
-  if (!ids.length) {
+  if (!ids.length && !props.user) {
     savedPets.value = []
+    savedStrays.value = []
     loading.value = false
     return
   }
 
   loading.value = true
   try {
-    const results = await Promise.allSettled(ids.map((id) => getPet(id)))
+    const [petResults, strayResult] = await Promise.all([
+      Promise.allSettled(ids.map((id) => getPet(id))),
+      props.user ? getSavedStrays() : Promise.resolve({ strays: [], unavailableCount: 0 }),
+    ])
     if (sequence !== requestSequence) return
 
     const petsById = new Map<string, Pet>()
-    results.forEach((result) => {
+    petResults.forEach((result) => {
       if (result.status === 'fulfilled') petsById.set(result.value.id, result.value)
     })
     savedPets.value = ids.flatMap((id) => {
       const pet = petsById.get(id)
       return pet ? [pet] : []
     })
-
-    if (!savedPets.value.length) {
-      throw new Error('The saved posts could not be loaded. They may no longer be available.')
-    }
+    savedStrays.value = strayResult.strays
+    unavailableCount.value = strayResult.unavailableCount
   } catch (caught) {
     if (sequence !== requestSequence) return
     savedPets.value = []
+    savedStrays.value = []
     error.value = caught instanceof Error ? caught.message : 'Unable to load saved posts.'
   } finally {
     if (sequence === requestSequence) loading.value = false
   }
 }
 
-watch(savedPetIds, loadSavedPets, { immediate: true })
+watch([savedPetIds, () => props.user?.id], loadSavedPets, { immediate: true })
+
+function imageUrl(value: string) {
+  try { const api = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin); return new URL(value, `${api.origin}/`).href } catch { return '' }
+}
 </script>
 
 <style scoped>
@@ -199,6 +219,11 @@ watch(savedPetIds, loadSavedPets, { immediate: true })
   font-size: 12.5px;
   font-weight: 750;
 }
+.saved-stray { width: 100%; min-height: 108px; display: grid; grid-template-columns: 108px 1fr; overflow: hidden; border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgba(29,99,96,.07); text-align: left; }
+.saved-stray img { width: 108px; height: 108px; object-fit: cover; }
+.saved-stray-copy { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 12px; }
+.saved-stray-copy > span { overflow: hidden; color: var(--ink-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.saved-stray-copy small,.unavailable { color: var(--ink-muted); font-size: 10.5px; }
 
 .loading-state,
 .empty-state,

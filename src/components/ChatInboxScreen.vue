@@ -111,7 +111,7 @@
               <span class="pet-context">{{ conversation.pet.name }}</span>
               <span class="message-row">
                 <span class="message-preview">
-                  {{ conversation.lastMessage.text || 'Shared a photo' }}
+                  {{ conversation.lastMessage.text || (conversation.lastMessage.sharedStray ? 'Shared a stray post' : 'Shared a photo') }}
                 </span>
                 <span
                   v-if="isConversationUnread(conversation)"

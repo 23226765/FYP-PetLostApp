@@ -3,6 +3,8 @@ import Message from '../models/Message.js'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import User from '../models/User.js'
+import Stray from '../models/Stray.js'
+import Notification from '../models/Notification.js'
 import {
   contactOwnerFrom,
   loadContactOwners,
@@ -12,7 +14,13 @@ import {
 const MAX_MESSAGE_LENGTH = 2000
 const MAX_PHOTO_LENGTH = 1_500_000
 
-function serializeMessage(message) {
+function strayReferenceId(message) {
+  return message.sharedStray?._id || message.sharedStray || null
+}
+
+function serializeMessage(message, strayById = new Map()) {
+  const strayId = strayReferenceId(message)
+  const stray = strayId ? strayById.get(String(strayId)) : null
   return {
     id: String(message._id),
     petId: String(message.pet),
@@ -20,7 +28,24 @@ function serializeMessage(message) {
     text: message.text,
     photo: message.photo || undefined,
     createdAt: message.createdAt,
+    sharedStray: stray ? {
+      id: String(stray._id),
+      species: stray.species,
+      description: stray.description,
+      photo: stray.photo || stray.photos?.[0] || '',
+      location: stray.locationName,
+      district: stray.district,
+      rescueStatus: stray.rescueStatus,
+    } : undefined,
+    sharedStrayUnavailable: Boolean(strayId && !stray),
   }
+}
+
+async function serializeMessages(messages) {
+  const ids = [...new Set(messages.map(strayReferenceId).filter(Boolean).map(String))]
+  const strays = ids.length ? await Stray.find({ _id: { $in: ids }, active: { $ne: false } }).select('species description photo photos locationName district rescueStatus') : []
+  const strayById = new Map(strays.map((stray) => [String(stray._id), stray]))
+  return messages.map((message) => serializeMessage(message, strayById))
 }
 
 function isUnsupportedOrderByError(error) {
@@ -120,6 +145,7 @@ export async function listConversations(req, res, next) {
     const participantNameById = new Map(
       participants.map((participant) => [String(participant._id), participant.name]),
     )
+    const serializedLastMessages = new Map((await serializeMessages([...lastMessageByConversation.values()])).map((message) => [message.id, message]))
     const conversations = conversationKeys
       .map((conversationId) => {
         const lastMessage = lastMessageByConversation.get(conversationId)
@@ -137,7 +163,7 @@ export async function listConversations(req, res, next) {
             participantId,
             participantNameById.get(participantId) || 'Finder',
           ),
-          lastMessage: serializeMessage(lastMessage),
+          lastMessage: serializedLastMessages.get(String(lastMessage._id)),
           updatedAt: lastMessage.createdAt,
         }
       })
@@ -167,7 +193,7 @@ export async function getMessages(req, res, next) {
 
     const messages = await findMessages({ pet: req.params.petId, participant: participantId })
     res.json({
-      messages: messages.map(serializeMessage),
+      messages: await serializeMessages(messages),
       viewerRole: isOwner(pet, req.user._id) ? 'owner' : 'finder',
     })
   } catch (error) {
@@ -183,11 +209,12 @@ export async function createMessage(req, res, next) {
     }
     if (!hasRequestBody(req)) return invalidRequestBody(res)
 
-    const { text, photo } = req.body
+    const { text, photo, sharedStrayId, clientRequestId } = req.body
     const normalizedMessage = typeof text === 'string' ? text.trim() : ''
     const normalizedPhoto = typeof photo === 'string' ? photo.trim() : ''
-    if (!normalizedMessage && !normalizedPhoto) {
-      return res.status(400).json({ error: 'A message requires text or a photo.' })
+    const normalizedRequestId = typeof clientRequestId === 'string' ? clientRequestId.trim().slice(0, 100) : ''
+    if (!normalizedMessage && !normalizedPhoto && !sharedStrayId) {
+      return res.status(400).json({ error: 'A message requires text, a photo, or a shared post.' })
     }
     if (normalizedMessage.length > MAX_MESSAGE_LENGTH) {
       return res.status(400).json({ error: 'Message is too long.' })
@@ -216,16 +243,43 @@ export async function createMessage(req, res, next) {
       }
     }
 
-    const message = await Message.create({
+    let sharedStray = null
+    if (sharedStrayId) {
+      if (!mongoose.isValidObjectId(sharedStrayId)) return res.status(400).json({ error: 'Invalid shared stray post id.' })
+      sharedStray = await Stray.findOne({ _id: sharedStrayId, active: { $ne: false } })
+      if (!sharedStray) return res.status(404).json({ error: 'Shared stray post is unavailable.' })
+      if (!normalizedRequestId) return res.status(400).json({ error: 'clientRequestId is required when sharing a post.' })
+      const existing = await Message.findOne({ sentBy: req.user._id, clientRequestId: normalizedRequestId })
+      if (existing) return res.json({ message: (await serializeMessages([existing]))[0], duplicate: true })
+    }
+
+    const messageValues = {
       pet: req.params.petId,
       sender: isOwner(pet, req.user._id) ? 'owner' : 'finder',
       sentBy: req.user._id,
       participant: participantId,
       text: normalizedMessage,
       photo: normalizedPhoto,
-    })
+      sharedStray: sharedStray?._id || null,
+      clientRequestId: normalizedRequestId || undefined,
+    }
+    const message = normalizedRequestId
+      ? await Message.findOneAndUpdate(
+          { sentBy: req.user._id, clientRequestId: normalizedRequestId },
+          { $setOnInsert: messageValues },
+          { upsert: true, new: true, setDefaultsOnInsert: true },
+        )
+      : await Message.create(messageValues)
 
-    res.status(201).json({ message: serializeMessage(message) })
+    const recipientId = isOwner(pet, req.user._id) ? participantId : pet.reportedBy
+    if (recipientId && String(recipientId) !== String(req.user._id)) {
+      await Notification.findOneAndUpdate(
+        { user: recipientId, type: 'message', message: message._id },
+        { $setOnInsert: { user: recipientId, pet: pet._id, stray: sharedStray?._id || null, message: message._id, type: 'message', title: 'New PawRadar message', body: normalizedMessage || (sharedStray ? 'Shared a stray animal post.' : 'Shared a photo.'), photo: sharedStray?.photo || normalizedPhoto || '' } },
+        { upsert: true, new: true },
+      )
+    }
+    res.status(201).json({ message: (await serializeMessages([message]))[0] })
   } catch (error) {
     next(error)
   }

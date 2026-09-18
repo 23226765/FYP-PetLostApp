@@ -7,11 +7,13 @@ import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import Stray from '../models/Stray.js'
 import User from '../models/User.js'
+import StrayComment from '../models/StrayComment.js'
+import SavedStray from '../models/SavedStray.js'
 
 const scriptsDirectory = new URL('../scripts/', import.meta.url)
 
 test('every seeded model has a private immutable batch marker', () => {
-  for (const model of [User, Pet, Stray, Sighting, Message, Notification]) {
+  for (const model of [User, Pet, Stray, Sighting, Message, Notification, StrayComment, SavedStray]) {
     const marker = model.schema.path('seedBatch')
     assert.ok(marker, `${model.modelName} is missing seedBatch`)
     assert.equal(marker.options.select, false)

@@ -53,6 +53,7 @@ export interface Sighting {
   locationName?: string
   note?: string
   photo?: string
+  sightedAt?: string
   createdAt?: string
   confirmationCount?: number
   confirmedByMe?: boolean

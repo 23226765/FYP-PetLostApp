@@ -16,6 +16,8 @@ import Notification from '../models/Notification.js'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import Stray from '../models/Stray.js'
+import StrayComment from '../models/StrayComment.js'
+import SavedStray from '../models/SavedStray.js'
 import User from '../models/User.js'
 
 export const SEED_BATCH = 'fyp-demo-v1'
@@ -98,6 +100,7 @@ async function seedUsers(password) {
       alertsEnabled: true,
       alertRadiusKm: 8,
       privacy: { contactVisibility: 'authenticated' },
+      preferences: { language: 'en', theme: 'light' },
       alertLocation: { type: 'Point', coordinates: [114.1588, 22.2819] },
     },
     {
@@ -110,6 +113,7 @@ async function seedUsers(password) {
       alertsEnabled: true,
       alertRadiusKm: 5,
       privacy: { contactVisibility: 'private' },
+      preferences: { language: 'zh-HK', theme: 'dark' },
       alertLocation: { type: 'Point', coordinates: [114.1694, 22.3193] },
     },
     {
@@ -122,6 +126,7 @@ async function seedUsers(password) {
       alertsEnabled: true,
       alertRadiusKm: 15,
       privacy: { contactVisibility: 'private' },
+      preferences: { language: 'en', theme: 'dark' },
       alertLocation: { type: 'Point', coordinates: [114.195, 22.381] },
     },
   ]
@@ -139,9 +144,10 @@ async function seedUsers(password) {
     })
     await User.updateOne(
       { _id: result.document._id, seedBatch: SEED_BATCH },
-      { $set: { privacy: profile.privacy } },
+      { $set: { privacy: profile.privacy, preferences: profile.preferences } },
     )
     result.document.privacy = profile.privacy
+    result.document.preferences = profile.preferences
     users[key] = result.document
     if (result.created) created += 1
   }
@@ -272,6 +278,7 @@ async function seedStrays(users) {
       species: 'Cat',
       description: 'Fictional ginger stray limping near a sheltered walkway.',
       photo: imageUrl('Demo ginger stray cat'),
+      photos: [imageUrl('Demo ginger stray cat')],
       condition: 'injured',
       district: 'Wan Chai',
       locationName: 'Southorn Playground, Wan Chai',
@@ -280,6 +287,7 @@ async function seedStrays(users) {
       reporterName: users.finder.name,
       reporterPhone: users.finder.phone,
       reportedBy: users.finder._id,
+      observedAt: hoursAgo(9),
       statusUpdatedAt: hoursAgo(2),
       createdAt: hoursAgo(8),
       updatedAt: hoursAgo(2),
@@ -289,6 +297,7 @@ async function seedStrays(users) {
       species: 'Dog',
       description: 'Fictional friendly mixed-breed dog transferred to demo shelter care.',
       photo: imageUrl('Demo rescued mixed breed dog'),
+      photos: [imageUrl('Demo rescued mixed breed dog')],
       condition: 'healthy',
       district: 'Sha Tin',
       locationName: 'Shing Mun River Promenade',
@@ -297,19 +306,74 @@ async function seedStrays(users) {
       reporterName: users.shelter.name,
       reporterPhone: users.shelter.phone,
       reportedBy: users.shelter._id,
+      observedAt: hoursAgo(38),
       statusUpdatedAt: hoursAgo(4),
       createdAt: hoursAgo(36),
       updatedAt: hoursAgo(4),
     },
+    {
+      key: 'tai-po-bird',
+      species: 'Other',
+      description: 'Fictional green parrot resting safely beside a covered market entrance.',
+      photo: imageUrl('Demo stray green parrot'),
+      photos: [imageUrl('Demo stray green parrot'), imageUrl('Demo parrot location')],
+      condition: 'healthy',
+      district: 'Tai Po',
+      locationName: 'Tai Po Market entrance',
+      location: { type: 'Point', coordinates: [114.1687, 22.4507] },
+      rescueStatus: 'reported',
+      reporterName: users.owner.name,
+      reporterPhone: users.owner.phone,
+      reportedBy: users.owner._id,
+      observedAt: hoursAgo(5),
+      statusUpdatedAt: hoursAgo(5),
+      createdAt: hoursAgo(5),
+      updatedAt: hoursAgo(5),
+    },
   ]
 
+  const strays = {}
   let created = 0
   for (const definition of definitions) {
     const { key, ...strayData } = definition
     const result = await ensureDocument(Stray, 'stray', key, strayData)
+    await Stray.updateOne(
+      { _id: result.document._id, seedBatch: SEED_BATCH },
+      { $set: { photos: strayData.photos, observedAt: strayData.observedAt, active: true } },
+    )
+    strays[key] = result.document
     if (result.created) created += 1
   }
-  return { created }
+  return { strays, created }
+}
+
+async function seedStrayCommunity(users, strays) {
+  const commentDefinitions = [
+    { key: 'cat-owner', stray: strays['wan-chai-cat']._id, author: users.owner._id, text: 'I can bring a carrier after work if help is still needed.' },
+    { key: 'cat-shelter', stray: strays['wan-chai-cat']._id, author: users.shelter._id, text: 'Our demo rescue volunteer is checking this location.' },
+    { key: 'dog-finder', stray: strays['sha-tin-dog']._id, author: users.finder._id, text: 'Glad this dog reached safe shelter care.' },
+    { key: 'bird-shelter', stray: strays['tai-po-bird']._id, author: users.shelter._id, text: 'Please avoid feeding it and keep a little distance.' },
+  ]
+  const comments = {}
+  let commentsCreated = 0
+  for (const definition of commentDefinitions) {
+    const { key, ...values } = definition
+    const result = await ensureDocument(StrayComment, 'stray-comment', key, { ...values, submissionId: `seed-${key}`, createdAt: hoursAgo(3), updatedAt: hoursAgo(3) })
+    comments[key] = result.document
+    if (result.created) commentsCreated += 1
+  }
+
+  const saveDefinitions = [
+    { key: 'finder-bird', user: users.finder._id, stray: strays['tai-po-bird']._id },
+    { key: 'owner-cat', user: users.owner._id, stray: strays['wan-chai-cat']._id },
+  ]
+  let savesCreated = 0
+  for (const definition of saveDefinitions) {
+    const { key, ...values } = definition
+    const result = await ensureDocument(SavedStray, 'saved-stray', key, values)
+    if (result.created) savesCreated += 1
+  }
+  return { comments, commentsCreated, savesCreated }
 }
 
 async function seedSightings(users, pets) {
@@ -326,6 +390,7 @@ async function seedSightings(users, pets) {
       reporterPhone: users.finder.phone,
       confirmedBy: [users.owner._id],
       resolved: false,
+      sightedAt: hoursAgo(8),
       createdAt: hoursAgo(8),
       updatedAt: hoursAgo(8),
     },
@@ -341,6 +406,7 @@ async function seedSightings(users, pets) {
       reporterPhone: users.finder.phone,
       confirmedBy: [users.owner._id, users.shelter._id],
       resolved: false,
+      sightedAt: hoursAgo(6),
       createdAt: hoursAgo(6),
       updatedAt: hoursAgo(6),
     },
@@ -356,6 +422,7 @@ async function seedSightings(users, pets) {
       reporterPhone: users.owner.phone,
       confirmedBy: [users.shelter._id],
       resolved: false,
+      sightedAt: hoursAgo(20),
       createdAt: hoursAgo(20),
       updatedAt: hoursAgo(20),
     },
@@ -371,6 +438,7 @@ async function seedSightings(users, pets) {
       reporterPhone: users.shelter.phone,
       confirmedBy: [users.owner._id],
       resolved: false,
+      sightedAt: hoursAgo(4),
       createdAt: hoursAgo(4),
       updatedAt: hoursAgo(4),
     },
@@ -381,13 +449,26 @@ async function seedSightings(users, pets) {
   for (const definition of definitions) {
     const { key, ...sightingData } = definition
     const result = await ensureDocument(Sighting, 'sighting', key, sightingData)
+    await Sighting.updateOne(
+      { _id: result.document._id, seedBatch: SEED_BATCH },
+      {
+        $set: {
+          location: sightingData.location,
+          locationName: sightingData.locationName,
+          sightedAt: result.document.createdAt,
+        },
+      },
+    )
+    result.document.location = sightingData.location
+    result.document.locationName = sightingData.locationName
+    result.document.sightedAt = result.document.createdAt
     sightings[key] = result.document
     if (result.created) created += 1
   }
   return { sightings, created }
 }
 
-async function seedMessages(users, pets) {
+async function seedMessages(users, pets, strays) {
   const definitions = [
     {
       key: 'maple-1',
@@ -428,6 +509,18 @@ async function seedMessages(users, pets) {
       text: 'That sounds like Maple. I am heading there now.',
       createdAt: hoursAgo(6.75),
       updatedAt: hoursAgo(6.75),
+    },
+    {
+      key: 'share-stray-cat',
+      pet: pets.maple._id,
+      sender: 'finder',
+      sentBy: users.finder._id,
+      participant: users.finder._id,
+      text: 'Sharing this Wan Chai rescue post for shelter follow-up.',
+      sharedStray: strays['wan-chai-cat']._id,
+      clientRequestId: 'seed-share-stray-cat',
+      createdAt: hoursAgo(2),
+      updatedAt: hoursAgo(2),
     },
   ]
 
@@ -498,6 +591,8 @@ async function collectionCounts() {
     ['sightings', Sighting],
     ['messages', Message],
     ['notifications', Notification],
+    ['straycomments', StrayComment],
+    ['savedstrays', SavedStray],
   ]
   const counts = []
   for (const [collection, Model] of models) {
@@ -523,14 +618,15 @@ async function run() {
 
   const { users, created: usersCreated } = await seedUsers(password)
   const { pets, created: petsCreated } = await seedPets(users)
-  const { created: straysCreated } = await seedStrays(users)
+  const { strays, created: straysCreated } = await seedStrays(users)
+  const { commentsCreated, savesCreated } = await seedStrayCommunity(users, strays)
   const { sightings, created: sightingsCreated } = await seedSightings(users, pets)
-  const { created: messagesCreated } = await seedMessages(users, pets)
+  const { created: messagesCreated } = await seedMessages(users, pets, strays)
   const { created: notificationsCreated } = await seedNotifications(users, pets, sightings)
 
   console.log(`Seed batch: ${SEED_BATCH}`)
   console.log(
-    `Created this run: users=${usersCreated}, pets=${petsCreated}, strays=${straysCreated}, sightings=${sightingsCreated}, messages=${messagesCreated}, notifications=${notificationsCreated}`,
+    `Created this run: users=${usersCreated}, pets=${petsCreated}, strays=${straysCreated}, strayComments=${commentsCreated}, savedStrays=${savesCreated}, sightings=${sightingsCreated}, messages=${messagesCreated}, notifications=${notificationsCreated}`,
   )
   for (const count of await collectionCounts()) {
     console.log(`${count.collection}: seeded=${count.seeded}, total=${count.total}`)

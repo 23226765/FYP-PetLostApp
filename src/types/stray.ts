@@ -6,17 +6,34 @@ export interface StrayReport {
   species: 'Dog' | 'Cat' | 'Other'
   description: string
   photo: string
+  photos: string[]
   condition: StrayCondition
   district: string
   location: string
   coordinates: [number, number] | null
   rescueStatus: RescueStatus
   reporterName: string
+  author: { id?: string; name: string; avatar: string }
   reporterPhone?: string
   canViewContact: boolean
   reportedBy?: string
   reportedAgo: string
+  observedAt: string
   createdAt: string
+  updatedAt: string
   statusUpdatedAt: string
   distanceKm?: number
+  commentCount: number
+  commentPreview?: string
+  isSaved: boolean
+  canManage: boolean
+}
+
+export interface StrayComment {
+  id: string
+  strayId: string
+  text: string
+  author: { id?: string; name: string; avatar: string }
+  createdAt: string
+  updatedAt: string
 }

@@ -27,6 +27,14 @@ const straySchema = new mongoose.Schema(
     species: { type: String, enum: ['Dog', 'Cat', 'Other'], required: true },
     description: { type: String, required: true, trim: true },
     photo: { type: String, default: '' },
+    photos: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (values) => values.length <= 6,
+        message: 'A stray post can contain at most 6 photos.',
+      },
+    },
     condition: {
       type: String,
       enum: ['unknown', 'healthy', 'injured', 'critical'],
@@ -41,9 +49,12 @@ const straySchema = new mongoose.Schema(
       default: 'reported',
     },
     reporterName: { type: String, required: true, trim: true },
-    reporterPhone: { type: String, required: true, trim: true },
+    reporterPhone: { type: String, default: '', trim: true },
     reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    observedAt: { type: Date, default: Date.now },
     statusUpdatedAt: { type: Date, default: Date.now },
+    active: { type: Boolean, default: true },
+    submissionId: { type: String, trim: true, maxlength: 100, default: undefined },
     seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },
   { timestamps: true, collection: 'strays' },
@@ -52,5 +63,9 @@ const straySchema = new mongoose.Schema(
 straySchema.index({ location: '2dsphere' })
 straySchema.index({ district: 1, rescueStatus: 1, createdAt: -1 })
 straySchema.index({ reportedBy: 1, createdAt: -1 })
+straySchema.index(
+  { reportedBy: 1, submissionId: 1 },
+  { name: 'stray_submission_idempotency_v2', unique: true, partialFilterExpression: { submissionId: { $type: 'string' } } },
+)
 
 export default mongoose.models.Stray || mongoose.model('Stray', straySchema)

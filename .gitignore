@@ -18,6 +18,7 @@ node_modules
 server/.env
 server/.env.*
 !server/.env.example
+server/uploads/
 .env
 
 # Build output (Capacitor webDir)

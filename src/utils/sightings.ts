@@ -1,8 +1,9 @@
 import type { Sighting } from '../types/pet'
 
 function reportTime(sighting: Sighting): number {
-  const value = sighting.createdAt ? new Date(sighting.createdAt).getTime() : 0
-  return Number.isFinite(value) ? value : 0
+  const value = sighting.sightedAt || sighting.createdAt
+  const timestamp = value ? new Date(value).getTime() : 0
+  return Number.isFinite(timestamp) ? timestamp : 0
 }
 
 export function normalizeSightingHistory(items: readonly Sighting[]): Sighting[] {

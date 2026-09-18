@@ -64,22 +64,30 @@
       <p>Change the filters or report an animal that needs help.</p>
     </div>
     <div v-else-if="view === 'list'" class="report-list">
-      <button v-for="stray in strays" :key="stray.id" class="stray-card" type="button" @click="selected = stray">
+      <article v-for="stray in strays" :key="stray.id" class="stray-card" tabindex="0" role="link" :aria-label="`Open ${stray.species} post by ${stray.author.name}`" @click="openStray(stray)" @keydown.enter="openStray(stray)">
+        <div class="post-author">
+          <span class="author-avatar"><img v-if="stray.author.avatar" :src="normalizedImageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="17" /></span>
+          <span><strong>{{ stray.author.name }}</strong><small>{{ stray.reportedAgo }} · {{ stray.district }}</small></span>
+          <span class="rescue-status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
+        </div>
         <div class="photo-wrap">
           <img v-if="imageUrl(stray) && !failedImages.has(stray.id)" :src="imageUrl(stray)" alt="" @error="markImageFailed(stray.id)" />
           <span v-else class="photo-placeholder"><AppIcon name="paw" :size="34" /></span>
           <span class="condition" :class="stray.condition">{{ conditionLabel(stray.condition) }}</span>
         </div>
         <div class="card-body">
-          <div class="card-title"><strong>{{ stray.species }}</strong><span>{{ stray.distanceKm }} km</span></div>
+          <div class="card-title"><strong>{{ stray.species }}</strong><span v-if="stray.distanceKm !== undefined">{{ stray.distanceKm }} km</span></div>
           <p>{{ stray.location }}</p>
           <p class="description">{{ stray.description }}</p>
-          <div class="card-foot">
-            <span class="rescue-status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
-            <span>{{ stray.reportedAgo }}</span>
-          </div>
+          <p v-if="stray.commentPreview" class="comment-preview">💬 {{ stray.commentPreview }}</p>
+          <div class="card-foot"><span>{{ stray.commentCount }} comments</span><span>{{ conditionLabel(stray.condition) }}</span></div>
         </div>
-      </button>
+        <div class="card-actions">
+          <button type="button" @click.stop="openStray(stray)"><AppIcon name="message" :size="18" />Comment</button>
+          <button type="button" :class="{ active: stray.isSaved }" @click.stop="toggleSave(stray)"><span aria-hidden="true">🔖</span>{{ stray.isSaved ? 'Saved' : 'Save' }}</button>
+          <button type="button" @click.stop="openStray(stray)"><AppIcon name="send" :size="18" />Share</button>
+        </div>
+      </article>
     </div>
     <MapView
       v-else
@@ -87,46 +95,8 @@
       :strays="strays"
       :center="userLocation"
       :radius-km="radiusKm"
-      @open-stray="selected = $event"
+      @open-stray="openStray"
     />
-
-    <Transition name="fade">
-      <div v-if="selected" class="scrim" @click.self="selected = null">
-        <section class="detail-sheet" role="dialog" aria-modal="true" :aria-label="`${selected.species} rescue report`">
-          <div class="grab" />
-          <div class="detail-heading">
-            <div>
-              <span class="rescue-status" :class="selected.rescueStatus">{{ statusLabel(selected.rescueStatus) }}</span>
-              <h2>{{ selected.species }} in {{ selected.district }}</h2>
-            </div>
-            <button type="button" aria-label="Close report" @click="selected = null"><AppIcon name="close" :size="20" /></button>
-          </div>
-          <p class="detail-location"><AppIcon name="pin" :size="16" />{{ selected.location }}</p>
-          <p class="detail-copy">{{ selected.description }}</p>
-          <div class="detail-meta"><span>Condition</span><strong>{{ conditionLabel(selected.condition) }}</strong></div>
-          <div class="detail-meta"><span>Reported</span><strong>{{ selected.reportedAgo }}</strong></div>
-          <div v-if="contactActions" class="contact-actions">
-            <a :href="contactActions.callHref"><AppIcon name="phone" :size="18" />Call reporter</a>
-            <a :href="contactActions.whatsappHref" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-          </div>
-          <p v-else class="contact-private">
-            This reporter accepts contact through PetLostApp messages only.
-          </p>
-          <div v-if="canManageSelected" class="status-actions">
-            <p>Update rescue progress</p>
-            <button
-              v-for="option in rescueOptions"
-              :key="option.value"
-              type="button"
-              :disabled="updatingStatus || selected.rescueStatus === option.value"
-              :class="{ active: selected.rescueStatus === option.value }"
-              @click="changeStatus(option.value)"
-            >{{ option.label }}</button>
-          </div>
-          <p v-if="statusError" class="form-error" role="alert">{{ statusError }}</p>
-        </section>
-      </div>
-    </Transition>
 
     <Transition name="fade">
       <div v-if="showReportForm" class="scrim" @click.self="showReportForm = false">
@@ -136,10 +106,12 @@
             <div><p class="eyebrow">New rescue report</p><h2>Animal details</h2></div>
             <button type="button" aria-label="Close form" @click="showReportForm = false"><AppIcon name="close" :size="20" /></button>
           </div>
+          <input ref="photoInput" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" @change="onPhotoSelected" />
           <button class="photo-button" type="button" @click="addPhoto">
             <img v-if="form.photo" :src="form.photo" alt="Selected stray animal" />
             <template v-else><AppIcon name="camera" :size="25" /><span>Add a clear photo</span></template>
           </button>
+          <button v-if="form.photo" class="remove-photo" type="button" @click="form.photo = ''">Remove photo</button>
           <div class="form-grid">
             <label><span>Animal</span><select v-model="form.species" required><option value="Dog">Dog</option><option value="Cat">Cat</option><option value="Other">Other</option></select></label>
             <label><span>Condition</span><select v-model="form.condition" required><option value="unknown">Unknown</option><option value="healthy">Appears healthy</option><option value="injured">Injured</option><option value="critical">Critical</option></select></label>
@@ -147,12 +119,11 @@
           <label><span>District</span><select v-model="form.district" required><option value="" disabled>Select district</option><option v-for="district in HK_DISTRICTS" :key="district" :value="district">{{ district }}</option></select></label>
           <label><span>Location description</span><input v-model="form.locationName" required placeholder="Street, landmark, or park" /></label>
           <label><span>What did you observe?</span><textarea v-model="form.description" rows="3" required placeholder="Appearance, behaviour, direction of travel..." /></label>
-          <label><span>Contact name</span><input v-model="form.reporterName" required autocomplete="name" /></label>
-          <label><span>Contact phone</span><input v-model="form.reporterPhone" required type="tel" autocomplete="tel" /></label>
-          <p class="location-note"><AppIcon name="pin" :size="15" />Your current location is attached only when you submit.</p>
+          <label><span>Observed date and time</span><input v-model="form.observedAt" required type="datetime-local" :max="maxObservedAt" /></label>
+          <SightingLocationPicker v-model="form.coordinates" :initial-center="initialPickerCenter" title="Where did you see the animal?" />
           <p v-if="reportError" class="form-error" role="alert">{{ reportError }}</p>
           <button class="submit-button" type="submit" :disabled="submitting">
-            <AppIcon name="radar" :size="19" />{{ submitting ? 'Submitting...' : 'Submit rescue report' }}
+            <AppIcon name="radar" :size="19" />{{ submitLabel }}
           </button>
         </form>
       </div>
@@ -162,12 +133,12 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
-import { getNearbyStrays, reportStray, updateStrayStatus } from '../services/api'
-import { getCurrentLocation } from '../services/geolocation'
-import { createContactActions } from '../utils/contact'
+import SightingLocationPicker from './SightingLocationPicker.vue'
+import { getNearbyStrays, reportStray, setStraySaved, uploadImage } from '../services/api'
 import { HK_DISTRICTS } from '../types/pet'
 import type { User } from '../types/user'
 import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
@@ -178,6 +149,7 @@ const props = defineProps<{
   userLocation: { lat: number; lng: number } | null
 }>()
 const emit = defineEmits<{ 'auth-needed': [] }>()
+const router = useRouter()
 
 const HK_CENTER = { lat: 22.3193, lng: 114.1694 }
 const view = ref<'list' | 'map'>('list')
@@ -187,13 +159,12 @@ const error = ref('')
 const speciesFilter = ref('')
 const statusFilter = ref('')
 const districtFilter = ref('')
-const selected = ref<StrayReport | null>(null)
 const failedImages = ref(new Set<string>())
 const showReportForm = ref(false)
 const submitting = ref(false)
 const reportError = ref('')
-const updatingStatus = ref(false)
-const statusError = ref('')
+const uploadStage = ref<'idle' | 'uploading' | 'posting'>('idle')
+const photoInput = ref<HTMLInputElement | null>(null)
 let requestSequence = 0
 let abortController: AbortController | null = null
 
@@ -203,27 +174,15 @@ const form = reactive({
   district: '',
   locationName: '',
   description: '',
-  reporterName: '',
-  reporterPhone: '',
   photo: '',
+  coordinates: null as [number, number] | null,
+  observedAt: new Date().toISOString().slice(0, 16),
+  submissionId: '',
 })
-const rescueOptions: Array<{ value: RescueStatus; label: string }> = [
-  { value: 'reported', label: 'Needs help' },
-  { value: 'rescue_dispatched', label: 'Help dispatched' },
-  { value: 'rescued', label: 'Rescued' },
-]
-
-const canManageSelected = computed(() => {
-  if (!props.user || !selected.value) return false
-  return props.user.role === 'shelter_admin' || selected.value.reportedBy === props.user.id
-})
-const contactActions = computed(() => {
-  if (!selected.value?.canViewContact) return null
-  return createContactActions(
-    selected.value.reporterPhone,
-    `Hi ${selected.value.reporterName}, I'm contacting you through PawRadar about the ${selected.value.species.toLowerCase()} reported near ${selected.value.location}.`,
-  )
-})
+const maxObservedAt = computed(() => new Date().toISOString().slice(0, 16))
+const initialPickerCenter = computed<[number, number] | null>(() => props.userLocation ? [props.userLocation.lng, props.userLocation.lat] : null)
+const submitLabel = computed(() => uploadStage.value === 'uploading' ? 'Uploading photo...' : uploadStage.value === 'posting' ? 'Publishing post...' : 'Publish rescue post')
+const uniqueId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 function normalizedImageUrl(value: string): string {
   if (!value?.trim()) return ''
@@ -239,7 +198,7 @@ function conditionLabel(value: StrayCondition) {
   return { unknown: 'Condition unknown', healthy: 'Appears healthy', injured: 'Injured', critical: 'Critical' }[value]
 }
 function statusLabel(value: RescueStatus) {
-  return { reported: 'Needs help', rescue_dispatched: 'Help dispatched', rescued: 'Rescued' }[value]
+  return { reported: 'Spotted', rescue_dispatched: 'Help dispatched', rescued: 'In care' }[value]
 }
 
 async function loadStrays() {
@@ -268,10 +227,19 @@ async function loadStrays() {
 }
 
 function openReportForm() {
-  form.reporterName = props.user?.name || form.reporterName
-  form.reporterPhone = props.user?.phone || form.reporterPhone
+  if (!props.user) { emit('auth-needed'); return }
   reportError.value = ''
+  if (!form.submissionId) form.submissionId = uniqueId()
   showReportForm.value = true
+}
+
+function openStray(stray: StrayReport) { void router.push(`/strays/${stray.id}`) }
+
+async function toggleSave(stray: StrayReport) {
+  if (!props.user) { emit('auth-needed'); return }
+  const target = !stray.isSaved
+  try { stray.isSaved = await setStraySaved(stray.id, target) }
+  catch (cause) { reportError.value = cause instanceof Error ? cause.message : 'Unable to update saved posts.' }
 }
 
 async function addPhoto() {
@@ -281,8 +249,22 @@ async function addPhoto() {
     form.photo = image.dataUrl || ''
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : ''
-    if (!message.toLowerCase().includes('cancel')) reportError.value = message || 'Unable to add a photo.'
+    if (message.toLowerCase().includes('cancel')) return
+    photoInput.value?.click()
   }
+}
+
+function onPhotoSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    reportError.value = 'Choose a JPEG, PNG, or WebP image smaller than 5 MB.'; input.value = ''; return
+  }
+  const reader = new FileReader()
+  reader.onload = () => { if (typeof reader.result === 'string') form.photo = reader.result; input.value = '' }
+  reader.onerror = () => { reportError.value = 'Unable to read this image.'; input.value = '' }
+  reader.readAsDataURL(file)
 }
 
 async function submitReport() {
@@ -290,49 +272,37 @@ async function submitReport() {
   submitting.value = true
   reportError.value = ''
   try {
-    const { lat, lng } = await getCurrentLocation()
+    if (!props.user) { emit('auth-needed'); return }
+    if (!form.photo) throw new Error('Add a clear photo before publishing.')
+    if (!form.coordinates) throw new Error('Select and confirm the sighting location on the map.')
+    uploadStage.value = 'uploading'
+    const photoUrl = form.photo.startsWith('data:') ? await uploadImage(form.photo) : form.photo
+    uploadStage.value = 'posting'
     const created = await reportStray({
       species: form.species,
       condition: form.condition,
       district: form.district,
       locationName: form.locationName,
       description: form.description,
-      reporterName: form.reporterName,
-      reporterPhone: form.reporterPhone,
-      photo: form.photo || undefined,
-      coordinates: [lng, lat],
+      photo: photoUrl,
+      photos: [photoUrl],
+      coordinates: form.coordinates,
+      observedAt: new Date(form.observedAt).toISOString(),
+      rescueStatus: 'reported',
+      submissionId: form.submissionId,
     })
-    strays.value = [created, ...strays.value]
-    selected.value = created
+    strays.value = [created, ...strays.value.filter((item) => item.id !== created.id)]
     showReportForm.value = false
     form.locationName = ''
     form.description = ''
     form.photo = ''
+    form.coordinates = null
+    form.observedAt = new Date().toISOString().slice(0, 16)
+    form.submissionId = ''
+    await router.push(`/strays/${created.id}`)
   } catch (caught) {
-    const locationCode = typeof caught === 'object' && caught ? (caught as { code?: number }).code : undefined
-    reportError.value = locationCode === 1
-      ? 'Location permission is required so rescuers receive an accurate map pin.'
-      : caught instanceof Error
-        ? caught.message
-        : 'Unable to submit the rescue report.'
-  } finally { submitting.value = false }
-}
-
-async function changeStatus(status: RescueStatus) {
-  if (!selected.value || updatingStatus.value) return
-  if (!props.user) { emit('auth-needed'); return }
-  updatingStatus.value = true
-  statusError.value = ''
-  try {
-    const previousDistance = selected.value.distanceKm
-    const updated = await updateStrayStatus(selected.value.id, status)
-    updated.distanceKm = previousDistance
-    selected.value = updated
-    const index = strays.value.findIndex((stray) => stray.id === updated.id)
-    if (index >= 0) strays.value[index] = updated
-  } catch (caught) {
-    statusError.value = caught instanceof Error ? caught.message : 'Unable to update rescue status.'
-  } finally { updatingStatus.value = false }
+    reportError.value = caught instanceof Error ? caught.message : 'Unable to submit the rescue report.'
+  } finally { submitting.value = false; uploadStage.value = 'idle' }
 }
 
 watch(
@@ -364,7 +334,14 @@ select:focus, input:focus, textarea:focus { border-color: var(--teal); }
 .result-head strong { color: var(--ink); font-size: 13.5px; }
 .report-list { display: flex; flex-direction: column; gap: 14px; }
 .stray-card { width: 100%; display: grid; grid-template-columns: 112px 1fr; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); text-align: left; transition: transform .2s cubic-bezier(.4,0,.2,1); }
+.stray-card:focus-visible { outline: 3px solid rgba(29,99,96,.28); outline-offset: 2px; }
 .stray-card:active { transform: scale(.98); }
+.post-author { grid-column: 1 / -1; display: flex; align-items: center; gap: 9px; padding: 11px 12px; }
+.post-author > span:nth-child(2) { min-width: 0; flex: 1; }
+.post-author strong, .post-author small { display: block; }
+.post-author small { margin-top: 2px; color: var(--ink-muted); font-size: 10.5px; }
+.author-avatar { width: 34px; height: 34px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: var(--teal-soft); color: var(--teal); }
+.author-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .photo-wrap { position: relative; min-height: 150px; overflow: hidden; background: #fcf9f2; }
 .photo-wrap img, .photo-button img { width: 100%; height: 100%; object-fit: cover; }
 .photo-placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(29,99,96,.55); background: radial-gradient(circle, rgba(29,99,96,.13), transparent 45%), #fcf9f2; }
@@ -375,7 +352,11 @@ select:focus, input:focus, textarea:focus { border-color: var(--teal); }
 .card-title span, .card-foot > span:last-child { color: var(--ink-muted); font-size: 11.5px; font-weight: 700; }
 .card-body > p { margin-top: 3px; color: var(--ink-muted); font-size: 12.5px; font-weight: 650; }
 .card-body .description { display: -webkit-box; margin-top: 8px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; }
+.card-body .comment-preview { display: -webkit-box; margin-top: 7px; overflow: hidden; color: var(--ink); -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
 .card-foot { align-items: flex-end; margin-top: 11px; }
+.card-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
+.card-actions button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--teal); font-size: 11.5px; font-weight: 800; }
+.card-actions button.active { background: var(--teal-soft); }
 .rescue-status { display: inline-flex; padding: 4px 9px; border-radius: 999px; background: rgba(239,99,81,.12); color: var(--coral); font-size: 10.5px; font-weight: 800; }
 .rescue-status.rescue_dispatched { background: rgba(29,99,96,.1); color: var(--teal); }
 .rescue-status.rescued { background: var(--teal); color: #fff; }
@@ -405,6 +386,8 @@ select:focus, input:focus, textarea:focus { border-color: var(--teal); }
 .report-sheet { display: flex; flex-direction: column; gap: 13px; }
 .photo-button { position: relative; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; overflow: hidden; border: 2px dashed rgba(29,99,96,.25); border-radius: var(--radius-lg); background: var(--teal-soft); color: var(--teal); font-weight: 800; }
 .photo-button img { position: absolute; inset: 0; }
+.remove-photo { align-self: flex-end; min-height: 36px; padding: 0 12px; border-radius: 999px; background: rgba(239,99,81,.1); color: var(--coral); font-size: 12px; font-weight: 800; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .location-note { display: flex; align-items: center; gap: 5px; color: var(--ink-muted); font-size: 11.5px; font-weight: 650; }
 .form-error { color: var(--coral); font-size: 12.5px; font-weight: 750; }
 .submit-button { width: 100%; border-radius: var(--radius-md); }

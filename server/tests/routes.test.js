@@ -7,6 +7,7 @@ import straysRouter from '../routes/strays.js'
 import authRouter from '../routes/auth.js'
 import matchesRouter from '../routes/matches.js'
 import analyticsRouter from '../routes/analytics.js'
+import uploadsRouter from '../routes/uploads.js'
 import Notification from '../models/Notification.js'
 
 function findRoute(router, path, method) {
@@ -87,6 +88,7 @@ test('notification schema accepts every application notification type', () => {
     'sighting',
     'message',
     'reunited',
+    'comment',
   ])
 })
 
@@ -102,9 +104,25 @@ test('stray reports are public while ownership actions require authentication', 
   assert.deepEqual(middlewareNames(list), ['optionalAuth', 'listStrays'])
   assert.deepEqual(middlewareNames(nearby), ['optionalAuth', 'nearbyStrays'])
   assert.deepEqual(middlewareNames(detail), ['optionalAuth', 'getStray'])
-  assert.deepEqual(middlewareNames(report), ['optionalAuth', 'reportStray'])
+  assert.deepEqual(middlewareNames(report), ['requireAuth', 'reportStray'])
   assert.deepEqual(middlewareNames(mine), ['requireAuth', 'listMyStrays'])
   assert.deepEqual(middlewareNames(status), ['requireAuth', 'updateRescueStatus'])
+})
+
+test('stray community writes and private saved posts require authentication', () => {
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/:id/comments', 'get')), ['optionalAuth', 'listComments'])
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/:id/comments', 'post')), ['requireAuth', 'createComment'])
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/:id/comments/:commentId', 'patch')), ['requireAuth', 'updateComment'])
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/:id/comments/:commentId', 'delete')), ['requireAuth', 'deleteComment'])
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/saved', 'get')), ['requireAuth', 'listSavedStrays'])
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/:id/saved', 'put')), ['requireAuth', 'saveStray'])
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/:id/saved', 'delete')), ['requireAuth', 'unsaveStray'])
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/:id', 'patch')), ['requireAuth', 'updateStray'])
+  assert.deepEqual(middlewareNames(findRoute(straysRouter, '/:id', 'delete')), ['requireAuth', 'deleteStray'])
+})
+
+test('image upload requires authentication', () => {
+  assert.deepEqual(middlewareNames(findRoute(uploadsRouter, '/image', 'post')), ['requireAuth', 'uploadImage'])
 })
 
 test('profile updates require authentication', () => {

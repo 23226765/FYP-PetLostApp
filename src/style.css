@@ -3,11 +3,29 @@
   --teal: #1d6360;
   --teal-soft: #ddecea;
   --coral: #ef6351;
-  --bg: #fcf9f2;
+  --page-bg: #fcf9f2;
   --surface: #ffffff;
-  --ink: #3d3835;
-  --ink-muted: #8b827a;
-  --line: #ece7e1;
+  --surface-elevated: #ffffff;
+  --surface-soft: #f5f1e9;
+  --text-primary: #3d3835;
+  --text-secondary: #6f6862;
+  --text-muted: #8b827a;
+  --border: #ece7e1;
+  --divider: rgba(29, 99, 96, 0.09);
+  --input-bg: #ffffff;
+  --button-primary: #1d6360;
+  --button-primary-text: #ffffff;
+  --focus-ring: rgba(29, 99, 96, 0.34);
+  --overlay: rgba(22, 31, 30, 0.52);
+  --success: #297a56;
+  --warning: #a66a14;
+  --error: #d94d40;
+  --status-teal-bg: rgba(29, 99, 96, 0.11);
+  --status-coral-bg: rgba(239, 99, 81, 0.12);
+  --bg: var(--page-bg);
+  --ink: var(--text-primary);
+  --ink-muted: var(--text-muted);
+  --line: var(--border);
 
   /* Nav redesign tokens */
   --color-teal: #1d6360;
@@ -24,6 +42,29 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+:root[data-theme='dark'] {
+  --page-bg: #101817;
+  --surface: #182321;
+  --surface-elevated: #202d2b;
+  --surface-soft: #14201e;
+  --text-primary: #f4f1ea;
+  --text-secondary: #cbc6bd;
+  --text-muted: #a9aaa4;
+  --border: #31413e;
+  --divider: rgba(208, 235, 231, 0.12);
+  --input-bg: #111c1a;
+  --teal-soft: #24413e;
+  --focus-ring: rgba(107, 199, 190, 0.52);
+  --overlay: rgba(0, 0, 0, 0.72);
+  --success: #75c99c;
+  --warning: #e7b66d;
+  --error: #ff8e80;
+  --status-teal-bg: rgba(79, 166, 158, 0.18);
+  --status-coral-bg: rgba(239, 99, 81, 0.18);
+  --shadow-card: 0 3px 16px rgba(0, 0, 0, 0.28);
+  --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -32,6 +73,11 @@
 
 html {
   background: var(--bg);
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 body {
@@ -58,6 +104,82 @@ select {
   font-family: inherit;
   font-size: 16px; /* prevents iOS zoom on focus */
   color: var(--ink);
+  background-color: var(--input-bg);
+}
+
+:where(button, input, textarea, select, a):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Dark mode compatibility for established component surfaces. Component-level
+   rules continue to own layout; these semantic overrides only replace colour. */
+[data-theme='dark'] :where(
+  .settings-page, .profile-screen, .radar-screen, .saved-page, .detail,
+  .inbox-screen, .chat-screen, .notifications, .stray-page, .rescue-screen,
+  .post-screen, .smart-match, .adoption-screen, .auth-screen
+) {
+  background-color: var(--page-bg) !important;
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] :where(
+  .settings-card, .auth-card, .pet-card, .stray-card, .conversation-card,
+  .summary-card, .info-card, .modal, .sheet, .panel, .filter-panel,
+  .empty-state, .loading-card, .profile-card
+) {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme='dark'] :where(input, textarea, select) {
+  border-color: var(--border) !important;
+  background-color: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] :where(input, textarea)::placeholder {
+  color: var(--text-muted);
+}
+
+/* Leaflet's free OSM raster tiles stay unchanged. Controls, popups, clusters,
+   and map chrome remain legible without filtering tiles, photos, or markers. */
+[data-theme='dark'] .leaflet-control-zoom a,
+[data-theme='dark'] .leaflet-control-layers,
+[data-theme='dark'] .leaflet-popup-content-wrapper,
+[data-theme='dark'] .leaflet-popup-tip {
+  border-color: var(--border) !important;
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .leaflet-control-attribution {
+  background: rgba(16, 24, 23, 0.88) !important;
+  color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .leaflet-control-attribution a {
+  color: #7dd3ca !important;
+}
+
+[data-theme='dark'] .leaflet-bar a:hover {
+  background: var(--surface-soft) !important;
+}
+
+@media print {
+  :root,
+  :root[data-theme='dark'] {
+    color-scheme: light;
+    --page-bg: #ffffff;
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-secondary: #3d3835;
+    --text-muted: #5e5752;
+    --border: #ded8d0;
+  }
 }
 
 img {

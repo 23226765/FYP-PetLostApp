@@ -2,13 +2,19 @@ import mongoose from 'mongoose'
 
 const pointSchema = new mongoose.Schema(
   {
-    type: { type: String, enum: ['Point'], default: 'Point' },
+    type: { type: String, enum: ['Point'], required: true },
     coordinates: {
       type: [Number],
       required: true,
       validate: {
         validator: (v) =>
-          v.length === 2 && v[0] >= -180 && v[0] <= 180 && v[1] >= -90 && v[1] <= 90,
+          Array.isArray(v) &&
+          v.length === 2 &&
+          v.every((coordinate) => typeof coordinate === 'number' && Number.isFinite(coordinate)) &&
+          v[0] >= -180 &&
+          v[0] <= 180 &&
+          v[1] >= -90 &&
+          v[1] <= 90,
         message: 'coordinates must be [lng, lat]',
       },
     },
@@ -21,13 +27,14 @@ const sightingSchema = new mongoose.Schema(
     pet: { type: mongoose.Schema.Types.ObjectId, ref: 'Pet', required: true },
     reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     location: { type: pointSchema, required: true },
-    locationName: { type: String, default: '' },
+    locationName: { type: String, required: true, trim: true, maxlength: 200 },
     note: { type: String, default: '', trim: true, maxlength: 2000 },
     photo: { type: String, default: '' },
     reporterName: { type: String, default: '' },
     reporterPhone: { type: String, default: '' },
     confirmedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     resolved: { type: Boolean, default: false },
+    sightedAt: { type: Date, required: true, default: Date.now },
     submissionId: {
       type: String,
       trim: true,
@@ -43,6 +50,7 @@ const sightingSchema = new mongoose.Schema(
 
 sightingSchema.index({ location: '2dsphere' })
 sightingSchema.index({ pet: 1, createdAt: -1 })
+sightingSchema.index({ pet: 1, sightedAt: 1, _id: 1 })
 sightingSchema.index({ reportedBy: 1, createdAt: -1 })
 sightingSchema.index({ submissionId: 1 }, { unique: true, sparse: true })
 

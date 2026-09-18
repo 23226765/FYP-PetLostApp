@@ -342,7 +342,7 @@ function sightingToHistoryEntry(sighting: MySighting): HistoryEntry {
     breed: 'Reported sighting',
     petPhoto: sighting.pet?.photo || sighting.photo || '',
     location: sighting.locationName || 'Location not provided',
-    dateAgo: relativeTime(sighting.createdAt),
+    dateAgo: relativeTime(sighting.sightedAt || sighting.createdAt),
     type: 'sighting',
     outcome: sighting.pet?.status || 'sighted',
     note: sighting.note || undefined,

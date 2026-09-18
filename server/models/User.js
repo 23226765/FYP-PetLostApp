@@ -33,6 +33,22 @@ const privacySchema = new mongoose.Schema(
   { _id: false },
 )
 
+const preferencesSchema = new mongoose.Schema(
+  {
+    language: {
+      type: String,
+      enum: ['en', 'zh-HK', 'zh-CN'],
+      default: 'en',
+    },
+    theme: {
+      type: String,
+      enum: ['light', 'dark'],
+      default: 'light',
+    },
+  },
+  { _id: false, strict: 'throw' },
+)
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 100 },
@@ -52,6 +68,10 @@ const userSchema = new mongoose.Schema(
     alertRadiusKm: { type: Number, min: 1, max: 50, default: 3 },
     alertLocation: { type: pointSchema, default: undefined },
     privacy: { type: privacySchema, default: () => ({ contactVisibility: 'private' }) },
+    preferences: {
+      type: preferencesSchema,
+      default: () => ({ language: 'en', theme: 'light' }),
+    },
     seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },
   { timestamps: true, collection: 'users' },

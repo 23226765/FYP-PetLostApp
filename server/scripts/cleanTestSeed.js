@@ -13,6 +13,8 @@ import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import Stray from '../models/Stray.js'
 import User from '../models/User.js'
+import StrayComment from '../models/StrayComment.js'
+import SavedStray from '../models/SavedStray.js'
 
 const SEED_BATCH = 'fyp-demo-v1'
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -43,6 +45,8 @@ async function run() {
   const models = [
     ['notifications', Notification],
     ['messages', Message],
+    ['savedstrays', SavedStray],
+    ['straycomments', StrayComment],
     ['sightings', Sighting],
     ['strays', Stray],
     ['pets', Pet],
