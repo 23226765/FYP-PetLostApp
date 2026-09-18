@@ -8,7 +8,13 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "seed": "node seed.js",
+    "seed:test": "node scripts/seedTestData.js",
+    "seed:clean": "node scripts/cleanTestSeed.js",
+    "seed:verify": "node scripts/verifySeedApis.js",
+    "verify:bugfixes": "node scripts/verifyBugFixes.js",
+    "verify:privacy": "node scripts/verifyContactPrivacy.js",
     "fix:pet-photos": "node scripts/fixPetPhotos.js",
+    "verify:db": "node scripts/verifyDatabase.js",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {

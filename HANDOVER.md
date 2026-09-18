@@ -3,7 +3,7 @@
 ## Tech Stack
 - **Frontend:** Vue 3 (`<script setup>` + TypeScript), Vite, Axios, Leaflet; custom CSS tokens (mobile shell, max-width 480px).
 - **Backend:** Node.js + Express + Mongoose, bcryptjs, jsonwebtoken, cors, dotenv.
-- **DB:** Azure Cosmos DB (MongoDB API) with GeoJSON `2dsphere`.
+- **DB:** MongoDB Atlas database `petlostapp`, accessed through Mongoose with GeoJSON `2dsphere` indexes.
 
 ## Endpoints (live)
 - `GET /api/health`
@@ -16,8 +16,8 @@
 Radar (list + Leaflet map, species/radius filters), PostPet, Profile, PetDetail, PetCard, AuthScreen (login/register + guest), UserSettings (logout).
 Orphaned (not wired): SmartMatch, Notifications, Poster, Chat, Onboarding, Boost, AdoptionHistory.
 
-## Cosmos DB Config
-Connected. DB `pawradar`; collections `pets` (12 seeded), `sightings`, `users`. Connection string + `JWT_SECRET` live in `server/.env` (gitignored).
+## MongoDB Atlas Config
+The reusable connection module is `server/config/database.js`. The private `MONGODB_URI` and `JWT_SECRET` belong only in `server/.env` (gitignored); `server/.env.example` contains safe placeholders. Express starts only after a successful connection to `petlostapp` and `/api/health` performs a database ping.
 
 ## Next Task
 Wire the remaining screens to the API — begin with a "My Posts" list (serve pets where `reportedBy` = current user) and connect SmartMatch to `GET /api/pets` results.

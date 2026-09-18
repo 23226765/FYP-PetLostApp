@@ -16,6 +16,8 @@ node_modules
 
 # Backend secrets
 server/.env
+server/.env.*
+!server/.env.example
 .env
 
 # Build output (Capacitor webDir)

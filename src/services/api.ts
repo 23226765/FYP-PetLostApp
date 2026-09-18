@@ -3,6 +3,7 @@ import type { Pet, Sighting } from '../types/pet'
 import type { AppNotification } from '../types/notification'
 import type { User } from '../types/user'
 import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
+import type { HotspotResponse } from '../types/analytics'
 
 // Use the same-origin Vite proxy by default. Deployments can provide an
 // absolute VITE_API_BASE_URL when the API is hosted separately.
@@ -59,6 +60,25 @@ export async function getNearbyPets(
   return data.pets
 }
 
+export interface HotspotParams {
+  lng: number
+  lat: number
+  radiusKm?: number
+  days?: number
+  source?: 'all' | 'sightings' | 'strays'
+}
+
+export async function getHotspots(
+  params: HotspotParams,
+  signal?: AbortSignal,
+): Promise<HotspotResponse> {
+  const { data } = await http.get<HotspotResponse>('/analytics/hotspots', {
+    params,
+    signal,
+  })
+  return data
+}
+
 export async function getAllPets(): Promise<Pet[]> {
   const { data } = await http.get<{ pets: Pet[] }>('/pets')
   return data.pets
@@ -111,6 +131,7 @@ export interface MySightingPet {
   photo: string
   status: Pet['status']
   ownerPhone?: string
+  canViewContact: boolean
 }
 
 export interface MySighting {
@@ -197,7 +218,8 @@ export interface ChatPet {
   name: string
   photo: string
   owner: string
-  ownerPhone: string
+  ownerPhone?: string
+  canViewContact: boolean
   reportedBy?: string
   participantId?: string
   participantName?: string
@@ -266,6 +288,7 @@ export interface SightingPayload {
   locationName?: string
   note?: string
   photo?: string
+  submissionId: string
 }
 
 export async function reportSighting(
@@ -384,4 +407,25 @@ export interface UpdateProfilePayload {
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
   const { data } = await http.patch<{ success: boolean; user: User }>('/auth/me', payload)
   return data.user
+}
+
+export type ContactVisibility = 'private' | 'authenticated'
+
+export interface ContactPrivacy {
+  contactVisibility: ContactVisibility
+}
+
+export async function getContactPrivacy(): Promise<ContactPrivacy> {
+  const { data } = await http.get<{ privacy: ContactPrivacy }>('/auth/me/privacy')
+  return data.privacy
+}
+
+export async function updateContactPrivacy(
+  contactVisibility: ContactVisibility,
+): Promise<ContactPrivacy> {
+  const { data } = await http.patch<{ success: boolean; privacy: ContactPrivacy }>(
+    '/auth/me/privacy',
+    { contactVisibility },
+  )
+  return data.privacy
 }

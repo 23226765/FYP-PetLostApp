@@ -7,4 +7,5 @@ export interface AppNotification {
   photo?: string
   read: boolean
   petId?: string
+  sightingId?: string
 }

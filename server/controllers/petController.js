@@ -2,6 +2,11 @@ import mongoose from 'mongoose'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import { scoreCandidate } from '../services/matchEngine.js'
+import {
+  contactOwnerFrom,
+  loadContactOwners,
+  serializeContact,
+} from '../services/contactPrivacy.js'
 import { createRadiusNotifications } from './notificationController.js'
 
 /* ───────────────────────── Helpers ───────────────────────── */
@@ -22,6 +27,8 @@ function isPoint(obj) {
 }
 
 const MAX_PHOTO_LENGTH = 1_500_000
+const DEFAULT_PAGE_SIZE = 50
+const MAX_PAGE_SIZE = 100
 const PHONE_PATTERN = /^\+?[\d\s().-]{8,30}$/
 const HK_DISTRICTS = new Set([
   'Central and Western', 'Eastern', 'Southern', 'Wan Chai',
@@ -44,6 +51,37 @@ function isValidPhone(value) {
   return digitCount >= 8 && digitCount <= 15
 }
 
+function authenticatedUserObjectId(req) {
+  const id = req.user?._id
+  return mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(String(id)) : null
+}
+
+function excludeOwnedPets(filter, req) {
+  const userId = authenticatedUserObjectId(req)
+  if (userId) filter.reportedBy = { $ne: userId }
+  return filter
+}
+
+function paginationFor(query) {
+  const requestedPage = Number(query.page)
+  const requestedLimit = Number(query.limit)
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
+  const limit =
+    Number.isInteger(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, MAX_PAGE_SIZE)
+      : DEFAULT_PAGE_SIZE
+  return { page, limit, skip: (page - 1) * limit }
+}
+
+function paginationPayload(page, limit, total) {
+  return {
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+  }
+}
+
 function hasRequestBody(req) {
   return (
     req.body &&
@@ -58,6 +96,14 @@ function invalidRequestBody(res) {
     success: false,
     message: 'Invalid or missing request body',
   })
+}
+
+function isSameSightingSubmission(sighting, pet, user) {
+  const existingReporterId = sighting.reportedBy ? String(sighting.reportedBy) : ''
+  const requestReporterId = user?._id ? String(user._id) : ''
+  return (
+    String(sighting.pet) === String(pet._id) && existingReporterId === requestReporterId
+  )
 }
 
 function relativeDay(date) {
@@ -82,7 +128,7 @@ function relativeTime(date) {
 }
 
 // Maps the DB document to the shape the Vue frontend already consumes.
-function serializePet(pet, distanceMeters) {
+function serializePet(pet, { distanceMeters, requester, contactOwner } = {}) {
   const distanceKm =
     typeof distanceMeters === 'number'
       ? Math.max(0.1, Math.round((distanceMeters / 1000) * 10) / 10)
@@ -105,7 +151,7 @@ function serializePet(pet, distanceMeters) {
     details: pet.details || '',
     reward: pet.reward || undefined,
     owner: pet.ownerName,
-    ownerPhone: pet.ownerPhone,
+    ...serializeContact({ requester, contactOwner, phoneField: 'ownerPhone' }),
     reportedBy: pet.reportedBy ? String(pet.reportedBy) : undefined,
     status: pet.status,
     location: pet.locationName,
@@ -118,6 +164,26 @@ function serializePet(pet, distanceMeters) {
   }
 }
 
+async function serializePetDocuments(pets, requester, distanceForPet) {
+  const owners = await loadContactOwners(pets)
+  return pets.map((pet) =>
+    serializePet(pet, {
+      requester,
+      contactOwner: contactOwnerFrom(owners, pet.reportedBy),
+      distanceMeters: distanceForPet?.(pet),
+    }),
+  )
+}
+
+async function serializeOnePet(pet, requester, distanceMeters) {
+  const owners = await loadContactOwners([pet])
+  return serializePet(pet, {
+    requester,
+    contactOwner: contactOwnerFrom(owners, pet.reportedBy),
+    distanceMeters,
+  })
+}
+
 /* ───────────────────────── Routes ───────────────────────── */
 
 // GET /api/pets
@@ -127,24 +193,30 @@ export async function listPets(req, res, next) {
     if (district && !HK_DISTRICTS.has(normalizedText(district, 80))) {
       return res.status(400).json({ error: 'Invalid Hong Kong district.' })
     }
-    const filter = {}
+    const filter = excludeOwnedPets({}, req)
     if (species) filter.species = species
     if (status) filter.status = status
     if (breed) {
       filter.breed = { $regex: escapeRegex(normalizedText(breed, 120)), $options: 'i' }
     }
     if (district) filter.district = normalizedText(district, 80)
+    const { page, limit, skip } = paginationFor(req.query)
+    const total = await Pet.countDocuments(filter)
     let docs
     try {
-      docs = await Pet.find(filter).sort({ createdAt: -1 })
+      docs = await Pet.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit)
     } catch (error) {
-      const isCosmosOrderByIndexError =
+      const isUnsupportedOrderByError =
         error?.code === 2 && String(error.message).includes('order-by item is excluded')
-      if (!isCosmosOrderByIndexError) throw error
+      if (!isUnsupportedOrderByError) throw error
       docs = await Pet.find(filter)
       docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      docs = docs.slice(skip, skip + limit)
     }
-    res.json({ pets: docs.map((p) => serializePet(p)) })
+    res.json({
+      pets: await serializePetDocuments(docs, req.user),
+      pagination: paginationPayload(page, limit, total),
+    })
   } catch (err) {
     next(err)
   }
@@ -157,13 +229,13 @@ export async function listMyPets(req, res, next) {
     try {
       docs = await Pet.find({ reportedBy: req.user._id }).sort({ createdAt: -1 })
     } catch (error) {
-      const isCosmosOrderByIndexError =
+      const isUnsupportedOrderByError =
         error?.code === 2 && String(error.message).includes('order-by item is excluded')
-      if (!isCosmosOrderByIndexError) throw error
+      if (!isUnsupportedOrderByError) throw error
       docs = await Pet.find({ reportedBy: req.user._id })
       docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }
-    res.json({ pets: docs.map((pet) => serializePet(pet)) })
+    res.json({ pets: await serializePetDocuments(docs, req.user) })
   } catch (err) {
     next(err)
   }
@@ -176,20 +248,48 @@ export async function listMySightings(req, res, next) {
     try {
       sightings = await Sighting.find({ reportedBy: req.user._id })
         .sort({ createdAt: -1 })
-        .populate('pet', 'name photo status ownerPhone')
+        .populate('pet', 'name photo status ownerName reportedBy')
     } catch (error) {
-      const isCosmosOrderByIndexError =
+      const isUnsupportedOrderByError =
         error?.code === 2 && String(error.message).includes('order-by item is excluded')
-      if (!isCosmosOrderByIndexError) throw error
+      if (!isUnsupportedOrderByError) throw error
       sightings = await Sighting.find({ reportedBy: req.user._id }).populate(
         'pet',
-        'name photo status ownerPhone',
+        'name photo status ownerName reportedBy',
       )
       sightings.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )
     }
-    res.json({ sightings })
+    const petDocuments = sightings.map((sighting) => sighting.pet).filter(Boolean)
+    const owners = await loadContactOwners(petDocuments)
+    res.json({
+      sightings: sightings.map((sighting) => {
+        const pet = sighting.pet
+        return {
+          _id: String(sighting._id),
+          pet: pet
+            ? {
+                _id: String(pet._id),
+                name: pet.name,
+                photo: pet.photo || '',
+                status: pet.status,
+                owner: pet.ownerName || 'Pet owner',
+                reportedBy: pet.reportedBy ? String(pet.reportedBy) : undefined,
+                ...serializeContact({
+                  requester: req.user,
+                  contactOwner: contactOwnerFrom(owners, pet.reportedBy),
+                  phoneField: 'ownerPhone',
+                }),
+              }
+            : null,
+          locationName: sighting.locationName,
+          note: sighting.note,
+          photo: sighting.photo || undefined,
+          createdAt: sighting.createdAt,
+        }
+      }),
+    })
   } catch (err) {
     next(err)
   }
@@ -217,6 +317,8 @@ export async function getNearbyPets(req, res, next) {
         : 3
     const radiusMeters = normalizedRadius * 1000
 
+    const { page, limit, skip } = paginationFor(req.query)
+    const ownerId = authenticatedUserObjectId(req)
     const pipeline = [
       {
         $geoNear: {
@@ -225,6 +327,7 @@ export async function getNearbyPets(req, res, next) {
           maxDistance: radiusMeters,
           spherical: true,
           key: 'location',
+          ...(ownerId ? { query: { reportedBy: { $ne: ownerId } } } : {}),
         },
       },
     ]
@@ -236,10 +339,24 @@ export async function getNearbyPets(req, res, next) {
     }
     if (district) match.district = normalizedText(district, 80)
     if (Object.keys(match).length) pipeline.push({ $match: match })
-    pipeline.push({ $sort: { distanceMeters: 1 } })
+    pipeline.push({
+      $facet: {
+        items: [
+          { $sort: { distanceMeters: 1, _id: 1 } },
+          { $skip: skip },
+          { $limit: limit },
+        ],
+        totals: [{ $count: 'count' }],
+      },
+    })
 
-    const docs = await Pet.aggregate(pipeline)
-    res.json({ pets: docs.map((p) => serializePet(p, p.distanceMeters)) })
+    const [result] = await Pet.aggregate(pipeline)
+    const docs = result?.items || []
+    const total = result?.totals?.[0]?.count || 0
+    res.json({
+      pets: await serializePetDocuments(docs, req.user, (pet) => pet.distanceMeters),
+      pagination: paginationPayload(page, limit, total),
+    })
   } catch (err) {
     next(err)
   }
@@ -284,8 +401,8 @@ export async function smartMatch(req, res, next) {
         ])
         groups.forEach((group) => sightingCounts.set(String(group._id), group.count))
       } catch (error) {
-        // Cosmos DB deployments may reject an otherwise valid grouping query.
-        // The fallback remains a single database request and counts in memory.
+        // Keep a single-query fallback for providers that reject grouping.
+        // Counting still happens in memory without a client-side N+1 loop.
         const sightings = await Sighting.find({ pet: { $in: petIds } }).select('pet')
         sightings.forEach((sighting) => {
           const petId = String(sighting.pet)
@@ -299,6 +416,7 @@ export async function smartMatch(req, res, next) {
       breed: normalizedBreed,
       coordinates: coordinates.map(Number),
     }
+    const contactOwners = await loadContactOwners(pets)
     const matches = pets
       .map((pet) => {
         const score = scoreCandidate(observation, pet)
@@ -307,7 +425,11 @@ export async function smartMatch(req, res, next) {
             ? score.breakdown.distanceKm * 1000
             : undefined
         return {
-          ...serializePet(pet, distanceMeters),
+          ...serializePet(pet, {
+            distanceMeters,
+            requester: req.user,
+            contactOwner: contactOwnerFrom(contactOwners, pet.reportedBy),
+          }),
           ...score,
           confidence: score.totalScore,
           sightingCount: sightingCounts.get(String(pet._id)) || 0,
@@ -335,7 +457,7 @@ export async function getPet(req, res, next) {
     }
     const pet = await Pet.findById(req.params.id)
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
-    res.json({ pet: serializePet(pet) })
+    res.json({ pet: await serializeOnePet(pet, req.user) })
   } catch (err) {
     next(err)
   }
@@ -348,21 +470,32 @@ export async function listSightings(req, res, next) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
 
+    const pet = await Pet.findById(req.params.id).select('reportedBy')
+    if (!pet) return res.status(404).json({ error: 'Pet not found' })
+
     let docs
     try {
-      docs = await Sighting.find({ pet: req.params.id }).sort({ createdAt: -1 })
+      docs = await Sighting.find({ pet: req.params.id }).sort({ createdAt: 1, _id: 1 })
     } catch (error) {
-      const isCosmosOrderByIndexError =
+      const isUnsupportedOrderByError =
         error?.code === 2 && String(error.message).includes('order-by item is excluded')
-      if (!isCosmosOrderByIndexError) throw error
+      if (!isUnsupportedOrderByError) throw error
 
       docs = await Sighting.find({ pet: req.params.id })
-      docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      docs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     }
     const currentUserId = req.user?._id ? String(req.user._id) : null
-    const sightings = docs.map((sighting) => {
+    const ownerId = pet.reportedBy ? String(pet.reportedBy) : null
+    const uniqueDocs = [...new Map(docs.map((sighting) => [String(sighting._id), sighting])).values()]
+    const reporters = await loadContactOwners(uniqueDocs)
+    const sightings = uniqueDocs.map((sighting) => {
       const confirmedBy = Array.isArray(sighting.confirmedBy) ? sighting.confirmedBy : []
-      return {
+      const reporterId = sighting.reportedBy ? String(sighting.reportedBy) : null
+      const canViewReporter = Boolean(
+        currentUserId && (currentUserId === ownerId || currentUserId === reporterId),
+      )
+      const contactOwner = contactOwnerFrom(reporters, sighting.reportedBy)
+      const serialized = {
         id: String(sighting._id),
         petId: String(sighting.pet),
         coordinates: sighting.location?.coordinates,
@@ -373,7 +506,18 @@ export async function listSightings(req, res, next) {
         confirmationCount: confirmedBy.length,
         confirmedByMe:
           Boolean(currentUserId) && confirmedBy.some((id) => String(id) === currentUserId),
+        ...serializeContact({
+          requester: req.user,
+          contactOwner,
+          phoneField: 'reporterPhone',
+          contextAllowed: canViewReporter,
+        }),
       }
+      if (canViewReporter) {
+        serialized.reportedBy = reporterId || undefined
+        serialized.reporterName = contactOwner?.name || sighting.reporterName || undefined
+      }
+      return serialized
     })
 
     res.json({ sightings })
@@ -474,7 +618,7 @@ export async function reportPet(req, res, next) {
       console.error('Could not create proximity notifications:', notificationError)
     }
 
-    res.status(201).json({ pet: serializePet(pet) })
+    res.status(201).json({ pet: await serializeOnePet(pet, req.user) })
   } catch (err) {
     next(err)
   }
@@ -490,42 +634,95 @@ export async function submitSighting(req, res, next) {
 
     const pet = await Pet.findById(req.params.id)
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
+    if (pet.status === 'reunited') {
+      return res.status(409).json({
+        error: 'This pet has been reunited and no longer accepts sighting reports.',
+      })
+    }
 
-    const { coordinates, locationName, note, photo, reporterName, reporterPhone } = req.body
+    const {
+      coordinates,
+      locationName,
+      note,
+      photo,
+      reporterName,
+      reporterPhone,
+      submissionId,
+    } = req.body
     if (!isPoint({ type: 'Point', coordinates })) {
       return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
     }
     if (typeof photo === 'string' && photo.length > MAX_PHOTO_LENGTH) {
       return res.status(413).json({ error: 'Photo is too large. Choose a smaller image.' })
     }
+    const normalizedSubmissionId = normalizedText(submissionId, 128)
+    if (
+      submissionId !== undefined &&
+      (!normalizedSubmissionId || !/^[A-Za-z0-9_-]{8,128}$/.test(normalizedSubmissionId))
+    ) {
+      return res.status(400).json({ error: '`submissionId` is invalid.' })
+    }
 
-    const sighting = await Sighting.create({
+    const sightingData = {
       pet: pet._id,
       reportedBy: req.user?._id || undefined,
       location: { type: 'Point', coordinates: coordinates.map(Number) },
       locationName: normalizedText(locationName, 200),
       note: normalizedText(note, 2000),
       photo: photo || '',
-      reporterName: normalizedText(reporterName, 100),
-      reporterPhone: normalizedText(reporterPhone, 30),
-    })
-
-    pet.status = 'sighted'
-    await pet.save()
-
-    try {
-      await createRadiusNotifications({
-        pet,
-        sighting,
-        type: 'sighting',
-        origin: sighting.location.coordinates,
-        excludeUserId: req.user?._id,
-      })
-    } catch (notificationError) {
-      console.error('Could not create sighting notifications:', notificationError)
+      reporterName: normalizedText(req.user?.name || reporterName, 100),
+      reporterPhone: normalizedText(req.user?.phone || reporterPhone, 30),
+      submissionId: normalizedSubmissionId || undefined,
     }
 
-    res.status(201).json({
+    let sighting = null
+    let created = true
+    if (normalizedSubmissionId) {
+      sighting = await Sighting.findOne({ submissionId: normalizedSubmissionId }).select(
+        '+submissionId',
+      )
+      if (sighting) {
+        if (!isSameSightingSubmission(sighting, pet, req.user)) {
+          return res.status(409).json({ error: 'This sighting submission identifier is in use.' })
+        }
+        created = false
+      }
+    }
+
+    if (!sighting) {
+      try {
+        sighting = await Sighting.create(sightingData)
+      } catch (error) {
+        if (error?.code !== 11000 || !normalizedSubmissionId) throw error
+        sighting = await Sighting.findOne({ submissionId: normalizedSubmissionId }).select(
+          '+submissionId',
+        )
+        if (!sighting) throw error
+        if (!isSameSightingSubmission(sighting, pet, req.user)) {
+          return res.status(409).json({ error: 'This sighting submission identifier is in use.' })
+        }
+        created = false
+      }
+    }
+
+    if (created) {
+      pet.status = 'sighted'
+      await pet.save()
+
+      try {
+        await createRadiusNotifications({
+          pet,
+          sighting,
+          type: 'sighting',
+          origin: sighting.location.coordinates,
+          excludeUserId: req.user?._id,
+        })
+      } catch (notificationError) {
+        console.error('Could not create sighting notifications:', notificationError)
+      }
+    }
+
+    res.status(created ? 201 : 200).json({
       sighting: {
         id: String(sighting._id),
         petId: String(pet._id),
@@ -537,7 +734,8 @@ export async function submitSighting(req, res, next) {
         confirmationCount: 0,
         confirmedByMe: false,
       },
-      pet: serializePet(pet),
+      pet: await serializeOnePet(pet, req.user),
+      duplicate: !created,
     })
   } catch (err) {
     next(err)
@@ -564,7 +762,7 @@ export async function updateStatus(req, res, next) {
 
     const pet = await Pet.findByIdAndUpdate(req.params.id, { status }, { new: true })
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
-    res.json({ pet: serializePet(pet) })
+    res.json({ pet: await serializeOnePet(pet, req.user) })
   } catch (err) {
     next(err)
   }

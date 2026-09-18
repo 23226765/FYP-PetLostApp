@@ -41,13 +41,20 @@
       <button class="share" aria-label="Share this pet's poster" @click="emit('poster')">
         <AppIcon name="share" :size="19" />
       </button>
-      <span class="badge" :class="pet.status">
-        {{ pet.status === 'lost' ? 'LOST' : 'SIGHTED NEARBY' }}
+      <span class="badge" :class="currentStatus">
+        {{ statusLabel }}
       </span>
     </div>
 
     <div class="sheet">
       <div class="grab" />
+      <div v-if="showCelebration" class="celebration-banner" role="status">
+        <span aria-hidden="true">🎉</span>
+        <div>
+          <strong>{{ pet.name }} is safely home!</strong>
+          <p>This report is now closed and no longer accepts new sightings.</p>
+        </div>
+      </div>
       <div class="title-row">
         <div>
           <h2>{{ pet.name }}</h2>
@@ -102,7 +109,13 @@
             />
           </div>
         <ol class="timeline">
-          <li v-for="sighting in trajectorySightings" :key="sighting.id" class="timeline-item">
+          <li
+            v-for="sighting in trajectorySightings"
+            :id="`sighting-${sighting.id}`"
+            :key="sighting.id"
+            class="timeline-item"
+            :class="{ focused: focusSightingId === sighting.id }"
+          >
             <span class="timeline-dot" aria-hidden="true" />
             <div class="timeline-content">
               <div class="timeline-head">
@@ -112,6 +125,28 @@
                 </time>
               </div>
               <p v-if="sighting.note">{{ sighting.note }}</p>
+              <div
+                v-if="sighting.reporterName || sighting.reporterPhone"
+                class="reporter-details"
+              >
+                <span>Reported by {{ sighting.reporterName || 'Community member' }}</span>
+                <div class="reporter-actions">
+                  <button
+                    v-if="canMessageReporter(sighting)"
+                    type="button"
+                    @click="emit('chat-reporter', sighting.reportedBy!, sighting.reporterName)"
+                  >
+                    Message
+                  </button>
+                  <a
+                    v-if="reporterCallHref(sighting)"
+                    :href="reporterCallHref(sighting)"
+                    @click.stop
+                  >
+                    Call
+                  </a>
+                </div>
+              </div>
               <div class="sighting-thumbnail" role="img" :aria-label="`Sighting of ${pet.name}`">
                 <img
                   v-if="normalizedImageUrl(sighting.photo) && !failedSightingPhotos.has(sightingImageKey(sighting))"
@@ -165,17 +200,24 @@
       <p class="desc">{{ pet.description }}</p>
 
       <div class="owner">
-        <button
+        <div
           class="owner-info"
-          type="button"
-          :aria-label="`Message ${pet.owner}`"
-          @click="emit('chat')"
         >
           <span class="owner-name">{{ pet.owner }}</span>
           <span class="owner-role">Owner · posted {{ pet.postedAgo }}</span>
-        </button>
-        <div v-if="contactActions" class="contact-actions">
+        </div>
+        <div class="contact-actions">
+          <button
+            v-if="canMessageOwner"
+            class="contact-action message"
+            type="button"
+            :aria-label="`Message ${pet.owner || 'the owner'} in PawRadar`"
+            @click="emit('chat')"
+          >
+            Message
+          </button>
           <a
+            v-if="contactActions"
             class="contact-action call"
             :href="contactActions.callHref"
             :aria-label="`Call ${pet.owner || 'the owner'}`"
@@ -183,6 +225,7 @@
             <AppIcon name="phone" :size="19" />
           </a>
           <a
+            v-if="contactActions"
             class="contact-action whatsapp"
             :href="contactActions.whatsappHref"
             target="_blank"
@@ -192,36 +235,108 @@
             WhatsApp
           </a>
         </div>
-        <span v-else class="contact-unavailable" aria-label="Owner phone number unavailable">
-          Phone unavailable
+        <span v-if="!canMessageOwner" class="contact-unavailable">This is your report</span>
+        <span
+          v-else-if="!contactActions"
+          class="contact-unavailable"
+          aria-label="Owner accepts contact through PawRadar messages"
+        >
+          This user accepts contact through PawRadar messages.
         </span>
       </div>
 
-      <button class="found-cta" @click="emit('found')">
+      <button
+        v-if="isOwner && currentStatus === 'lost'"
+        class="reunited-cta"
+        type="button"
+        @click="showReunionConfirm = true"
+      >
+        <span aria-hidden="true">🎉</span>
+        Mark as Reunited
+      </button>
+      <p v-if="reunionError" class="reunion-error" role="alert">{{ reunionError }}</p>
+
+      <button
+        v-if="currentStatus !== 'reunited'"
+        class="found-cta"
+        type="button"
+        @click="emit('found')"
+      >
         <AppIcon name="eye" :size="20" />
         Found it? Report a sighting
       </button>
+      <button v-else class="found-cta sightings-closed" type="button" disabled>
+        <AppIcon name="check" :size="20" />
+        Reunited · Sightings closed
+      </button>
     </div>
+
+    <Transition name="fade">
+      <div
+        v-if="showReunionConfirm"
+        class="reunion-scrim"
+        @click.self="closeReunionConfirmation"
+      >
+        <section
+          class="reunion-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reunion-dialog-title"
+        >
+          <span class="reunion-dialog-icon" aria-hidden="true">🎉</span>
+          <h2 id="reunion-dialog-title">Has your pet safely returned home?</h2>
+          <p>
+            Marking {{ pet.name }} as reunited will close this report and disable new
+            sighting submissions.
+          </p>
+          <div class="reunion-dialog-actions">
+            <button
+              class="cancel-reunion"
+              type="button"
+              :disabled="reunionSaving"
+              @click="closeReunionConfirmation"
+            >
+              Not yet
+            </button>
+            <button
+              class="confirm-reunion"
+              type="button"
+              :disabled="reunionSaving"
+              @click="confirmReunion"
+            >
+              {{ reunionSaving ? 'Updating…' : 'Yes, safely home' }}
+            </button>
+          </div>
+        </section>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { Pet, Sighting } from '../types/pet'
 import type { User } from '../types/user'
-import { confirmSighting, getPetSightings } from '../services/api'
+import { confirmSighting, getPetSightings, updatePetStatus } from '../services/api'
 import { useSavedPets } from '../composables/useSavedPets'
 import { createContactActions } from '../utils/contact'
+import { normalizeSightingHistory } from '../utils/sightings'
 import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
 
-const props = defineProps<{ pet: Pet; user?: User | null }>()
+const props = defineProps<{
+  pet: Pet
+  user?: User | null
+  focusSightingId?: string
+}>()
 const emit = defineEmits<{
   close: []
   found: []
   poster: []
   chat: []
+  'chat-reporter': [participantId: string, participantName?: string]
   'auth-needed': []
+  'status-updated': [pet: Pet]
 }>()
 
 const { isSaved, toggleSave } = useSavedPets()
@@ -233,14 +348,23 @@ const heroPhotoFailed = ref(false)
 const failedSightingPhotos = ref<Set<string>>(new Set())
 const confirmingSightings = ref<Set<string>>(new Set())
 const confirmationErrors = ref<Record<string, string>>({})
+const currentStatus = ref<Pet['status']>(props.pet.status)
+const showReunionConfirm = ref(false)
+const reunionSaving = ref(false)
+const reunionError = ref('')
+const showCelebration = ref(false)
 const heroPhotoUrl = computed(() => normalizedImageUrl(props.pet.photo))
-const trajectorySightings = computed(() =>
-  [...sightings.value].sort((a, b) => {
-    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
-    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
-    return aTime - bTime
-  }),
-)
+const isOwner = computed(() => {
+  const legacyUserId = (props.user as (User & { _id?: string }) | null | undefined)?._id
+  const userId = props.user?.id || legacyUserId
+  return Boolean(userId && props.pet.reportedBy && String(props.pet.reportedBy) === String(userId))
+})
+const statusLabel = computed(() => {
+  if (currentStatus.value === 'reunited') return 'REUNITED'
+  if (currentStatus.value === 'sighted') return 'SIGHTED NEARBY'
+  return 'LOST'
+})
+const trajectorySightings = computed(() => normalizeSightingHistory(sightings.value))
 const trajectoryCenter = computed(() => {
   const first = trajectorySightings.value.find((sighting) => sighting.coordinates?.length === 2)
   if (first) return { lat: first.coordinates[1], lng: first.coordinates[0] }
@@ -250,14 +374,58 @@ const trajectoryCenter = computed(() => {
   return null
 })
 const contactActions = computed(() => {
+  if (!props.pet.canViewContact) return null
   const location = props.pet.location ? `, last seen near ${props.pet.location}` : ''
   const message = `Hi, I'm contacting you through PawRadar about ${props.pet.name}${location}.`
   return createContactActions(props.pet.ownerPhone, message)
 })
+const canMessageOwner = computed(() => !isOwner.value)
 
 watch(heroPhotoUrl, () => {
   heroPhotoFailed.value = false
 })
+
+watch(
+  () => props.pet.status,
+  (status) => {
+    currentStatus.value = status
+  },
+)
+
+watch(
+  () => props.pet.id,
+  () => {
+    showReunionConfirm.value = false
+    reunionSaving.value = false
+    reunionError.value = ''
+    showCelebration.value = false
+  },
+)
+
+function closeReunionConfirmation() {
+  if (reunionSaving.value) return
+  showReunionConfirm.value = false
+}
+
+async function confirmReunion() {
+  if (!isOwner.value || currentStatus.value !== 'lost' || reunionSaving.value) return
+
+  reunionSaving.value = true
+  reunionError.value = ''
+  try {
+    const updatedPet = await updatePetStatus(props.pet.id, 'reunited')
+    currentStatus.value = updatedPet.status
+    showReunionConfirm.value = false
+    showCelebration.value = true
+    emit('status-updated', updatedPet)
+  } catch (error) {
+    reunionError.value =
+      error instanceof Error ? error.message : 'Unable to mark this pet as reunited.'
+    showReunionConfirm.value = false
+  } finally {
+    reunionSaving.value = false
+  }
+}
 
 function normalizedImageUrl(value: string | null | undefined): string {
   const photo = value?.trim()
@@ -280,7 +448,16 @@ function markSightingPhotoFailed(id: string) {
 }
 
 function sightingImageKey(sighting: Sighting): string {
-  return String(sighting.id ?? sighting.createdAt ?? sighting.photo ?? '')
+  return sighting.id
+}
+
+function reporterCallHref(sighting: Sighting): string {
+  if (!sighting.canViewContact) return ''
+  return createContactActions(sighting.reporterPhone, '')?.callHref || ''
+}
+
+function canMessageReporter(sighting: Sighting): boolean {
+  return Boolean(isOwner.value && sighting.reportedBy && sighting.reportedBy !== props.user?.id)
 }
 
 async function confirmSightingEntry(sighting: Sighting) {
@@ -315,19 +492,36 @@ async function confirmSightingEntry(sighting: Sighting) {
 }
 
 async function loadSightings() {
+  const request = ++sightingsRequestSequence
   sightingsLoading.value = true
   sightingsError.value = ''
+  sightings.value = []
   failedSightingPhotos.value = new Set()
   confirmingSightings.value = new Set()
   confirmationErrors.value = {}
   try {
-    sightings.value = await getPetSightings(props.pet.id)
+    const result = await getPetSightings(props.pet.id)
+    if (request !== sightingsRequestSequence) return
+    sightings.value = normalizeSightingHistory(result)
+    await focusRequestedSighting()
   } catch (error) {
+    if (request !== sightingsRequestSequence) return
     sightings.value = []
     sightingsError.value = error instanceof Error ? error.message : 'Failed to load sightings.'
   } finally {
-    sightingsLoading.value = false
+    if (request === sightingsRequestSequence) sightingsLoading.value = false
   }
+}
+
+let sightingsRequestSequence = 0
+
+async function focusRequestedSighting() {
+  if (!props.focusSightingId) return
+  await nextTick()
+  document.getElementById(`sighting-${props.focusSightingId}`)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'center',
+  })
 }
 
 function relativeTime(value: string | Date) {
@@ -342,6 +536,11 @@ function relativeTime(value: string | Date) {
 }
 
 watch(() => props.pet.id, loadSightings, { immediate: true })
+watch(() => props.focusSightingId, () => void focusRequestedSighting())
+
+onBeforeUnmount(() => {
+  sightingsRequestSequence += 1
+})
 </script>
 
 <style scoped>
@@ -437,6 +636,11 @@ watch(() => props.pet.id, loadSightings, { immediate: true })
   background: var(--teal);
 }
 
+.badge.reunited {
+  background: #1d6360;
+  box-shadow: 0 5px 16px rgba(29, 99, 96, 0.3);
+}
+
 .sheet {
   position: relative;
   margin-top: -26px;
@@ -454,6 +658,36 @@ watch(() => props.pet.id, loadSightings, { immediate: true })
   border-radius: 999px;
   background: var(--line);
   margin: 0 auto 16px;
+}
+
+.celebration-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(29, 99, 96, 0.18);
+  border-radius: 14px;
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+}
+
+.celebration-banner > span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.celebration-banner strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.celebration-banner p {
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .title-row {
@@ -585,6 +819,13 @@ h2 {
   padding-bottom: 14px;
 }
 
+.timeline-item.focused .timeline-content {
+  outline: 3px solid rgba(239, 99, 81, 0.3);
+  box-shadow:
+    0 0 0 1px #ef6351,
+    var(--shadow-card);
+}
+
 .timeline-item:not(:last-child)::before {
   content: '';
   position: absolute;
@@ -636,6 +877,46 @@ h2 {
   color: var(--ink-muted);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.reporter-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 9px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: rgba(29, 99, 96, 0.08);
+  color: #1d6360;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reporter-details a {
+  flex-shrink: 0;
+  color: #1d6360;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.reporter-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reporter-actions button,
+.reporter-actions a {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #1d6360;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .sighting-thumbnail {
@@ -751,6 +1032,16 @@ h3 {
   flex-shrink: 0;
 }
 
+.contact-action.message {
+  min-width: 92px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #1d6360;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
 .owner-name {
   font-weight: 800;
   font-size: 15px;
@@ -805,6 +1096,36 @@ h3 {
   text-align: right;
 }
 
+.reunited-cta {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(29, 99, 96, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+  font-size: 15px;
+  font-weight: 800;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reunited-cta:active {
+  transform: scale(0.98);
+  background: rgba(29, 99, 96, 0.16);
+}
+
+.reunion-error {
+  margin: 0 4px 10px;
+  color: #ef6351;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .found-cta {
   width: 100%;
   display: flex;
@@ -823,5 +1144,105 @@ h3 {
 
 .found-cta:active {
   transform: scale(0.98);
+}
+
+.found-cta.sightings-closed {
+  background: rgba(29, 99, 96, 0.12);
+  color: #1d6360;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.reunion-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(20, 35, 34, 0.52);
+  backdrop-filter: blur(3px);
+}
+
+.reunion-dialog {
+  width: min(100%, 400px);
+  padding: 24px 20px 20px;
+  border-radius: 18px;
+  background: #fcf9f2;
+  box-shadow: 0 22px 60px rgba(20, 35, 34, 0.3);
+  text-align: center;
+}
+
+.reunion-dialog-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: rgba(29, 99, 96, 0.1);
+  font-size: 26px;
+}
+
+.reunion-dialog h2 {
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.reunion-dialog > p {
+  margin: 9px auto 20px;
+  max-width: 330px;
+  color: var(--ink-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.reunion-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+}
+
+.reunion-dialog-actions button {
+  min-height: 46px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 800;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reunion-dialog-actions button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.reunion-dialog-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.cancel-reunion {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-muted);
+}
+
+.confirm-reunion {
+  background: #1d6360;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(29, 99, 96, 0.24);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

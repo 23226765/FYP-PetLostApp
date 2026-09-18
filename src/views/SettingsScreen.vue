@@ -140,6 +140,50 @@
                 <span />
               </button>
             </div>
+            <fieldset class="contact-privacy" :disabled="privacyLoading || privacySaving">
+              <legend>Contact privacy</legend>
+              <p class="privacy-intro">
+                Choose whether signed-in users can access your Call and WhatsApp options.
+                In-app messages remain available in both modes.
+              </p>
+              <label
+                class="privacy-option"
+                :class="{ selected: contactVisibility === 'private' }"
+              >
+                <input v-model="contactVisibility" type="radio" value="private" />
+                <span>
+                  <strong>Private</strong>
+                  <small>People can contact me only through in-app messages.</small>
+                </span>
+              </label>
+              <label
+                class="privacy-option"
+                :class="{ selected: contactVisibility === 'authenticated' }"
+              >
+                <input v-model="contactVisibility" type="radio" value="authenticated" />
+                <span>
+                  <strong>Visible to signed-in users</strong>
+                  <small>Show Call and WhatsApp options on all my reports.</small>
+                </span>
+              </label>
+              <button
+                class="save-privacy-button"
+                type="button"
+                :disabled="privacyLoading || privacySaving || !privacyDirty"
+                @click="saveContactPrivacy"
+              >
+                {{ privacySaving ? 'Saving privacy...' : 'Save contact privacy' }}
+              </button>
+              <p v-if="privacyLoading" class="privacy-message" role="status">
+                Loading contact privacy...
+              </p>
+              <p v-else-if="privacyError" class="privacy-message error" role="alert">
+                {{ privacyError }}
+              </p>
+              <p v-else-if="privacyMessage" class="privacy-message" role="status">
+                {{ privacyMessage }}
+              </p>
+            </fieldset>
           </div>
         </section>
 
@@ -160,12 +204,17 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { Capacitor } from '@capacitor/core'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
-import { updateProfile } from '../services/api'
+import {
+  getContactPrivacy,
+  updateContactPrivacy,
+  updateProfile,
+} from '../services/api'
+import type { ContactVisibility } from '../services/api'
 import type { User } from '../types/user'
 
 const props = defineProps<{ user: User | null; alertsEnabled: boolean; radiusKm: number }>()
@@ -186,6 +235,13 @@ const savingAvatar = ref(false)
 const pickingAvatar = ref(false)
 const profileError = ref('')
 const profileMessage = ref('')
+const contactVisibility = ref<ContactVisibility>('private')
+const savedContactVisibility = ref<ContactVisibility>('private')
+const privacyLoading = ref(false)
+const privacySaving = ref(false)
+const privacyError = ref('')
+const privacyMessage = ref('')
+const privacyDirty = computed(() => contactVisibility.value !== savedContactVisibility.value)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const form = reactive({ name: '', realName: '', email: '', phone: '', avatar: '' })
 const MAX_SOURCE_FILE_BYTES = 8 * 1024 * 1024
@@ -206,9 +262,54 @@ watch(
     editingProfile.value = false
     profileError.value = ''
     profileMessage.value = ''
+    void loadContactPrivacy()
   },
   { immediate: true },
 )
+
+async function loadContactPrivacy() {
+  const user = props.user
+  const initial = user?.privacy?.contactVisibility || 'private'
+  contactVisibility.value = initial
+  savedContactVisibility.value = initial
+  privacyError.value = ''
+  privacyMessage.value = ''
+  if (!user) return
+
+  privacyLoading.value = true
+  try {
+    const privacy = await getContactPrivacy()
+    contactVisibility.value = privacy.contactVisibility
+    savedContactVisibility.value = privacy.contactVisibility
+  } catch (caught) {
+    privacyError.value =
+      caught instanceof Error ? caught.message : 'Unable to load contact privacy.'
+  } finally {
+    privacyLoading.value = false
+  }
+}
+
+async function saveContactPrivacy() {
+  if (!props.user || privacySaving.value || !privacyDirty.value) return
+  privacySaving.value = true
+  privacyError.value = ''
+  privacyMessage.value = ''
+  try {
+    const privacy = await updateContactPrivacy(contactVisibility.value)
+    contactVisibility.value = privacy.contactVisibility
+    savedContactVisibility.value = privacy.contactVisibility
+    emit('updated', { ...props.user, privacy })
+    privacyMessage.value =
+      privacy.contactVisibility === 'private'
+        ? 'Contact details are now private on all reports.'
+        : 'Signed-in users can now access Call and WhatsApp options.'
+  } catch (caught) {
+    privacyError.value =
+      caught instanceof Error ? caught.message : 'Unable to save contact privacy.'
+  } finally {
+    privacySaving.value = false
+  }
+}
 
 function toggleProfileEditor() {
   if (editingProfile.value) resetForm(props.user)
@@ -410,6 +511,21 @@ button.setting-row:active { transform: scale(.99); background: rgba(29,99,96,.05
 .switch span { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 7px rgba(29,99,96,.18); transition: transform .2s cubic-bezier(.4,0,.2,1); }
 .switch.on { background: #1d6360; }
 .switch.on span { transform: translateX(20px); }
+.contact-privacy { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 15px 14px; border: 0; }
+.contact-privacy legend { padding: 0; color: var(--ink); font-size: 14px; font-weight: 800; }
+.privacy-intro { margin: 0 0 2px; color: var(--ink-muted); font-size: 11.5px; font-weight: 600; line-height: 1.5; }
+.privacy-option { display: grid; grid-template-columns: 20px 1fr; align-items: flex-start; gap: 10px; padding: 12px; border: 1.5px solid var(--line); border-radius: 14px; background: #fff; cursor: pointer; transition: all .2s cubic-bezier(.4,0,.2,1); }
+.privacy-option.selected { border-color: #1d6360; background: rgba(29,99,96,.07); }
+.privacy-option input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: #1d6360; }
+.privacy-option span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.privacy-option strong { color: var(--ink); font-size: 13px; font-weight: 800; }
+.privacy-option small { color: var(--ink-muted); font-size: 11.5px; font-weight: 600; line-height: 1.4; }
+.privacy-option:focus-within { outline: 3px solid rgba(29,99,96,.24); outline-offset: 2px; }
+.save-privacy-button { min-height: 46px; border-radius: 14px; background: #1d6360; color: #fff; font-size: 13px; font-weight: 800; box-shadow: 0 5px 15px rgba(29,99,96,.18); transition: transform .2s ease, opacity .2s ease; }
+.save-privacy-button:not(:disabled):active { transform: scale(.98); }
+.save-privacy-button:disabled { cursor: not-allowed; opacity: .55; box-shadow: none; }
+.privacy-message { margin: 0 2px; color: #1d6360; font-size: 11.5px; font-weight: 700; line-height: 1.45; }
+.privacy-message.error { color: #ef6351; }
 .danger-group { margin-top: 28px; }
 .logout-button { width: 100%; min-height: 52px; border: 1px solid rgba(239,99,81,.2); border-radius: 14px; background: rgba(239,99,81,.08); color: #ef6351; font-size: 14px; font-weight: 850; transition: all .2s cubic-bezier(.4,0,.2,1); }
 .auth-card { min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 24px; padding: 28px; border-radius: 14px; background: #fff; box-shadow: 0 10px 28px rgba(29,99,96,.07); text-align: center; }

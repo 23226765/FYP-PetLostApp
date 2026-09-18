@@ -6,6 +6,8 @@ import notificationsRouter from '../routes/notifications.js'
 import straysRouter from '../routes/strays.js'
 import authRouter from '../routes/auth.js'
 import matchesRouter from '../routes/matches.js'
+import analyticsRouter from '../routes/analytics.js'
+import Notification from '../models/Notification.js'
 
 function findRoute(router, path, method) {
   return router.stack.find(
@@ -23,6 +25,14 @@ test('pet status changes require authentication', () => {
   assert.deepEqual(middlewareNames(route), ['requireAuth', 'updateStatus'])
 })
 
+test('radar list and nearby routes apply optional authentication', () => {
+  const list = findRoute(petsRouter, '/', 'get')
+  const nearby = findRoute(petsRouter, '/nearby', 'get')
+
+  assert.deepEqual(middlewareNames(list), ['optionalAuth', 'listPets'])
+  assert.deepEqual(middlewareNames(nearby), ['optionalAuth', 'getNearbyPets'])
+})
+
 test('sighting confirmation requires authentication', () => {
   const route = findRoute(petsRouter, '/:id/sightings/:sightingId/confirm', 'post')
   assert.ok(route, 'confirmation route must be registered')
@@ -32,13 +42,19 @@ test('sighting confirmation requires authentication', () => {
 test('smart match is exposed as one public static endpoint', () => {
   const route = findRoute(petsRouter, '/smart-match', 'post')
   assert.ok(route, 'POST /smart-match must be registered')
-  assert.deepEqual(middlewareNames(route), ['smartMatch'])
+  assert.deepEqual(middlewareNames(route), ['optionalAuth', 'smartMatch'])
 })
 
 test('candidate matching is available at the frontend contract path', () => {
   const route = findRoute(matchesRouter, '/candidates', 'post')
   assert.ok(route, 'POST /candidates must be registered')
-  assert.deepEqual(middlewareNames(route), ['smartMatch'])
+  assert.deepEqual(middlewareNames(route), ['optionalAuth', 'smartMatch'])
+})
+
+test('spatial hotspot analytics are available as one public batched endpoint', () => {
+  const route = findRoute(analyticsRouter, '/hotspots', 'get')
+  assert.ok(route, 'GET /hotspots must be registered')
+  assert.deepEqual(middlewareNames(route), ['listHotspots'])
 })
 
 test('chat inbox, reads, and writes require authentication', () => {
@@ -65,13 +81,27 @@ test('notification inbox, preferences, and read state require authentication', (
   assert.deepEqual(middlewareNames(readOne), ['markRead'])
 })
 
+test('notification schema accepts every application notification type', () => {
+  assert.deepEqual(Notification.schema.path('type').enumValues, [
+    'proximity',
+    'sighting',
+    'message',
+    'reunited',
+  ])
+})
+
 test('stray reports are public while ownership actions require authentication', () => {
+  const list = findRoute(straysRouter, '/', 'get')
   const nearby = findRoute(straysRouter, '/nearby', 'get')
   const report = findRoute(straysRouter, '/report', 'post')
   const mine = findRoute(straysRouter, '/mine', 'get')
   const status = findRoute(straysRouter, '/:id/status', 'patch')
 
-  assert.deepEqual(middlewareNames(nearby), ['nearbyStrays'])
+  const detail = findRoute(straysRouter, '/:id', 'get')
+
+  assert.deepEqual(middlewareNames(list), ['optionalAuth', 'listStrays'])
+  assert.deepEqual(middlewareNames(nearby), ['optionalAuth', 'nearbyStrays'])
+  assert.deepEqual(middlewareNames(detail), ['optionalAuth', 'getStray'])
   assert.deepEqual(middlewareNames(report), ['optionalAuth', 'reportStray'])
   assert.deepEqual(middlewareNames(mine), ['requireAuth', 'listMyStrays'])
   assert.deepEqual(middlewareNames(status), ['requireAuth', 'updateRescueStatus'])
@@ -80,4 +110,16 @@ test('stray reports are public while ownership actions require authentication', 
 test('profile updates require authentication', () => {
   const update = findRoute(authRouter, '/me', 'patch')
   assert.deepEqual(middlewareNames(update), ['requireAuth', 'updateMe'])
+})
+
+test('contact privacy reads and updates require authentication', () => {
+  const read = findRoute(authRouter, '/me/privacy', 'get')
+  const update = findRoute(authRouter, '/me/privacy', 'patch')
+  assert.deepEqual(middlewareNames(read), ['requireAuth', 'getPrivacy'])
+  assert.deepEqual(middlewareNames(update), ['requireAuth', 'updatePrivacy'])
+})
+
+test('public pet details still resolve optional requester identity', () => {
+  const detail = findRoute(petsRouter, '/:id', 'get')
+  assert.deepEqual(middlewareNames(detail), ['optionalAuth', 'getPet'])
 })

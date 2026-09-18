@@ -60,6 +60,9 @@
         d="M5 4h4l1.5 4L8 9.5a12 12 0 0 0 6.5 6.5L16 13.5l4 1.5v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"
       />
     </template>
+    <template v-else-if="name === 'message'">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </template>
     <template v-else-if="name === 'camera'">
       <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
       <circle cx="12" cy="13.5" r="3.5" />

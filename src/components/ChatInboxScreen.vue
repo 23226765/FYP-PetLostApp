@@ -202,7 +202,7 @@ function readAt(conversationId: string): number {
 }
 
 function isConversationUnread(conversation: ChatConversation): boolean {
-  readStateVersion.value
+  void readStateVersion.value
   if (!props.user) return false
   const updatedAt = new Date(conversation.updatedAt).getTime()
   return Number.isFinite(updatedAt) && updatedAt > readAt(conversation.id)

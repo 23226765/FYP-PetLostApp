@@ -37,9 +37,9 @@
       <span
         v-else-if="currentSender === 'finder'"
         class="contact-missing"
-        aria-label="Owner phone number unavailable"
+        aria-label="Owner accepts contact through PawRadar messages"
       >
-        No phone
+        Message only
       </span>
     </header>
 
@@ -138,6 +138,7 @@ const error = ref('')
 const currentSender = ref<ChatMessage['sender'] | null>(null)
 const ownerContactActions = computed(() => {
   if (currentSender.value !== 'finder') return null
+  if (!props.pet.canViewContact) return null
   const message = `Hi, I'm contacting you through PawRadar about ${props.pet.name}.`
   return createContactActions(props.pet.ownerPhone, message)
 })

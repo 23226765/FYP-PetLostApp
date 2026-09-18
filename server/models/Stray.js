@@ -44,11 +44,13 @@ const straySchema = new mongoose.Schema(
     reporterPhone: { type: String, required: true, trim: true },
     reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     statusUpdatedAt: { type: Date, default: Date.now },
+    seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },
-  { timestamps: true },
+  { timestamps: true, collection: 'strays' },
 )
 
 straySchema.index({ location: '2dsphere' })
 straySchema.index({ district: 1, rescueStatus: 1, createdAt: -1 })
+straySchema.index({ reportedBy: 1, createdAt: -1 })
 
 export default mongoose.models.Stray || mongoose.model('Stray', straySchema)

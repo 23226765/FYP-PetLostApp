@@ -4,8 +4,11 @@
       ref="mapEl"
       class="leaflet-map"
       role="application"
-      :aria-label="strays?.length ? 'Interactive map of nearby stray rescue reports' : 'Interactive map of nearby missing pets'"
+      :aria-label="showHeatmap ? 'Interactive animal report hotspot heatmap' : strays?.length ? 'Interactive map of nearby stray rescue reports' : 'Interactive map of nearby missing pets'"
     ></div>
+    <p v-if="heatmapError" class="heatmap-notice" role="alert">
+      {{ heatmapError }}
+    </p>
     <p v-if="locationMessage" class="location-notice" role="status">
       {{ locationMessage }}
     </p>
@@ -14,10 +17,11 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import * as L from 'leaflet'
+import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Pet, Sighting } from '../types/pet'
 import type { StrayReport } from '../types/stray'
+import type { HotspotPoint } from '../types/analytics'
 import { getCurrentLocation } from '../services/geolocation'
 
 const props = defineProps<{
@@ -26,6 +30,8 @@ const props = defineProps<{
   radiusKm?: number
   sightings?: Sighting[]
   strays?: StrayReport[]
+  heatPoints?: HotspotPoint[]
+  showHeatmap?: boolean
 }>()
 
 const emit = defineEmits<{ open: [pet: Pet]; 'open-stray': [stray: StrayReport] }>()
@@ -38,13 +44,17 @@ let trajectoryLayer: L.LayerGroup | null = null
 let straysLayer: L.LayerGroup | null = null
 let radiusCircle: L.Circle | null = null
 let userMarker: L.Marker | null = null
+let heatLayer: L.HeatLayer | null = null
 let resizeObserver: ResizeObserver | null = null
 let invalidateFrame: number | null = null
 let disposed = false
 let centerRequest = 0
+let heatRenderRequest = 0
 let trajectoryFitKey = ''
+let heatPluginPromise: Promise<void> | null = null
 
 const locationMessage = ref<string | null>(null)
+const heatmapError = ref('')
 
 const HK_CENTER: [number, number] = [22.2825, 114.1897]
 const PAW_PLACEHOLDER = `<span class="pawradar-image-fallback" aria-hidden="true">
@@ -260,6 +270,74 @@ function sightingLatLng(sighting: Sighting): [number, number] | null {
   return validLatLng(sighting.coordinates?.[1], sighting.coordinates?.[0])
 }
 
+function hotspotLatLng(point: HotspotPoint): [number, number, number] | null {
+  const coordinates = validLatLng(point.coordinates?.[1], point.coordinates?.[0])
+  if (!coordinates) return null
+  const intensity = Number(point.intensity)
+  return [coordinates[0], coordinates[1], Number.isFinite(intensity) ? Math.min(1, Math.max(0.1, intensity)) : 0.5]
+}
+
+async function ensureHeatPlugin() {
+  if (typeof L.heatLayer === 'function') return
+  if (!heatPluginPromise) {
+    heatPluginPromise = (async () => {
+      ;(window as Window & { L?: typeof L }).L = L
+      await import('leaflet.heat')
+      if (typeof L.heatLayer !== 'function') {
+        throw new Error('The heatmap renderer could not be initialized.')
+      }
+    })()
+  }
+  await heatPluginPromise
+}
+
+async function renderHeatmap() {
+  const request = ++heatRenderRequest
+  heatLayer?.remove()
+  heatLayer = null
+  heatmapError.value = ''
+  if (map) {
+    for (const layer of [markersLayer, straysLayer]) {
+      if (!layer) continue
+      if (props.showHeatmap && map.hasLayer(layer)) map.removeLayer(layer)
+      if (!props.showHeatmap && !map.hasLayer(layer)) layer.addTo(map)
+    }
+  }
+  if (!map || !props.showHeatmap) return
+
+  const points = (props.heatPoints ?? [])
+    .map(hotspotLatLng)
+    .filter((point): point is [number, number, number] => Boolean(point))
+  if (points.length === 0) return
+
+  try {
+    await ensureHeatPlugin()
+    if (disposed || request !== heatRenderRequest || !map || !props.showHeatmap) return
+    heatLayer = L.heatLayer(points, {
+      minOpacity: 0.3,
+      max: 1,
+      maxZoom: 17,
+      radius: 28,
+      blur: 22,
+      gradient: {
+        0.2: '#79b7ae',
+        0.45: '#1d6360',
+        0.7: '#f2a65a',
+        1: '#ef6351',
+      },
+    }).addTo(map)
+  } catch (error) {
+    if (request !== heatRenderRequest || disposed) return
+    if (map) {
+      for (const layer of [markersLayer, straysLayer]) {
+        if (layer && !map.hasLayer(layer)) layer.addTo(map)
+      }
+    }
+    heatmapError.value =
+      error instanceof Error ? error.message : 'The hotspot layer could not be displayed.'
+  }
+}
+
 function trajectoryPopup(sighting: Sighting, number: number): string {
   const recordedAt = sighting.createdAt
     ? new Date(sighting.createdAt).toLocaleString()
@@ -399,6 +477,7 @@ async function initialiseMap() {
   renderPets()
   renderTrajectory()
   renderStrays()
+  void renderHeatmap()
 
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(scheduleInvalidateSize)
@@ -414,6 +493,7 @@ onMounted(() => {
 watch(() => props.pets, () => renderPets(), { deep: true })
 watch(() => props.sightings, () => renderTrajectory(), { deep: true })
 watch(() => props.strays, () => renderStrays(), { deep: true })
+watch([() => props.heatPoints, () => props.showHeatmap], () => void renderHeatmap(), { deep: true })
 watch(() => props.radiusKm, () => renderRadius())
 watch(
   () => props.center,
@@ -434,6 +514,7 @@ watch(
 onBeforeUnmount(() => {
   disposed = true
   centerRequest += 1
+  heatRenderRequest += 1
   resizeObserver?.disconnect()
   resizeObserver = null
   if (invalidateFrame !== null) {
@@ -447,6 +528,7 @@ onBeforeUnmount(() => {
   straysLayer = null
   radiusCircle = null
   userMarker = null
+  heatLayer = null
 })
 </script>
 
@@ -471,6 +553,23 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   background: rgba(252, 249, 242, 0.96);
   color: #1d6360;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: var(--shadow-card);
+}
+
+.heatmap-notice {
+  position: absolute;
+  z-index: 500;
+  top: 12px;
+  right: 12px;
+  left: 12px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(239, 99, 81, 0.35);
+  border-radius: var(--radius-lg);
+  background: rgba(252, 249, 242, 0.96);
+  color: #ef6351;
   font-size: 12px;
   font-weight: 700;
   box-shadow: var(--shadow-card);

@@ -69,7 +69,7 @@ import type { AppNotification } from '../types/notification'
 const props = defineProps<{ notifications: AppNotification[] }>()
 const emit = defineEmits<{
   close: []
-  'open-pet': [petId: string]
+  'open-pet': [petId: string, sightingId?: string]
   'mark-read': [notificationId: string]
   'mark-all': []
 }>()
@@ -86,7 +86,7 @@ function typeBadge(type: AppNotification['type']): string {
 
 function onTap(n: AppNotification) {
   if (!n.read) emit('mark-read', n.id)
-  if (n.petId) emit('open-pet', n.petId)
+  if (n.petId) emit('open-pet', n.petId, n.sightingId)
   else emit('close')
 }
 

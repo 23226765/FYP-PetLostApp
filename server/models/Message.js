@@ -22,10 +22,11 @@ const messageSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
     },
-    text: { type: String, default: '', trim: true },
+    text: { type: String, default: '', trim: true, maxlength: 2000 },
     photo: { type: String, default: '' },
+    seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },
-  { timestamps: true },
+  { timestamps: true, collection: 'messages' },
 )
 
 messageSchema.index({ pet: 1, createdAt: 1 })

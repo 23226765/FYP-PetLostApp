@@ -12,7 +12,8 @@ export interface StrayReport {
   coordinates: [number, number] | null
   rescueStatus: RescueStatus
   reporterName: string
-  reporterPhone: string
+  reporterPhone?: string
+  canViewContact: boolean
   reportedBy?: string
   reportedAgo: string
   createdAt: string

@@ -8,4 +8,7 @@ export interface User {
   role?: 'user' | 'shelter_admin'
   alertsEnabled?: boolean
   alertRadiusKm?: number
+  privacy?: {
+    contactVisibility: 'private' | 'authenticated'
+  }
 }

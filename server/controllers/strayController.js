@@ -1,5 +1,10 @@
 import mongoose from 'mongoose'
 import Stray from '../models/Stray.js'
+import {
+  contactOwnerFrom,
+  loadContactOwners,
+  serializeContact,
+} from '../services/contactPrivacy.js'
 
 const MAX_PHOTO_LENGTH = 1_500_000
 const PHONE_PATTERN = /^\+?[\d\s().-]{8,30}$/
@@ -58,7 +63,7 @@ function relativeTime(date) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-function serializeStray(stray, distanceMeters) {
+function serializeStray(stray, { distanceMeters, requester, contactOwner } = {}) {
   return {
     id: String(stray._id),
     species: stray.species,
@@ -70,7 +75,7 @@ function serializeStray(stray, distanceMeters) {
     coordinates: stray.location?.coordinates || null,
     rescueStatus: stray.rescueStatus,
     reporterName: stray.reporterName,
-    reporterPhone: stray.reporterPhone,
+    ...serializeContact({ requester, contactOwner, phoneField: 'reporterPhone' }),
     reportedBy: stray.reportedBy ? String(stray.reportedBy) : undefined,
     reportedAgo: relativeTime(stray.createdAt),
     createdAt: stray.createdAt,
@@ -80,6 +85,17 @@ function serializeStray(stray, distanceMeters) {
         ? Math.max(0.1, Math.round((distanceMeters / 1000) * 10) / 10)
         : undefined,
   }
+}
+
+async function serializeStrayDocuments(strays, requester, distanceForStray) {
+  const owners = await loadContactOwners(strays)
+  return strays.map((stray) =>
+    serializeStray(stray, {
+      requester,
+      contactOwner: contactOwnerFrom(owners, stray.reportedBy),
+      distanceMeters: distanceForStray?.(stray),
+    }),
+  )
 }
 
 function queryFilter(query) {
@@ -95,9 +111,9 @@ async function findNewest(filter) {
   try {
     return await Stray.find(filter).sort({ createdAt: -1 })
   } catch (error) {
-    const cosmosOrderByError =
+    const unsupportedOrderByError =
       error?.code === 2 && String(error.message).includes('order-by item is excluded')
-    if (!cosmosOrderByError) throw error
+    if (!unsupportedOrderByError) throw error
     const strays = await Stray.find(filter)
     return strays.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }
@@ -106,7 +122,7 @@ async function findNewest(filter) {
 export async function listStrays(req, res, next) {
   try {
     const strays = await findNewest(queryFilter(req.query))
-    res.json({ strays: strays.map((stray) => serializeStray(stray)) })
+    res.json({ strays: await serializeStrayDocuments(strays, req.user) })
   } catch (error) {
     next(error)
   }
@@ -115,7 +131,7 @@ export async function listStrays(req, res, next) {
 export async function listMyStrays(req, res, next) {
   try {
     const strays = await findNewest({ reportedBy: req.user._id })
-    res.json({ strays: strays.map((stray) => serializeStray(stray)) })
+    res.json({ strays: await serializeStrayDocuments(strays, req.user) })
   } catch (error) {
     next(error)
   }
@@ -150,7 +166,9 @@ export async function nearbyStrays(req, res, next) {
     if (Object.keys(filter).length) pipeline.push({ $match: filter })
     pipeline.push({ $sort: { distanceMeters: 1 } })
     const strays = await Stray.aggregate(pipeline)
-    res.json({ strays: strays.map((stray) => serializeStray(stray, stray.distanceMeters)) })
+    res.json({
+      strays: await serializeStrayDocuments(strays, req.user, (stray) => stray.distanceMeters),
+    })
   } catch (error) {
     next(error)
   }
@@ -163,7 +181,8 @@ export async function getStray(req, res, next) {
     }
     const stray = await Stray.findById(req.params.id)
     if (!stray) return res.status(404).json({ error: 'Stray report not found' })
-    res.json({ stray: serializeStray(stray) })
+    const [serialized] = await serializeStrayDocuments([stray], req.user)
+    res.json({ stray: serialized })
   } catch (error) {
     next(error)
   }
@@ -211,7 +230,8 @@ export async function reportStray(req, res, next) {
       reporterPhone,
       reportedBy: req.user?._id,
     })
-    res.status(201).json({ stray: serializeStray(stray) })
+    const [serialized] = await serializeStrayDocuments([stray], req.user)
+    res.status(201).json({ stray: serialized })
   } catch (error) {
     next(error)
   }
@@ -237,7 +257,8 @@ export async function updateRescueStatus(req, res, next) {
     stray.rescueStatus = status
     stray.statusUpdatedAt = new Date()
     await stray.save()
-    res.json({ stray: serializeStray(stray) })
+    const [serialized] = await serializeStrayDocuments([stray], req.user)
+    res.json({ stray: serialized })
   } catch (error) {
     next(error)
   }

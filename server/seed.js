@@ -1,9 +1,17 @@
-import 'dotenv/config'
-import mongoose from 'mongoose'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import dotenv from 'dotenv'
 import Pet from './models/Pet.js'
 import Sighting from './models/Sighting.js'
+import {
+  connectDatabase,
+  DATABASE_NAME,
+  databaseErrorMessage,
+  disconnectDatabase,
+} from './config/database.js'
 
-const MONGODB_URI = process.env.MONGODB_URI
+const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: path.resolve(serverDirectory, '.env') })
 
 const U = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=80`
 
@@ -153,10 +161,19 @@ const seed = [
 ].map((pet) => ({ ...pet, photos: [pet.photo] }))
 
 async function run() {
-  if (!MONGODB_URI) {
-    console.error('❌ MONGODB_URI is not set. Add it to server/.env first.')
-    process.exit(1)
+  if (process.env.NODE_ENV === 'production') {
+    const error = new Error('Development seed is disabled when NODE_ENV=production.')
+    error.code = 'SEED_DISABLED_IN_PRODUCTION'
+    throw error
   }
+  if (process.env.ALLOW_DESTRUCTIVE_SEED !== 'true') {
+    const error = new Error(
+      'Seed reset refused. Set ALLOW_DESTRUCTIVE_SEED=true only for a development database.',
+    )
+    error.code = 'SEED_CONFIRMATION_REQUIRED'
+    throw error
+  }
+
   const invalidPet = seed.find(
     (pet) =>
       typeof pet.breed !== 'string' ||
@@ -168,8 +185,13 @@ async function run() {
   )
   if (invalidPet) throw new Error(`Invalid seed pet: ${invalidPet.name || 'unknown'}`)
 
-  await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 })
-  console.log('✅ Connected. Seeding pawradar…')
+  const connection = await connectDatabase()
+  if (connection.name !== DATABASE_NAME) {
+    const error = new Error(`Seed refused outside the "${DATABASE_NAME}" database.`)
+    error.code = 'SEED_DATABASE_MISMATCH'
+    throw error
+  }
+  console.log('Connected. Seeding petlostapp...')
 
   // Ensure geospatial (2dsphere) indexes exist before inserting.
   await Promise.all([Pet.createIndexes(), Sighting.createIndexes()])
@@ -183,13 +205,16 @@ async function run() {
   }))
 
   const created = await Pet.insertMany(docs)
-  console.log(`✅ Inserted ${created.length} pets into pawradar.pets`)
-
-  await mongoose.disconnect()
-  console.log('✅ Done.')
+  console.log(`Inserted ${created.length} pets into petlostapp.pets.`)
+  console.log('Seed complete.')
 }
 
-run().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+run()
+  .catch((error) => {
+    const message = String(error?.code || '').startsWith('SEED_')
+      ? error.message
+      : databaseErrorMessage(error)
+    console.error(`Seed failed: ${message}`)
+    process.exitCode = 1
+  })
+  .finally(() => disconnectDatabase())

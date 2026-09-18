@@ -1,6 +1,10 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
+import {
+  CONTACT_VISIBILITIES,
+  contactVisibilityFor,
+} from '../services/contactPrivacy.js'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pawradar_dev_secret'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -189,7 +193,7 @@ function signToken(user) {
   return jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' })
 }
 
-/** @param {{ _id: unknown, name?: string, realName?: string, email?: string, phone?: string, avatar?: string, role?: string, alertsEnabled?: boolean, alertRadiusKm?: number }} user */
+/** @param {{ _id: unknown, name?: string, realName?: string, email?: string, phone?: string, avatar?: string, role?: string, alertsEnabled?: boolean, alertRadiusKm?: number, privacy?: { contactVisibility?: string } }} user */
 function serializeUser(user) {
   return {
     id: String(user._id),
@@ -201,6 +205,48 @@ function serializeUser(user) {
     role: user.role,
     alertsEnabled: user.alertsEnabled !== false,
     alertRadiusKm: user.alertRadiusKm || 3,
+    privacy: { contactVisibility: contactVisibilityFor(user) },
+  }
+}
+
+// GET /api/auth/me/privacy
+export async function getPrivacy(req, res, next) {
+  try {
+    const user = await User.findById(req.user._id).select('privacy.contactVisibility')
+    if (!user) return res.status(404).json({ error: 'User not found.' })
+    res.json({ privacy: { contactVisibility: contactVisibilityFor(user) } })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// PATCH /api/auth/me/privacy
+export async function updatePrivacy(req, res, next) {
+  try {
+    const body =
+      req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : null
+    if (!body) return res.status(400).json({ error: 'Invalid or missing request body.' })
+
+    const fields = Object.keys(body)
+    if (fields.length !== 1 || fields[0] !== 'contactVisibility') {
+      return res.status(400).json({
+        error: 'Only `contactVisibility` may be updated through this endpoint.',
+      })
+    }
+    if (!CONTACT_VISIBILITIES.includes(body.contactVisibility)) {
+      return res.status(400).json({
+        error: '`contactVisibility` must be private or authenticated.',
+      })
+    }
+
+    req.user.privacy = { contactVisibility: body.contactVisibility }
+    await req.user.save()
+    res.json({
+      success: true,
+      privacy: { contactVisibility: contactVisibilityFor(req.user) },
+    })
+  } catch (error) {
+    next(error)
   }
 }
 
@@ -269,7 +315,7 @@ export async function login(req, res, next) {
       return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` })
     }
 
-    const user = await User.findOne({ email }).select('+realName')
+    const user = await User.findOne({ email }).select('+password +realName')
     if (!user) {
       recordLoginFailure(keys, now)
       return res.status(401).json({ error: 'Invalid email or password.' })

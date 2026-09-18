@@ -26,6 +26,14 @@
       <span class="spacer" aria-hidden="true" />
     </header>
 
+    <div v-if="celebrationMessage" class="celebration-banner" role="status">
+      <span aria-hidden="true">🎉</span>
+      <div>
+        <strong>Pet reunited</strong>
+        <p>{{ celebrationMessage }}</p>
+      </div>
+    </div>
+
     <!-- ── Summary stat strip ── -->
     <div class="stats">
       <div class="stat">
@@ -163,8 +171,19 @@
               <span class="contact-title">Contact pet owner</span>
               <span class="contact-sub">Share useful details directly and safely.</span>
             </div>
-            <div v-if="selectedContactActions" class="contact-actions">
+            <div class="contact-actions">
+              <button
+                v-if="selectedEntry.petId"
+                class="contact-action message"
+                type="button"
+                aria-label="Message the pet owner in PawRadar"
+                @click="messagePetOwner(selectedEntry)"
+              >
+                <AppIcon name="message" :size="18" />
+                Message
+              </button>
               <a
+                v-if="selectedContactActions"
                 class="contact-action call"
                 :href="selectedContactActions.callHref"
                 aria-label="Call the pet owner"
@@ -173,6 +192,7 @@
                 Call
               </a>
               <a
+                v-if="selectedContactActions"
                 class="contact-action whatsapp"
                 :href="selectedContactActions.whatsappHref"
                 target="_blank"
@@ -182,11 +202,63 @@
                 WhatsApp
               </a>
             </div>
-            <span v-else class="contact-unavailable">Owner phone unavailable</span>
+            <span v-if="!selectedContactActions" class="contact-unavailable">
+              This owner accepts contact through PawRadar messages.
+            </span>
           </section>
+
+          <button
+            v-if="selectedEntry.type === 'post' && selectedEntry.outcome === 'lost'"
+            class="reunited-action"
+            type="button"
+            @click="requestReunion(selectedEntry)"
+          >
+            <span aria-hidden="true">🎉</span>
+            Mark as Reunited
+          </button>
+          <p v-if="reunionError" class="reunion-error" role="alert">{{ reunionError }}</p>
 
           <button class="sheet-close" @click="selectedEntry = null">Done</button>
         </div>
+      </div>
+    </Transition>
+
+    <Transition name="fade">
+      <div v-if="reunionTarget" class="reunion-scrim" @click.self="closeReunionConfirmation">
+        <section
+          class="reunion-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="history-reunion-title"
+        >
+          <span class="reunion-dialog-icon" aria-hidden="true">🎉</span>
+          <h2 id="history-reunion-title">Has your pet safely returned home?</h2>
+          <p>
+            Marking {{ reunionTarget.petName }} as reunited will close this report and stop
+            new sighting submissions.
+          </p>
+          <p v-if="reunionError" class="reunion-dialog-error" role="alert">
+            {{ reunionError }}
+          </p>
+          <div class="reunion-dialog-actions">
+            <button
+              class="cancel-reunion"
+              type="button"
+              :disabled="reunionSaving"
+              @click="closeReunionConfirmation"
+            >
+              Not yet
+            </button>
+            <button
+              class="confirm-reunion"
+              type="button"
+              :disabled="reunionSaving"
+              @click="confirmReunion"
+            >
+              {{ reunionSaving ? 'Updating…' : 'Yes, safely home' }}
+            </button>
+          </div>
+        </section>
       </div>
     </Transition>
 
@@ -196,13 +268,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
-import { getMyPets, getMySightings } from '../services/api'
+import { getMyPets, getMySightings, updatePetStatus } from '../services/api'
 import type { MySighting } from '../services/api'
 import type { Pet } from '../types/pet'
 import { createContactActions } from '../utils/contact'
 
 /* ── Emits ── */
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{
+  close: []
+  'message-pet': [petId: string]
+}>()
 
 /* ── Types ── */
 type Outcome = 'reunited' | 'sighted' | 'lost'
@@ -210,6 +285,7 @@ type ActivityType = 'sighting' | 'post'
 
 interface HistoryEntry {
   id: string
+  petId?: string
   petName: string
   breed: string
   petPhoto: string
@@ -220,6 +296,7 @@ interface HistoryEntry {
   note?: string
   reward?: string
   ownerPhone?: string
+  canViewContact?: boolean
 }
 
 /* ── Mock data — replace with API/store calls in production ── */
@@ -230,6 +307,7 @@ const loadError = ref('')
 function toHistoryEntry(pet: Pet): HistoryEntry {
   return {
     id: `post:${pet.id}`,
+    petId: pet.id,
     petName: pet.name,
     breed: pet.breed || pet.species,
     petPhoto: pet.photo,
@@ -259,6 +337,7 @@ function relativeTime(value: string): string {
 function sightingToHistoryEntry(sighting: MySighting): HistoryEntry {
   return {
     id: `sighting:${sighting._id}`,
+    petId: sighting.pet?._id,
     petName: sighting.pet?.name || 'Pet sighting',
     breed: 'Reported sighting',
     petPhoto: sighting.pet?.photo || sighting.photo || '',
@@ -268,6 +347,7 @@ function sightingToHistoryEntry(sighting: MySighting): HistoryEntry {
     outcome: sighting.pet?.status || 'sighted',
     note: sighting.note || undefined,
     ownerPhone: sighting.pet?.ownerPhone,
+    canViewContact: sighting.pet?.canViewContact,
   }
 }
 
@@ -308,11 +388,61 @@ const filtered = computed<HistoryEntry[]>(() => {
 
 /* ── Selected entry for the detail sheet ── */
 const selectedEntry = ref<HistoryEntry | null>(null)
+const reunionTarget = ref<HistoryEntry | null>(null)
+const reunionSaving = ref(false)
+const reunionError = ref('')
+const celebrationMessage = ref('')
 const selectedContactActions = computed(() => {
-  if (!selectedEntry.value) return null
+  if (!selectedEntry.value?.canViewContact) return null
   const message = `Hi, I'm contacting you through PawRadar about ${selectedEntry.value.petName}, near ${selectedEntry.value.location}.`
   return createContactActions(selectedEntry.value.ownerPhone, message)
 })
+
+function messagePetOwner(entry: HistoryEntry) {
+  if (!entry.petId) return
+  selectedEntry.value = null
+  emit('message-pet', entry.petId)
+}
+
+function requestReunion(entry: HistoryEntry) {
+  reunionError.value = ''
+  reunionTarget.value = entry
+}
+
+function closeReunionConfirmation() {
+  if (reunionSaving.value) return
+  reunionTarget.value = null
+  reunionError.value = ''
+}
+
+async function confirmReunion() {
+  const target = reunionTarget.value
+  if (!target?.petId || target.type !== 'post' || target.outcome !== 'lost' || reunionSaving.value) {
+    return
+  }
+
+  reunionSaving.value = true
+  reunionError.value = ''
+  try {
+    const updatedPet = await updatePetStatus(target.petId, 'reunited')
+    entries.value = entries.value.map((entry) =>
+      entry.petId && String(entry.petId) === String(updatedPet.id)
+        ? { ...entry, outcome: updatedPet.status }
+        : entry,
+    )
+    if (selectedEntry.value) {
+      selectedEntry.value =
+        entries.value.find((entry) => entry.id === selectedEntry.value?.id) || selectedEntry.value
+    }
+    celebrationMessage.value = `${updatedPet.name} is safely home. The report is now closed.`
+    reunionTarget.value = null
+  } catch (error) {
+    reunionError.value =
+      error instanceof Error ? error.message : 'Unable to mark this pet as reunited.'
+  } finally {
+    reunionSaving.value = false
+  }
+}
 
 /* ── Summary stats (derived from full entries list) ── */
 const stats = computed(() => ({
@@ -400,6 +530,36 @@ h1 {
 
 .spacer {
   width: 40px;
+}
+
+.celebration-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 14px 18px 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(29, 99, 96, 0.18);
+  border-radius: 14px;
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+}
+
+.celebration-banner > span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.celebration-banner strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.celebration-banner p {
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 /* ── Stats strip — mirrors ProfileScreen .stats ── */
@@ -862,6 +1022,8 @@ h3 {
   font-weight: 800;
   text-decoration: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
+  border: 0;
+  cursor: pointer;
 }
 
 .contact-action:active {
@@ -874,9 +1036,134 @@ h3 {
   box-shadow: 0 5px 14px rgba(29, 99, 96, 0.2);
 }
 
+.contact-action.message {
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+}
+
 .contact-action.whatsapp {
   border: 1px solid rgba(29, 99, 96, 0.18);
   background: #fcf9f2;
+}
+
+.reunited-action {
+  width: 100%;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(29, 99, 96, 0.2);
+  border-radius: 14px;
+  background: rgba(29, 99, 96, 0.1);
+  color: #1d6360;
+  font-size: 15px;
+  font-weight: 800;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reunited-action:active {
+  transform: scale(0.98);
+  background: rgba(29, 99, 96, 0.16);
+}
+
+.reunion-error,
+.reunion-dialog-error {
+  color: #ef6351;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.reunion-error {
+  margin: 0 4px 10px;
+}
+
+.reunion-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(20, 35, 34, 0.52);
+  backdrop-filter: blur(3px);
+}
+
+.reunion-dialog {
+  width: min(100%, 400px);
+  padding: 24px 20px 20px;
+  border-radius: 18px;
+  background: #fcf9f2;
+  box-shadow: 0 22px 60px rgba(20, 35, 34, 0.3);
+  text-align: center;
+}
+
+.reunion-dialog-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: rgba(29, 99, 96, 0.1);
+  font-size: 26px;
+}
+
+.reunion-dialog h2 {
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.reunion-dialog > p:not(.reunion-dialog-error) {
+  margin: 9px auto 20px;
+  max-width: 330px;
+  color: var(--ink-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.reunion-dialog-error {
+  margin: -8px 0 14px;
+}
+
+.reunion-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+}
+
+.reunion-dialog-actions button {
+  min-height: 46px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 800;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.reunion-dialog-actions button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.reunion-dialog-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.cancel-reunion {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-muted);
+}
+
+.confirm-reunion {
+  background: #1d6360;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(29, 99, 96, 0.24);
 }
 
 /* Sheet close button — matches App.vue .sheet-send */

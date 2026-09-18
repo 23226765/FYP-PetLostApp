@@ -1,8 +1,12 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
-import mongoose from 'mongoose'
 import Pet from '../models/Pet.js'
+import {
+  connectDatabase,
+  databaseErrorMessage,
+  disconnectDatabase,
+} from '../config/database.js'
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.resolve(scriptDirectory, '../.env') })
@@ -32,9 +36,7 @@ const fixes = [
 ]
 
 async function run() {
-  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set in server/.env')
-
-  await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 15_000 })
+  await connectDatabase()
   for (const pet of fixes) {
     const result = await Pet.updateMany(
       { name: pet.name },
@@ -55,7 +57,7 @@ async function run() {
 run()
   .then(() => console.log('Pet photo repair complete.'))
   .catch((error) => {
-    console.error(error)
+    console.error(`Pet photo repair failed: ${databaseErrorMessage(error)}`)
     process.exitCode = 1
   })
-  .finally(() => mongoose.disconnect())
+  .finally(() => disconnectDatabase())

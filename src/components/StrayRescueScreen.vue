@@ -109,6 +109,9 @@
             <a :href="contactActions.callHref"><AppIcon name="phone" :size="18" />Call reporter</a>
             <a :href="contactActions.whatsappHref" target="_blank" rel="noopener noreferrer">WhatsApp</a>
           </div>
+          <p v-else class="contact-private">
+            This reporter accepts contact through PetLostApp messages only.
+          </p>
           <div v-if="canManageSelected" class="status-actions">
             <p>Update rescue progress</p>
             <button
@@ -215,7 +218,7 @@ const canManageSelected = computed(() => {
   return props.user.role === 'shelter_admin' || selected.value.reportedBy === props.user.id
 })
 const contactActions = computed(() => {
-  if (!selected.value) return null
+  if (!selected.value?.canViewContact) return null
   return createContactActions(
     selected.value.reporterPhone,
     `Hi ${selected.value.reporterName}, I'm contacting you through PawRadar about the ${selected.value.species.toLowerCase()} reported near ${selected.value.location}.`,
@@ -394,6 +397,7 @@ select:focus, input:focus, textarea:focus { border-color: var(--teal); }
 .contact-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
 .contact-actions a { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 7px; border-radius: 999px; background: var(--teal); color: #fff; font-size: 13px; font-weight: 800; text-decoration: none; }
 .contact-actions a:last-child { background: var(--teal-soft); color: var(--teal); }
+.contact-private { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: rgba(29,99,96,.08); color: #1d6360; font-size: 12.5px; font-weight: 700; line-height: 1.45; }
 .status-actions { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .status-actions p { margin-bottom: 9px; font-size: 13px; font-weight: 800; }
 .status-actions button { min-height: 42px; margin: 0 6px 6px 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-muted); font-size: 12px; font-weight: 800; }

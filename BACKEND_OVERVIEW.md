@@ -6,21 +6,22 @@ This document reflects the active Express/Mongoose backend under `server/`.
 
 ### Database provider
 
-- **Provider:** Azure Cosmos DB using its MongoDB API (not local MongoDB and not MongoDB Atlas).
-- **Database name:** `pawradar`.
-- **Connection:** `server/index.js` calls `mongoose.connect()` with a 15-second server-selection timeout.
-- **Startup behavior:** the Express server still starts if the database connection fails. In that state, `/api/health` returns HTTP `503` with `status: "degraded"`.
+- **Provider:** MongoDB Atlas.
+- **Database name:** `petlostapp` (selected explicitly through the Mongoose connection options).
+- **Connection:** `server/config/database.js` owns the reusable Mongoose connection, connection pool, startup ping, sanitized error messages, and shutdown behavior.
+- **Startup behavior:** Express listens only after Atlas confirms the active database is exactly `petlostapp`, a database ping succeeds, and the six PawRadar collections and indexes are initialized. `/api/health` performs a live ping and returns HTTP `503` with `status: "degraded"` if connectivity is lost or the database name differs.
 
 ### Environment variables
 
-Local backend variables are defined in the gitignored file `server/.env` and loaded by `dotenv` through `import 'dotenv/config'`.
+Local backend variables are defined in the gitignored file `server/.env` and loaded from that file's absolute path before route modules are evaluated.
 
 | Variable | Purpose |
 |---|---|
-| `MONGODB_URI` | Cosmos DB MongoDB connection string, including the `pawradar` database |
+| `MONGODB_URI` | Private MongoDB Atlas driver connection string; the backend selects `petlostapp` |
 | `PORT` | Express port; defaults to `5000` |
 | `JWT_SECRET` | Signs and verifies seven-day login tokens |
 | `CORS_ORIGINS` | Optional comma-separated browser origins; defaults to `http://localhost:3000,http://127.0.0.1:3000` |
+| `ALLOW_DESTRUCTIVE_SEED` | Must be exactly `true` to permit the development-only Pet/Sighting reset; never enable in production |
 
 > Never commit `server/.env`. Production must define a strong `JWT_SECRET`; the source currently contains a development fallback.
 
@@ -40,17 +41,17 @@ All map points use GeoJSON in longitude-first order:
 | Model | Defined indexes |
 |---|---|
 | `User` | `alertLocation: 2dsphere` |
-| `Pet` | `location: 2dsphere`; `{ species, status }`; `{ district, breed, status }` |
-| `Sighting` | `location: 2dsphere`; `{ pet }`; `{ reportedBy, createdAt: -1 }` |
-| `Stray` | `location: 2dsphere`; `{ district, rescueStatus, createdAt: -1 }` |
+| `Pet` | `location: 2dsphere`; `{ species, status }`; `{ district, breed, status }`; `{ reportedBy, createdAt: -1 }` |
+| `Sighting` | `location: 2dsphere`; `{ pet, createdAt: -1 }`; `{ reportedBy, createdAt: -1 }` |
+| `Stray` | `location: 2dsphere`; `{ district, rescueStatus, createdAt: -1 }`; `{ reportedBy, createdAt: -1 }` |
 | `Message` | `{ pet, createdAt }`; `{ sentBy, createdAt: -1 }`; `{ pet, participant, createdAt }` |
 | `Notification` | `{ user, createdAt: -1 }`; `{ user, pet, type, sighting }` |
 
-The `2dsphere` indexes support `$geoNear` radius queries for pets, strays, and alert recipients. Several controllers include an in-memory sorting fallback for Cosmos DB configurations that reject an unindexed `ORDER BY`.
+The `2dsphere` indexes support `$geoNear` radius queries for pets, strays, and alert recipients in MongoDB Atlas.
 
 ## 2. Data Models
 
-Mongoose normally maps these model names to the collections `users`, `pets`, `sightings`, `strays`, `messages`, and `notifications`.
+The schemas explicitly map to the collections `users`, `pets`, `sightings`, `strays`, `messages`, and `notifications`. `server/config/collections.js` initializes only this allow-listed set.
 
 ### `User`
 
@@ -65,7 +66,7 @@ Mongoose normally maps these model names to the collections `users`, `pets`, `si
 | `alertsEnabled` | Boolean, default `true` |
 | `alertRadiusKm` | Number from 1–50, default `3` |
 | `alertLocation` | Optional GeoJSON Point with `[lng, lat]` |
-| `createdAt` | Date, defaults to now |
+| `createdAt`, `updatedAt` | Automatic timestamps |
 
 ### `Pet`
 
@@ -156,7 +157,7 @@ Unless noted otherwise, successful JSON responses use the wrapper shown in the *
 
 | Method | Path | Auth | Required input | Returns |
 |---|---|---|---|---|
-| `GET` | `/api/health` | Public | None | HTTP `200` with `{ status: "ok", db: "connected", readyState: 1 }`, or HTTP `503` when disconnected |
+| `GET` | `/api/health` | Public | None | HTTP `200` with `{ status: "ok", db: "connected", database: "petlostapp", readyState: 1 }`, or HTTP `503` when disconnected |
 
 ### Authentication and profile
 
@@ -258,5 +259,6 @@ Run these from `server/`:
 ```powershell
 npm run dev   # Nodemon development server
 npm test      # Node route tests
-npm run seed  # Replaces Pet and Sighting seed data; use deliberately
+npm run verify:db # Temporary insert/read/cleanup in petlostapp.pets
+npm run seed  # Guarded Pet/Sighting development reset; requires explicit opt-in
 ```

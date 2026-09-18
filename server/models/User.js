@@ -22,28 +22,40 @@ const pointSchema = new mongoose.Schema(
   { _id: false },
 )
 
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },
-  realName: {
-    type: String,
-    trim: true,
-    maxlength: 100,
-    default: '',
-    select: false,
+const privacySchema = new mongoose.Schema(
+  {
+    contactVisibility: {
+      type: String,
+      enum: ['private', 'authenticated'],
+      default: 'private',
+    },
   },
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, required: true },
-  phone: { type: String, default: '' },
-  avatar: {
-    type: String,
-    default: '',
+  { _id: false },
+)
+
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 100 },
+    realName: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+      default: '',
+      select: false,
+    },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true, select: false },
+    phone: { type: String, default: '', trim: true, maxlength: 30 },
+    avatar: { type: String, default: '', trim: true },
+    role: { type: String, enum: ['user', 'shelter_admin'], default: 'user' },
+    alertsEnabled: { type: Boolean, default: true },
+    alertRadiusKm: { type: Number, min: 1, max: 50, default: 3 },
+    alertLocation: { type: pointSchema, default: undefined },
+    privacy: { type: privacySchema, default: () => ({ contactVisibility: 'private' }) },
+    seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },
-  role: { type: String, enum: ['user', 'shelter_admin'], default: 'user' },
-  alertsEnabled: { type: Boolean, default: true },
-  alertRadiusKm: { type: Number, min: 1, max: 50, default: 3 },
-  alertLocation: { type: pointSchema, default: undefined },
-  createdAt: { type: Date, default: Date.now },
-})
+  { timestamps: true, collection: 'users' },
+)
 
 userSchema.index({ alertLocation: '2dsphere' })
 

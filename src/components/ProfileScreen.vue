@@ -85,7 +85,17 @@
         You haven't reported any pets yet.
       </p>
       <div v-else class="my-pets-list">
-        <article v-for="pet in myPets" :key="pet.id" class="my-pet">
+        <article
+          v-for="pet in myPets"
+          :key="pet.id"
+          class="my-pet"
+          role="link"
+          tabindex="0"
+          :aria-label="`Open ${pet.name}'s pet profile`"
+          @click="openPet(pet, $event)"
+          @keydown.enter.prevent="openPet(pet, $event)"
+          @keydown.space.prevent="openPet(pet, $event)"
+        >
           <img :src="pet.photo" :alt="`Photo of ${pet.name}`" />
           <div class="my-pet-info">
             <span class="my-pet-name">{{ pet.name }}</span>
@@ -102,7 +112,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import AppIcon from './AppIcon.vue'
 import { getMyPets, getMySightings } from '../services/api'
 import type { Pet } from '../types/pet'
 import type { User } from '../types/user'
@@ -160,6 +169,16 @@ async function loadMyPets() {
 }
 
 watch(() => props.user?.id, loadMyPets, { immediate: true })
+
+function openPet(pet: Pet, event: MouseEvent | KeyboardEvent) {
+  const target = event.target
+  const currentTarget = event.currentTarget
+  if (target instanceof Element && currentTarget instanceof Element) {
+    const nestedControl = target.closest('button, a, input, select, textarea, [role="button"]')
+    if (nestedControl && nestedControl !== currentTarget) return
+  }
+  void router.push({ name: 'pet-detail', params: { id: pet.id } })
+}
 </script>
 
 <style scoped>
@@ -352,6 +371,22 @@ h2 {
   border-radius: var(--radius-md);
   padding: 12px 14px;
   box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.my-pet:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-float);
+}
+
+.my-pet:active {
+  transform: scale(0.98);
+}
+
+.my-pet:focus-visible {
+  outline: 3px solid #1d6360;
+  outline-offset: 3px;
 }
 
 .my-pet img {

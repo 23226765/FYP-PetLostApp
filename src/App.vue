@@ -82,6 +82,7 @@
           :is="Component"
           v-else-if="currentRoute.name === 'my-reports'"
           @close="router.back()"
+          @message-pet="openChatByPetId"
         />
       </Transition>
     </RouterView>
@@ -113,11 +114,14 @@
         v-if="selectedPet"
         :pet="selectedPet"
         :user="currentUser"
+        :focus-sighting-id="selectedSightingId"
         @close="closePetDetail"
         @found="openSighting(selectedPet)"
         @poster="posterPet = selectedPet"
         @chat="openChat(selectedPet)"
+        @chat-reporter="openReporterChat"
         @auth-needed="authOpen = true"
+        @status-updated="handlePetStatusUpdated"
       />
     </Transition>
 
@@ -198,9 +202,14 @@
               alt="Sighting photo preview"
             />
             <p v-if="sightingError" class="sheet-error">{{ sightingError }}</p>
-            <button class="sheet-send" @click="sendSighting">
+            <button
+              class="sheet-send"
+              type="button"
+              :disabled="sightingSubmitting"
+              @click="sendSighting"
+            >
               <AppIcon name="pin" :size="19" />
-              Send sighting to owner
+              {{ sightingSubmitting ? 'Sending sighting...' : 'Send sighting to owner' }}
             </button>
           </template>
           <div v-else class="sheet-success" role="status">
@@ -230,7 +239,11 @@
 
     <!-- Activity history overlay -->
     <Transition name="page">
-      <AdoptionHistoryScreen v-if="showActivity" @close="showActivity = false" />
+      <AdoptionHistoryScreen
+        v-if="showActivity"
+        @close="showActivity = false"
+        @message-pet="openChatByPetId"
+      />
     </Transition>
 
     <!-- Alert boost overlay -->
@@ -393,6 +406,7 @@ const showActivity = ref(false)
 const showBoost = ref(false)
 const notifications = ref<AppNotification[]>([])
 const selectedPet = ref<Pet | null>(null)
+const selectedSightingId = ref<string | undefined>()
 const deepLinkLoading = ref(false)
 const deepLinkError = ref('')
 const posterPet = ref<Pet | null>(null)
@@ -403,6 +417,8 @@ const sightingNote = ref('')
 const sightingPhoto = ref('')
 const sightingSent = ref(false)
 const sightingError = ref('')
+const sightingSubmitting = ref(false)
+const sightingSubmissionId = ref('')
 const toastPet = ref<Pet | null>(null)
 const unreadCount = computed(
   () => notifications.value.filter((notification) => !notification.read).length,
@@ -571,6 +587,7 @@ function handleAuth(user: User) {
   authOpen.value = false
   if (route.name === 'login') void router.replace('/')
   void activateNotifications()
+  void loadPets()
 }
 
 function logout() {
@@ -585,6 +602,7 @@ function logout() {
   tab.value = 'radar'
   authOpen.value = true
   void router.replace('/login')
+  void loadPets()
 }
 
 function clearToastTimers() {
@@ -631,6 +649,7 @@ function openPet(petOrId: Pet | string | number) {
       ? petOrId
       : pets.value.find((item) => String(item.id) === String(petOrId))
   if (!pet) return
+  selectedSightingId.value = undefined
   selectedPet.value = pet
   showSmartMatch.value = false
   showNotifications.value = false
@@ -640,6 +659,7 @@ async function openDeepLinkedPet(petId: string) {
   const sequence = ++deepLinkRequestSequence
   const normalizedId = petId.trim()
   selectedPet.value = null
+  selectedSightingId.value = undefined
   deepLinkLoading.value = true
   deepLinkError.value = ''
 
@@ -664,9 +684,26 @@ function retryDeepLinkedPet() {
 function closePetDetail() {
   deepLinkRequestSequence += 1
   selectedPet.value = null
+  selectedSightingId.value = undefined
   deepLinkLoading.value = false
   deepLinkError.value = ''
   if (route.name === 'pet-detail') void router.push('/')
+}
+
+function handlePetStatusUpdated(updatedPet: Pet) {
+  pets.value = pets.value.map((pet) =>
+    String(pet.id) === String(updatedPet.id) ? { ...pet, ...updatedPet } : pet,
+  )
+
+  if (selectedPet.value && String(selectedPet.value.id) === String(updatedPet.id)) {
+    selectedPet.value = { ...selectedPet.value, ...updatedPet }
+  }
+  if (sightingPet.value && String(sightingPet.value.id) === String(updatedPet.id)) {
+    sightingPet.value = null
+  }
+  if (toastPet.value && String(toastPet.value.id) === String(updatedPet.id)) {
+    toastPet.value = { ...toastPet.value, ...updatedPet }
+  }
 }
 
 function openChat(pet: ChatPet | null) {
@@ -682,14 +719,6 @@ function openChat(pet: ChatPet | null) {
   chatPet.value = pet
 }
 
-function openActivity() {
-  if (!currentUser.value) {
-    authOpen.value = true
-    return
-  }
-  showActivity.value = true
-}
-
 function openBoost() {
   if (!currentUser.value) {
     authOpen.value = true
@@ -700,6 +729,42 @@ function openBoost() {
 
 function handleUserUpdated(user: User) {
   currentUser.value = user
+  chatPet.value = null
+  posterPet.value = null
+  void loadPets()
+  if (selectedPet.value) {
+    const selectedId = selectedPet.value.id
+    void getPet(selectedId).then((pet) => {
+      if (selectedPet.value?.id === selectedId) selectedPet.value = pet
+    }).catch(() => undefined)
+  }
+}
+
+async function openChatByPetId(petId: string) {
+  if (!currentUser.value) {
+    openLogin()
+    return
+  }
+  try {
+    const pet = await getPet(petId)
+    showActivity.value = false
+    openChat(pet)
+  } catch {
+    // Keep the activity sheet open when the pet can no longer be loaded.
+  }
+}
+
+function openReporterChat(participantId: string, participantName?: string) {
+  if (!selectedPet.value || !currentUser.value) {
+    openLogin()
+    return
+  }
+  if (participantId === currentUser.value.id) return
+  chatPet.value = {
+    ...selectedPet.value,
+    participantId,
+    participantName: participantName || 'Finder',
+  }
 }
 
 function openChatFromInbox(pet: ChatPet) {
@@ -716,15 +781,18 @@ function postFromSmartMatch() {
   tab.value = 'post'
 }
 
-async function openPetById(petId: string) {
+async function openPetById(petId: string, sightingId?: string) {
+  selectedSightingId.value = sightingId
   const cachedPet = pets.value.find((pet) => pet.id === petId)
   if (cachedPet) {
-    openPet(cachedPet)
+    selectedPet.value = cachedPet
+    showNotifications.value = false
     return
   }
 
   try {
-    openPet(await getPet(petId))
+    selectedPet.value = await getPet(petId)
+    showNotifications.value = false
   } catch {
     // Leave the notification panel open if the referenced pet is unavailable.
   }
@@ -829,6 +897,8 @@ function openSighting(pet: Pet | null) {
   sightingNote.value = ''
   sightingPhoto.value = ''
   sightingError.value = ''
+  sightingSubmitting.value = false
+  sightingSubmissionId.value = createSightingSubmissionId()
 }
 
 function closeSighting() {
@@ -839,6 +909,15 @@ function closeSighting() {
   }
   sightingPet.value = null
   sightingPhoto.value = ''
+  sightingSubmitting.value = false
+  sightingSubmissionId.value = ''
+}
+
+function createSightingSubmissionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `sighting_${crypto.randomUUID()}`
+  }
+  return `sighting_${Date.now()}_${Math.random().toString(36).slice(2, 14)}`
 }
 
 async function attachSightingPhoto() {
@@ -859,21 +938,27 @@ async function attachSightingPhoto() {
 
 async function sendSighting() {
   const pet = sightingPet.value
-  if (!pet) return
+  if (!pet || sightingSubmitting.value) return
+  sightingSubmitting.value = true
   sightingError.value = ''
   try {
     const { lat, lng } = await getUserLocation()
+    const submissionId = sightingSubmissionId.value || createSightingSubmissionId()
+    sightingSubmissionId.value = submissionId
     await reportSighting(pet.id, {
       coordinates: [lng, lat],
       note: sightingNote.value,
       locationName: pet.location,
       photo: sightingPhoto.value || undefined,
+      submissionId,
     })
     sightingSent.value = true
     const p = pets.value.find((x) => x.id === pet.id)
     if (p) p.status = 'sighted'
   } catch (e) {
     sightingError.value = e instanceof Error ? e.message : 'Failed to send sighting'
+  } finally {
+    sightingSubmitting.value = false
   }
 }
 
@@ -902,6 +987,7 @@ function handleUnauthorized() {
   tab.value = 'radar'
   authOpen.value = true
   void router.replace('/login')
+  void loadPets()
 }
 
 onMounted(() => {
@@ -1222,6 +1308,12 @@ main {
   font-size: 15.5px;
   font-weight: 800;
   box-shadow: var(--shadow-float);
+}
+
+.sheet-send:disabled {
+  cursor: wait;
+  opacity: 0.68;
+  box-shadow: none;
 }
 
 .sheet-success {

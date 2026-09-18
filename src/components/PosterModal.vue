@@ -69,7 +69,7 @@
         <section class="recovery-block">
           <div class="contact-block">
             <p class="contact-heading">If you see {{ pet.name }}</p>
-            <strong>{{ pet.ownerPhone || 'Report through PawRadar' }}</strong>
+            <strong>{{ pet.canViewContact && pet.ownerPhone ? pet.ownerPhone : 'Report through PawRadar' }}</strong>
             <span>{{ pet.owner ? `Contact ${pet.owner}` : 'Please submit a sighting immediately' }}</span>
             <small>Please do not chase. Note the location and direction of travel.</small>
           </div>

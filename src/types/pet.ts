@@ -33,7 +33,8 @@ export interface Pet {
   details?: string
   reward?: string
   owner: string
-  ownerPhone: string
+  ownerPhone?: string
+  canViewContact: boolean
   reportedBy?: string
   status: 'lost' | 'sighted' | 'reunited'
   location: string
@@ -46,7 +47,7 @@ export interface Pet {
 }
 
 export interface Sighting {
-  id?: string
+  id: string
   petId: string
   coordinates: [number, number]
   locationName?: string
@@ -55,4 +56,8 @@ export interface Sighting {
   createdAt?: string
   confirmationCount?: number
   confirmedByMe?: boolean
+  reportedBy?: string
+  reporterName?: string
+  reporterPhone?: string
+  canViewContact: boolean
 }

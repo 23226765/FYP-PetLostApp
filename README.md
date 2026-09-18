@@ -13,7 +13,7 @@
 
 PawRadar is a hyperlocal lost-pet recovery and community sighting platform designed to reduce the time between an animal being reported missing, being observed by a nearby resident, and its owner receiving actionable information. Conventional social-media posts are distributed broadly but are difficult to search geographically and chronologically. PawRadar addresses this latency by storing reports as geospatial records, retrieving active cases within a configurable radius, and linking successive sightings into a time-ordered movement history.
 
-Milestone 1 delivers an end-to-end web application comprising a Vue 3 mobile interface, an Express REST API, and an Azure Cosmos DB database accessed through the MongoDB API. The system supports authenticated reporting, nearby pet and stray discovery, interactive Leaflet maps, chronological sighting trajectories, community verification, owner/finder communication, and persisted radius alerts.
+Milestone 1 delivers an end-to-end web application comprising a Vue 3 mobile interface, an Express REST API, and a MongoDB Atlas database accessed through Mongoose. The system supports authenticated reporting, nearby pet and stray discovery, interactive Leaflet maps, chronological sighting trajectories, community verification, owner/finder communication, and persisted radius alerts.
 
 The current milestone establishes the functional and architectural baseline. The next phase will strengthen test data, edge-case resilience, matching quality, and native packaging without changing the core client/server contract.
 
@@ -33,7 +33,7 @@ The project has four primary objectives:
 | Frontend | Vue 3 Composition API, `<script setup lang="ts">`, TypeScript, Vite, Axios | Reactive mobile-first interface and typed API access |
 | Mapping | Leaflet.js, OpenStreetMap tiles | Interactive markers, radius overlays, location history, and viewport fitting |
 | Backend | Node.js, Express.js, RESTful controllers, JWT, bcrypt | API orchestration, authentication, validation, and authorization |
-| Data | Mongoose, Azure Cosmos DB MongoDB API | Document persistence and geospatial querying |
+| Data | Mongoose, MongoDB Atlas | Document persistence and geospatial querying |
 | Geospatial standard | GeoJSON Point and `2dsphere` indexes | Longitude/latitude validation and spherical distance searches |
 | Mobile shell | Responsive CSS constrained to `max-width: 480px` | App-like behavior on mobile browsers and preparation for Capacitor |
 
@@ -50,7 +50,7 @@ flowchart LR
     E --> A[JWT authentication and validation]
     A --> C[Route controllers]
     C --> M[Mongoose models]
-    M --> D[(Azure Cosmos DB\nMongoDB API)]
+    M --> D[(MongoDB Atlas\npetlostapp)]
     V --> L[Leaflet + OpenStreetMap]
     V --> T[Native tel: link]
     V --> W[WhatsApp wa.me link]
@@ -244,7 +244,7 @@ The following boundaries are recorded to distinguish implemented evidence from f
 ### 10.1 Prerequisites
 
 - A current Node.js LTS release and npm
-- Access to an Azure Cosmos DB account using the MongoDB API
+- Access to the MongoDB Atlas cluster and its database user credentials
 - A modern browser with location support
 
 ### 10.2 Install dependencies
@@ -258,25 +258,58 @@ npm --prefix server install
 
 ### 10.3 Configure the backend
 
-Create `server/.env` without committing it:
+Copy `server/.env.example` to `server/.env`, then edit only the local `server/.env` file. It is ignored by Git and must never be exposed through a `VITE_` variable or frontend source code.
 
 ```dotenv
-MONGODB_URI=<your-cosmos-mongodb-connection-string>
+MONGODB_URI=mongodb+srv://<database-user>:<url-encoded-password>@<cluster-host>/?retryWrites=true&w=majority
 JWT_SECRET=<a-long-random-secret>
 PORT=5000
 ```
+
+Obtain the URI from Atlas under **Connect > Drivers**. Keep the URI and password local. The backend selects the `petlostapp` database explicitly, regardless of whether the URI includes a path. Atlas Network Access must allow the development machine's current IP address. The API fails safely before listening if Atlas authentication or connectivity fails, and it never logs the full URI.
 
 An optional `CORS_ORIGINS` value may contain a comma-separated deployment allow-list. The development defaults permit localhost and `127.0.0.1` on ports `3000` and `5173`.
 
 ### 10.4 Seed demonstration data
 
-> **Warning:** the current seed command deletes existing `Pet` and `Sighting` records before inserting the demonstration set. Do not run it against production data.
+For the idempotent FYP demo dataset, add these local-only values to `server/.env`:
+
+```dotenv
+ALLOW_TEST_SEED=true
+SEED_USER_PASSWORD=<a-local-test-password-of-at-least-6-characters>
+```
+
+Then run from the project root:
+
+```powershell
+npm run seed:test
+```
+
+The script inserts only missing records from batch `fyp-demo-v1`; it never overwrites or deletes existing records. It refuses production execution and verifies that the active database is exactly `petlostapp`. To remove only this batch:
+
+```powershell
+npm run seed:clean
+```
+
+With the backend running, verify login, filters, location search, sightings, messages, notifications, and stray status retrieval:
+
+```powershell
+npm run seed:verify
+```
+
+#### Legacy development reset
+
+> **Warning:** the development seed deletes existing `Pet` and `Sighting` records before inserting PawRadar demonstration data. It refuses to run when `NODE_ENV=production` or unless destructive development seeding is explicitly enabled.
 
 From the project root:
 
 ```powershell
+$env:ALLOW_DESTRUCTIVE_SEED='true'
 npm --prefix server run seed
+Remove-Item Env:ALLOW_DESTRUCTIVE_SEED
 ```
+
+Never enable this flag against a production database.
 
 ### 10.5 Start the Express backend
 
@@ -327,6 +360,12 @@ With both servers running, validate the API and database:
 npm run smoke:api
 ```
 
+To perform a safe Atlas round-trip, insert and read one temporary record in `petlostapp.pets`, then remove only that record:
+
+```powershell
+npm --prefix server run verify:db
+```
+
 Individual checks can also be performed with:
 
 ```powershell
@@ -341,6 +380,8 @@ Expected health output includes:
 {
   "status": "ok",
   "db": "connected",
+  "database": "petlostapp",
+  "expectedDatabase": "petlostapp",
   "readyState": 1
 }
 ```

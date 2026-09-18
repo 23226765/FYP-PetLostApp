@@ -20,12 +20,12 @@ const petSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     species: { type: String, enum: ['Dog', 'Cat', 'Other'], required: true },
-    breed: { type: String, default: '' },
+    breed: { type: String, default: '', trim: true, maxlength: 120 },
     district: { type: String, default: '', trim: true },
     photo: { type: String, default: '' },
     photos: [{ type: String }],
-    description: { type: String, default: '' },
-    details: { type: String, default: '' },
+    description: { type: String, default: '', trim: true, maxlength: 3000 },
+    details: { type: String, default: '', trim: true, maxlength: 3000 },
     reward: { type: String, default: '' },
     ownerName: { type: String, default: '' },
     ownerPhone: { type: String, default: '' },
@@ -36,8 +36,9 @@ const petSchema = new mongoose.Schema(
     mapX: { type: Number, default: 50 },
     mapY: { type: Number, default: 50 },
     reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },
-  { timestamps: true },
+  { timestamps: true, collection: 'pets' },
 )
 
 // Geospatial index for $near / $geoNear queries
@@ -45,5 +46,6 @@ petSchema.index({ location: '2dsphere' })
 // Compound index for species & status filtering
 petSchema.index({ species: 1, status: 1 })
 petSchema.index({ district: 1, breed: 1, status: 1 })
+petSchema.index({ reportedBy: 1, createdAt: -1 })
 
 export default mongoose.models.Pet || mongoose.model('Pet', petSchema)

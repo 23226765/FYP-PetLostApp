@@ -3,8 +3,14 @@ import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import express from 'express'
 import cors from 'cors'
-import mongoose from 'mongoose'
 import { errorHandler } from './middleware/errorHandler.js'
+import {
+  connectDatabase,
+  databaseErrorMessage,
+  databaseHealth,
+  disconnectDatabase,
+} from './config/database.js'
+import { initializeApplicationCollections } from './config/collections.js'
 
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.resolve(serverDirectory, '.env') })
@@ -18,6 +24,7 @@ const [
   { default: chatRouter },
   { default: straysRouter },
   { default: matchesRouter },
+  { default: analyticsRouter },
 ] = await Promise.all([
   import('./routes/pets.js'),
   import('./routes/auth.js'),
@@ -25,11 +32,12 @@ const [
   import('./routes/chat.js'),
   import('./routes/strays.js'),
   import('./routes/matches.js'),
+  import('./routes/analytics.js'),
 ])
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5000
-const MONGODB_URI = process.env.MONGODB_URI
+let httpServer = null
 
 const defaultOrigins = [
   'http://localhost:3000',
@@ -56,12 +64,14 @@ app.use(
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-app.get('/api/health', (_req, res) => {
-  const state = mongoose.connection.readyState
-  res.status(state === 1 ? 200 : 503).json({
-    status: state === 1 ? 'ok' : 'degraded',
-    db: state === 1 ? 'connected' : 'disconnected',
-    readyState: state,
+app.get('/api/health', async (_req, res) => {
+  const database = await databaseHealth()
+  res.status(database.connected ? 200 : 503).json({
+    status: database.connected ? 'ok' : 'degraded',
+    db: database.connected ? 'connected' : 'disconnected',
+    database: database.database,
+    expectedDatabase: database.expectedDatabase,
+    readyState: database.readyState,
   })
 })
 
@@ -71,25 +81,42 @@ app.use('/api/notifications', notificationsRouter)
 app.use('/api/chat', chatRouter)
 app.use('/api/strays', straysRouter)
 app.use('/api/matches', matchesRouter)
+app.use('/api/analytics', analyticsRouter)
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }))
 app.use(errorHandler)
 
 async function start() {
-  if (!MONGODB_URI) {
-    console.warn(
-      '⚠️  MONGODB_URI is not set. API will start, but DB endpoints will fail. ' +
-      'Add your Cosmos DB connection string to server/.env'
-    )
-  } else {
-    try {
-      await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 })
-      console.log('✅ Connected to MongoDB (Cosmos DB)')
-    } catch (err) {
-      console.error('❌ MongoDB connection failed:', err.message)
-    }
+  try {
+    const connection = await connectDatabase()
+    const collections = await initializeApplicationCollections(connection)
+    console.log(`Initialized ${collections.length} PawRadar collections.`)
+  } catch (error) {
+    console.error(`Database startup failed: ${databaseErrorMessage(error)}`)
+    process.exitCode = 1
+    return
   }
-  app.listen(PORT, () => console.log(`🚀 API listening on http://localhost:${PORT}`))
+
+  httpServer = app.listen(PORT, () => {
+    console.log(`API listening on http://localhost:${PORT}`)
+  })
+  httpServer.on('error', async (error) => {
+    console.error(`API startup failed (${error.code || 'unknown error'}).`)
+    await disconnectDatabase().catch(() => undefined)
+    process.exitCode = 1
+  })
 }
 
-start()
+async function shutdown(signal) {
+  console.log(`Received ${signal}; shutting down safely.`)
+  if (httpServer) {
+    await new Promise((resolve) => httpServer.close(resolve))
+    httpServer = null
+  }
+  await disconnectDatabase()
+}
+
+process.once('SIGINT', () => void shutdown('SIGINT'))
+process.once('SIGTERM', () => void shutdown('SIGTERM'))
+
+void start()

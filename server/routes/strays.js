@@ -11,11 +11,11 @@ import { optionalAuth, requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
-router.get('/', listStrays)
+router.get('/', optionalAuth, listStrays)
 router.get('/mine', requireAuth, listMyStrays)
-router.get('/nearby', nearbyStrays)
+router.get('/nearby', optionalAuth, nearbyStrays)
 router.post('/report', optionalAuth, reportStray)
-router.get('/:id', getStray)
+router.get('/:id', optionalAuth, getStray)
 router.patch('/:id/status', requireAuth, updateRescueStatus)
 
 export default router

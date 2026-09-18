@@ -44,6 +44,7 @@ function serializeNotification(notification) {
     body: notification.body,
     photo: notification.photo || undefined,
     petId: String(notification.pet?._id || notification.pet),
+    sightingId: notification.sighting ? String(notification.sighting?._id || notification.sighting) : undefined,
     time: relativeTime(notification.createdAt),
     read: Boolean(notification.read),
   }
@@ -66,8 +67,8 @@ async function findAlertRecipients(origin, excludedUserId) {
       { $project: { _id: 1, alertRadiusKm: 1, distanceMeters: 1 } },
     ])
   } catch {
-    // Some Cosmos configurations reject geo aggregation until the new index is
-    // available. This produces the same result while keeping delivery working.
+    // Preserve delivery if a deployment temporarily rejects geo aggregation
+    // while its spatial index is becoming available.
     const candidates = await User.find({
       alertsEnabled: { $ne: false },
       alertLocation: { $exists: true },
@@ -138,9 +139,9 @@ export async function listNotifications(req, res, next) {
         .sort({ createdAt: -1 })
         .limit(50)
     } catch (error) {
-      const cosmosOrderByError =
+      const unsupportedOrderByError =
         error?.code === 2 && String(error.message).includes('order-by item is excluded')
-      if (!cosmosOrderByError) throw error
+      if (!unsupportedOrderByError) throw error
       notifications = await Notification.find({ user: req.user._id })
       notifications.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),

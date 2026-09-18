@@ -95,6 +95,31 @@
 
     <p class="count">{{ pets.length }} pets missing nearby</p>
 
+    <div v-if="view === 'map'" class="map-layer-control" aria-label="Map display layer">
+      <div>
+        <strong>Map layer</strong>
+        <span>{{ mapLayer === 'heatmap' ? 'Recent community activity' : 'Individual reports' }}</span>
+      </div>
+      <div class="layer-buttons" role="group" aria-label="Choose map layer">
+        <button
+          type="button"
+          :class="{ active: mapLayer === 'pins' }"
+          :aria-pressed="mapLayer === 'pins'"
+          @click="mapLayer = 'pins'"
+        >
+          Pins
+        </button>
+        <button
+          type="button"
+          :class="{ active: mapLayer === 'heatmap' }"
+          :aria-pressed="mapLayer === 'heatmap'"
+          @click="mapLayer = 'heatmap'"
+        >
+          Hotspots
+        </button>
+      </div>
+    </div>
+
     <div v-if="loading" class="state">
       <span class="spinner" />
       Loading nearby pets…
@@ -103,11 +128,11 @@
       <p>{{ error }}</p>
       <button class="retry-btn" @click="emit('retry')">Retry</button>
     </div>
-    <div v-else-if="pets.length === 0" class="state">
+    <div v-else-if="view === 'list' && pets.length === 0" class="state">
       No pets reported nearby yet. Be the first to post one!
     </div>
-    <template v-else>
-      <div v-if="view === 'list'" class="feed">
+    <template v-else-if="view === 'list'">
+      <div class="feed">
         <PetCard
           v-for="pet in pets"
           :key="pet.id"
@@ -116,26 +141,56 @@
           @found="emit('found', pet)"
         />
       </div>
+    </template>
+    <div v-else class="map-section">
+      <div v-if="mapLayer === 'heatmap'" class="analytics-card" aria-live="polite">
+        <template v-if="hotspotLoading">
+          <span class="analytics-spinner" aria-hidden="true" />
+          <span>Calculating recent hotspots…</span>
+        </template>
+        <template v-else-if="hotspotError">
+          <span>{{ hotspotError }}</span>
+          <button type="button" @click="loadHotspots">Retry</button>
+        </template>
+        <template v-else-if="hotspotSummary && hotspotSummary.total > 0">
+          <div>
+            <strong>{{ hotspotSummary.total }} recent reports</strong>
+            <span>
+              {{ hotspotSummary.sightings }} sightings · {{ hotspotSummary.strays }} stray reports
+            </span>
+          </div>
+          <span class="analytics-window">{{ hotspotSummary.windowDays }} days</span>
+        </template>
+        <span v-else>No hotspot activity found within this area.</span>
+      </div>
       <MapView
-        v-else
         :pets="pets"
         :center="userLocation"
         :radius-km="radiusKm"
+        :heat-points="hotspotPoints"
+        :show-heatmap="mapLayer === 'heatmap' && !hotspotLoading && !hotspotError"
         @open="(p) => emit('open', p)"
       />
-    </template>
+      <div v-if="mapLayer === 'heatmap'" class="heat-legend" aria-label="Hotspot intensity legend">
+        <span>Lower activity</span>
+        <span class="legend-gradient" aria-hidden="true" />
+        <span>Higher urgency</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import type { Pet } from '../types/pet'
+import type { HotspotPoint, HotspotSummary } from '../types/analytics'
 import { HK_DISTRICTS } from '../types/pet'
+import { getHotspots } from '../services/api'
 import AppIcon from './AppIcon.vue'
 import PetCard from './PetCard.vue'
 import MapView from './MapView.vue'
 
-defineProps<{
+const props = defineProps<{
   pets: Pet[]
   loading?: boolean
   error?: string
@@ -160,7 +215,77 @@ const emit = defineEmits<{
 }>()
 
 const view = ref<'list' | 'map'>('list')
+const mapLayer = ref<'pins' | 'heatmap'>('pins')
+const hotspotPoints = ref<HotspotPoint[]>([])
+const hotspotSummary = ref<HotspotSummary | null>(null)
+const hotspotLoading = ref(false)
+const hotspotError = ref('')
 const chips = ['All', 'Dogs', 'Cats', 'Other'] as const
+const HK_CENTER = { lat: 22.3193, lng: 114.1694 }
+let hotspotRequestSequence = 0
+let hotspotAbortController: AbortController | null = null
+
+async function loadHotspots() {
+  if (view.value !== 'map' || mapLayer.value !== 'heatmap') {
+    hotspotRequestSequence += 1
+    hotspotAbortController?.abort()
+    hotspotAbortController = null
+    hotspotLoading.value = false
+    return
+  }
+
+  const sequence = ++hotspotRequestSequence
+  hotspotAbortController?.abort()
+  const controller = new AbortController()
+  hotspotAbortController = controller
+  hotspotLoading.value = true
+  hotspotError.value = ''
+  const center = props.userLocation || HK_CENTER
+
+  try {
+    const result = await getHotspots(
+      {
+        lat: center.lat,
+        lng: center.lng,
+        radiusKm: props.radiusKm,
+        days: 30,
+        source: 'all',
+      },
+      controller.signal,
+    )
+    if (sequence !== hotspotRequestSequence) return
+    hotspotPoints.value = result.points
+    hotspotSummary.value = result.summary
+  } catch (error) {
+    if (sequence !== hotspotRequestSequence) return
+    hotspotPoints.value = []
+    hotspotSummary.value = null
+    hotspotError.value =
+      error instanceof Error ? error.message : 'Unable to load hotspot analytics.'
+  } finally {
+    if (sequence === hotspotRequestSequence) {
+      hotspotLoading.value = false
+      if (hotspotAbortController === controller) hotspotAbortController = null
+    }
+  }
+}
+
+watch(
+  [
+    view,
+    mapLayer,
+    () => props.radiusKm,
+    () => props.userLocation?.lat,
+    () => props.userLocation?.lng,
+  ],
+  () => void loadHotspots(),
+)
+
+onBeforeUnmount(() => {
+  hotspotRequestSequence += 1
+  hotspotAbortController?.abort()
+  hotspotAbortController = null
+})
 
 function handleRadius(e: Event) {
   emit('radius-change', Number((e.target as HTMLInputElement).value))
@@ -362,6 +487,145 @@ h1 svg {
   font-weight: 700;
   color: var(--ink-muted);
   margin-bottom: 12px;
+}
+
+.map-layer-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 11px 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.map-layer-control > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.map-layer-control strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.map-layer-control span {
+  color: var(--ink-muted);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.layer-buttons {
+  display: flex;
+  flex-shrink: 0;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.layer-buttons button {
+  min-height: 36px;
+  padding: 0 11px;
+  border-radius: 999px;
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 800;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.layer-buttons button.active {
+  background: #1d6360;
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(29, 99, 96, 0.22);
+}
+
+.layer-buttons button:active {
+  transform: scale(0.98);
+}
+
+.map-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.analytics-card {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid rgba(29, 99, 96, 0.15);
+  border-radius: 14px;
+  background: rgba(29, 99, 96, 0.08);
+  color: #1d6360;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-card > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.analytics-card strong {
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.analytics-card button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #1d6360;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.analytics-window {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #fcf9f2;
+  color: #1d6360 !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+}
+
+.analytics-spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid rgba(29, 99, 96, 0.2);
+  border-top-color: #1d6360;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.heat-legend {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  color: var(--ink-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.legend-gradient {
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #79b7ae, #1d6360 45%, #f2a65a 72%, #ef6351);
 }
 
 .radius {
