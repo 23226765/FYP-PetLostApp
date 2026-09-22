@@ -28,6 +28,7 @@ async function verifyDatabase() {
     _id: testRecordId,
     name: 'PawRadar database verification',
     species: 'Other',
+    animalType: 'Bird',
     breed: 'Temporary system record',
     district: 'Central and Western',
     description: 'Temporary Atlas insert/read verification record.',

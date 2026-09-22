@@ -21,6 +21,10 @@ function cleanText(value, maxLength) {
   return typeof value === 'string' ? value.replace(/\0/g, '').trim().slice(0, maxLength) : ''
 }
 
+function animalName(species, animalType) {
+  return species === 'Other' ? cleanText(animalType, 80) || 'animal' : String(species || 'animal')
+}
+
 function validCoordinates(value) {
   return Array.isArray(value) && value.length === 2 && value.every((item) => Number.isFinite(Number(item))) &&
     Number(value[0]) >= -180 && Number(value[0]) <= 180 && Number(value[1]) >= -90 && Number(value[1]) <= 90
@@ -67,11 +71,13 @@ function relativeTime(date) {
   return hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`
 }
 
-async function contextFor(strays, requester) {
+async function contextFor(strays, requester, { includeContact = true } = {}) {
   const strayIds = strays.map((stray) => stray._id)
   const authorIds = [...new Set(strays.map((stray) => String(stray.reportedBy || '')).filter(Boolean))]
   const [authors, commentCounts, commentPreviews, saved] = await Promise.all([
-    User.find({ _id: { $in: authorIds } }).select('_id name avatar phone privacy.contactVisibility'),
+    User.find({ _id: { $in: authorIds } }).select(
+      includeContact ? '_id name avatar phone privacy.contactVisibility' : '_id name avatar',
+    ),
     StrayComment.aggregate([{ $match: { stray: { $in: strayIds } } }, { $group: { _id: '$stray', count: { $sum: 1 } } }]),
     StrayComment.aggregate([{ $match: { stray: { $in: strayIds } } }, { $sort: { createdAt: -1 } }, { $group: { _id: '$stray', text: { $first: '$text' } } }]),
     requester ? SavedStray.find({ user: requester._id, stray: { $in: strayIds } }).select('stray') : [],
@@ -84,17 +90,19 @@ async function contextFor(strays, requester) {
   }
 }
 
-function serializeStray(stray, requester, context, distanceMeters) {
+function serializeStray(stray, requester, context, distanceMeters, { includeContact = true } = {}) {
   const id = String(stray._id)
   const author = context.authors.get(String(stray.reportedBy || ''))
   const authorSummary = publicAuthor(author, stray.reporterName)
   const photos = [...new Set([...(stray.photos || []), stray.photo].filter(validPhotoUrl))]
   return {
-    id, species: stray.species, description: stray.description, photo: photos[0] || '', photos,
+    id, species: stray.species, animalType: cleanText(stray.animalType, 80), description: stray.description, photo: photos[0] || '', photos,
     condition: stray.condition, district: stray.district, location: stray.locationName,
     coordinates: stray.location?.coordinates || null, rescueStatus: stray.rescueStatus,
     author: authorSummary, reporterName: authorSummary.name,
-    ...serializeContact({ requester, contactOwner: author, phoneField: 'reporterPhone' }),
+    ...(includeContact
+      ? serializeContact({ requester, contactOwner: author, phoneField: 'reporterPhone' })
+      : { canViewContact: false }),
     reportedBy: stray.reportedBy ? String(stray.reportedBy) : undefined,
     reportedAgo: relativeTime(stray.createdAt), observedAt: stray.observedAt || stray.createdAt,
     createdAt: stray.createdAt, updatedAt: stray.updatedAt, statusUpdatedAt: stray.statusUpdatedAt,
@@ -105,9 +113,9 @@ function serializeStray(stray, requester, context, distanceMeters) {
   }
 }
 
-async function serializeMany(strays, requester, distanceFor) {
-  const context = await contextFor(strays, requester)
-  return strays.map((stray) => serializeStray(stray, requester, context, distanceFor?.(stray)))
+async function serializeMany(strays, requester, distanceFor, options) {
+  const context = await contextFor(strays, requester, options)
+  return strays.map((stray) => serializeStray(stray, requester, context, distanceFor?.(stray), options))
 }
 
 async function findNewest(filter, { skip = 0, limit = 20 } = {}) {
@@ -124,8 +132,16 @@ export async function listStrays(req, res, next) {
 
 export async function listMyStrays(req, res, next) {
   try {
-    const strays = await findNewest({ ...ACTIVE_FILTER, reportedBy: req.user._id }, { limit: 100 })
-    res.json({ strays: await serializeMany(strays, req.user) })
+    const filter = { ...ACTIVE_FILTER, reportedBy: req.user._id }
+    const { page, limit, skip } = pagination(req.query)
+    const [strays, total] = await Promise.all([
+      findNewest(filter, { skip, limit }),
+      Stray.countDocuments(filter),
+    ])
+    res.json({
+      strays: await serializeMany(strays, req.user, undefined, { includeContact: false }),
+      pagination: { page, limit, total, hasMore: skip + strays.length < total },
+    })
   } catch (error) { next(error) }
 }
 
@@ -155,10 +171,12 @@ export async function reportStray(req, res, next) {
   try {
     if (!hasBody(req)) return res.status(400).json({ success: false, message: 'Invalid or missing request body' })
     const { species, condition = 'unknown', district, locationName, coordinates, submissionId } = req.body
+    const animalType = cleanText(req.body.animalType, 80)
     const description = cleanText(req.body.description, 2000)
     const photos = [...new Set((Array.isArray(req.body.photos) ? req.body.photos : [req.body.photo]).filter(validPhotoUrl))].slice(0, 6)
     const observedAt = new Date(req.body.observedAt || Date.now())
     if (!SPECIES.has(species) || !description) return res.status(400).json({ error: 'Species and description are required.' })
+    if (species === 'Other' && !animalType) return res.status(400).json({ error: 'Please specify what type of animal was seen.' })
     if (!CONDITIONS.has(condition) || !HK_DISTRICTS.has(district) || !cleanText(locationName, 200)) return res.status(400).json({ error: 'Valid condition, district, and location are required.' })
     if (!validCoordinates(coordinates)) return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
     if (!photos.length) return res.status(400).json({ error: 'At least one uploaded photo URL is required.' })
@@ -168,7 +186,7 @@ export async function reportStray(req, res, next) {
 
     const filter = { reportedBy: req.user._id, submissionId: safeSubmissionId }
     const existed = Boolean(await Stray.exists(filter))
-    const stray = await Stray.findOneAndUpdate(filter, { $setOnInsert: { species, description, photo: photos[0], photos, condition, district, locationName: cleanText(locationName, 200), location: { type: 'Point', coordinates: coordinates.map(Number) }, reporterName: req.user.name, reporterPhone: req.user.phone || '', reportedBy: req.user._id, observedAt, rescueStatus: RESCUE_STATUSES.has(req.body.rescueStatus) ? req.body.rescueStatus : 'reported', submissionId: safeSubmissionId } }, { upsert: true, new: true, setDefaultsOnInsert: true })
+    const stray = await Stray.findOneAndUpdate(filter, { $setOnInsert: { species, animalType: species === 'Other' ? animalType : '', description, photo: photos[0], photos, condition, district, locationName: cleanText(locationName, 200), location: { type: 'Point', coordinates: coordinates.map(Number) }, reporterName: req.user.name, reporterPhone: req.user.phone || '', reportedBy: req.user._id, observedAt, rescueStatus: RESCUE_STATUSES.has(req.body.rescueStatus) ? req.body.rescueStatus : 'reported', submissionId: safeSubmissionId } }, { upsert: true, new: true, setDefaultsOnInsert: true })
     const [serialized] = await serializeMany([stray], req.user)
     res.status(existed ? 200 : 201).json({ stray: serialized, duplicate: existed })
   } catch (error) { next(error) }
@@ -184,8 +202,12 @@ export async function updateStray(req, res, next) {
     if (!description) return res.status(400).json({ error: 'Description is required.' })
     if (req.body.species && !SPECIES.has(req.body.species)) return res.status(400).json({ error: 'Invalid species.' })
     if (req.body.condition && !CONDITIONS.has(req.body.condition)) return res.status(400).json({ error: 'Invalid condition.' })
+    const nextSpecies = req.body.species || stray.species
+    const nextAnimalType = req.body.animalType === undefined ? cleanText(stray.animalType, 80) : cleanText(req.body.animalType, 80)
+    if (nextSpecies === 'Other' && !nextAnimalType) return res.status(400).json({ error: 'Please specify what type of animal was seen.' })
     stray.description = description
     if (req.body.species) stray.species = req.body.species
+    stray.animalType = nextSpecies === 'Other' ? nextAnimalType : ''
     if (req.body.condition) stray.condition = req.body.condition
     await stray.save()
     const [serialized] = await serializeMany([stray], req.user)
@@ -239,7 +261,7 @@ export async function createComment(req, res, next) {
     const existed = Boolean(await StrayComment.exists(filter))
     const comment = await StrayComment.findOneAndUpdate(filter, { $setOnInsert: { stray: stray._id, author: req.user._id, text, submissionId } }, { upsert: true, new: true, setDefaultsOnInsert: true }).populate('author', 'name avatar')
     if (stray.reportedBy && String(stray.reportedBy) !== String(req.user._id)) {
-      await Notification.findOneAndUpdate({ user: stray.reportedBy, stray: stray._id, type: 'comment', comment: comment._id }, { $setOnInsert: { user: stray.reportedBy, stray: stray._id, comment: comment._id, type: 'comment', title: `New comment on your ${stray.species.toLowerCase()} post`, body: `${req.user.name} commented: ${text.slice(0, 120)}`, photo: stray.photo || '' } }, { upsert: true, new: true })
+      await Notification.findOneAndUpdate({ user: stray.reportedBy, stray: stray._id, type: 'comment', comment: comment._id }, { $setOnInsert: { user: stray.reportedBy, stray: stray._id, comment: comment._id, type: 'comment', title: `New comment on your ${animalName(stray.species, stray.animalType).toLowerCase()} post`, body: `${req.user.name} commented: ${text.slice(0, 120)}`, photo: stray.photo || '' } }, { upsert: true, new: true })
     }
     res.status(existed ? 200 : 201).json({ comment: serializeComment(comment), duplicate: existed })
   } catch (error) { next(error) }
@@ -267,10 +289,19 @@ export async function deleteComment(req, res, next) {
 
 export async function listSavedStrays(req, res, next) {
   try {
-    const saves = await SavedStray.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(100)
+    const filter = { user: req.user._id }
+    const { page, limit, skip } = pagination(req.query)
+    const [saves, total] = await Promise.all([
+      SavedStray.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      SavedStray.countDocuments(filter),
+    ])
     const strays = await Stray.find({ _id: { $in: saves.map((save) => save.stray) }, ...ACTIVE_FILTER })
     const byId = new Map(strays.map((stray) => [String(stray._id), stray])); const ordered = saves.map((save) => byId.get(String(save.stray))).filter(Boolean)
-    res.json({ strays: await serializeMany(ordered, req.user), unavailableCount: saves.length - ordered.length })
+    res.json({
+      strays: await serializeMany(ordered, req.user, undefined, { includeContact: false }),
+      unavailableCount: saves.length - ordered.length,
+      pagination: { page, limit, total, hasMore: skip + saves.length < total },
+    })
   } catch (error) { next(error) }
 }
 

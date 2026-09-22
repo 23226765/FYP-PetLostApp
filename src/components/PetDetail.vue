@@ -11,15 +11,15 @@
       <div v-else class="photo-placeholder hero-placeholder" aria-hidden="true">
         <AppIcon name="paw" :size="58" />
       </div>
-      <span class="sr-only">Photo of {{ pet.name }}, a missing {{ pet.breed }}</span>
-      <button class="back" aria-label="Go back" @click="emit('close')">
+      <span class="sr-only">{{ t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) }) }}</span>
+      <button class="back" :aria-label="t('common.back')" @click="emit('close')">
         <AppIcon name="back" :size="20" />
       </button>
       <button
         class="save"
         :class="{ saved: isSaved(pet.id) }"
         type="button"
-        :aria-label="isSaved(pet.id) ? `Remove ${pet.name} from saved posts` : `Save ${pet.name}`"
+        :aria-label="isSaved(pet.id) ? t('pets.removeSaved', { name: pet.name }) : t('pets.savePost', { name: pet.name })"
         :aria-pressed="isSaved(pet.id)"
         @click="toggleSave(pet.id)"
       >
@@ -38,7 +38,7 @@
           <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
         </svg>
       </button>
-      <button class="share" aria-label="Share this pet's poster" @click="emit('poster')">
+      <button class="share" :aria-label="t('pets.sharePoster')" @click="emit('poster')">
         <AppIcon name="share" :size="19" />
       </button>
       <span class="badge" :class="currentStatus">
@@ -51,58 +51,57 @@
       <div v-if="showCelebration" class="celebration-banner" role="status">
         <span aria-hidden="true">🎉</span>
         <div>
-          <strong>{{ pet.name }} is safely home!</strong>
-          <p>This report is now closed and no longer accepts new sightings.</p>
+          <strong>{{ t('pets.homeTitle', { name: pet.name }) }}</strong>
+          <p>{{ t('pets.closedHelp') }}</p>
         </div>
       </div>
       <div class="title-row">
         <div>
           <h2>{{ pet.name }}</h2>
-          <p class="sub">{{ pet.breed }} · {{ pet.species }}</p>
+          <p class="sub"><template v-if="pet.breed">{{ pet.breed }} · </template>{{ speciesLabel(pet.species) }}</p>
         </div>
         <span class="distance">
           <AppIcon name="pin" :size="15" />
-          {{ pet.distanceKm }} km away
+          {{ t('radar.distanceAway', { distance: pet.distanceKm }) }}
         </span>
       </div>
 
       <div class="facts">
         <div class="fact">
-          <span class="label">Last seen</span>
-          <span class="value">{{ pet.lastSeen }}</span>
+          <span class="label">{{ t('pets.lastSeenLabel') }}</span>
+          <span class="value">{{ pet.lastSeenAt ? formatRelativeDate(pet.lastSeenAt) : pet.lastSeen }}</span>
         </div>
         <div class="fact">
-          <span class="label">Location</span>
+          <span class="label">{{ t('pets.locationLabel') }}</span>
           <span class="value">{{ pet.location }}</span>
         </div>
         <div v-if="pet.district" class="fact">
-          <span class="label">District</span>
-          <span class="value">{{ pet.district }}</span>
+          <span class="label">{{ t('pets.districtLabel') }}</span>
+          <span class="value">{{ districtLabel(pet.district) }}</span>
         </div>
         <div v-if="pet.reward" class="fact">
-          <span class="label">Reward</span>
+          <span class="label">{{ t('pets.rewardLabel') }}</span>
           <span class="value reward">{{ pet.reward }}</span>
         </div>
       </div>
 
       <section class="sighting-history" aria-labelledby="sighting-history-title">
-        <h3 id="sighting-history-title">Sighting history</h3>
+        <h3 id="sighting-history-title">{{ t('sightings.history') }}</h3>
         <p v-if="sightingsLoading" class="timeline-state" role="status">
-          Loading sightings...
+          {{ t('sightings.loadingHistory') }}
         </p>
         <p v-else-if="sightingsError" class="timeline-state error" role="alert">
           {{ sightingsError }}
         </p>
-        <p v-else-if="sightings.length === 0" class="timeline-state">No sightings yet.</p>
+        <p v-else-if="sightings.length === 0" class="timeline-state">{{ t('sightings.noHistory') }}</p>
         <template v-else>
           <div class="trajectory-card">
             <div class="trajectory-heading">
-              <strong>Reported sighting route</strong>
-              <span>{{ trajectorySightings.length }} recorded locations</span>
+              <strong>{{ t('sightings.routeTitle') }}</strong>
+              <span>{{ t('sightings.recordedLocations', { count: trajectorySightings.length }, trajectorySightings.length) }}</span>
             </div>
             <p class="trajectory-disclaimer">
-              This dashed line connects community reports in time order; it does not prove the
-              pet’s exact movement.
+              {{ t('sightings.routeDisclaimer') }}
             </p>
             <MapView
               class="trajectory-map"
@@ -129,7 +128,7 @@
             <span class="timeline-dot" aria-hidden="true" />
             <div class="timeline-content">
               <div class="timeline-head">
-                <strong>{{ sighting.locationName || 'Location not provided' }}</strong>
+                <strong>{{ sighting.locationName || t('sightings.locationNotProvided') }}</strong>
                 <time
                   v-if="sighting.sightedAt || sighting.createdAt"
                   :datetime="String(sighting.sightedAt || sighting.createdAt)"
@@ -142,25 +141,25 @@
                 v-if="sighting.reporterName || sighting.reporterPhone"
                 class="reporter-details"
               >
-                <span>Reported by {{ sighting.reporterName || 'Community member' }}</span>
+                <span>{{ t('sightings.reportedBy', { name: sighting.reporterName || t('sightings.communityMember') }) }}</span>
                 <div class="reporter-actions">
                   <button
                     v-if="canMessageReporter(sighting)"
                     type="button"
                     @click="emit('chat-reporter', sighting.reportedBy!, sighting.reporterName)"
                   >
-                    Message
+                    {{ t('sightings.messageReporter') }}
                   </button>
                   <a
                     v-if="reporterCallHref(sighting)"
                     :href="reporterCallHref(sighting)"
                     @click.stop
                   >
-                    Call
+                    {{ t('sightings.callReporter') }}
                   </a>
                 </div>
               </div>
-              <div class="sighting-thumbnail" role="img" :aria-label="`Sighting of ${pet.name}`">
+              <div class="sighting-thumbnail" role="img" :aria-label="t('sightings.photoOf', { name: pet.name })">
                 <img
                   v-if="normalizedImageUrl(sighting.photo) && !failedSightingPhotos.has(sightingImageKey(sighting))"
                   :src="normalizedImageUrl(sighting.photo)"
@@ -175,8 +174,7 @@
               </div>
               <div v-if="sighting.id" class="verification-row">
                 <span class="confirmation-count">
-                  {{ sighting.confirmationCount || 0 }}
-                  {{ (sighting.confirmationCount || 0) === 1 ? 'confirmation' : 'confirmations' }}
+                  {{ t('sightings.confirmations', { count: sighting.confirmationCount || 0 }, sighting.confirmationCount || 0) }}
                 </span>
                 <button
                   class="confirm-button"
@@ -189,10 +187,10 @@
                   <AppIcon name="check" :size="15" />
                   {{
                     sighting.confirmedByMe
-                      ? 'Confirmed'
+                      ? t('sightings.confirmed')
                       : confirmingSightings.has(sighting.id)
-                        ? 'Confirming...'
-                        : 'I saw this too'
+                        ? t('sightings.confirming')
+                        : t('sightings.sawToo')
                   }}
                 </button>
               </div>
@@ -209,7 +207,7 @@
         </template>
       </section>
 
-      <h3>About {{ pet.name }}</h3>
+      <h3>{{ t('pets.about', { name: pet.name }) }}</h3>
       <p class="desc">{{ pet.description }}</p>
 
       <div class="owner">
@@ -217,23 +215,23 @@
           class="owner-info"
         >
           <span class="owner-name">{{ pet.owner }}</span>
-          <span class="owner-role">Owner · posted {{ pet.postedAgo }}</span>
+          <span class="owner-role">{{ t('pets.ownerPosted', { time: pet.createdAt ? formatRelativeDate(pet.createdAt) : pet.postedAgo }) }}</span>
         </div>
         <div class="contact-actions">
           <button
             v-if="canMessageOwner"
             class="contact-action message"
             type="button"
-            :aria-label="`Message ${pet.owner || 'the owner'} in PawRadar`"
+            :aria-label="t('pets.messageOwner', { owner: pet.owner || t('pets.unknownPet') })"
             @click="emit('chat')"
           >
-            Message
+            {{ t('messages.message') }}
           </button>
           <a
             v-if="contactActions"
             class="contact-action call"
             :href="contactActions.callHref"
-            :aria-label="`Call ${pet.owner || 'the owner'}`"
+            :aria-label="t('pets.callOwner', { owner: pet.owner || t('pets.unknownPet') })"
           >
             <AppIcon name="phone" :size="19" />
           </a>
@@ -243,18 +241,18 @@
             :href="contactActions.whatsappHref"
             target="_blank"
             rel="noopener noreferrer"
-            :aria-label="`Message ${pet.owner || 'the owner'} on WhatsApp`"
+            :aria-label="t('pets.whatsappOwner', { owner: pet.owner || t('pets.unknownPet') })"
           >
             WhatsApp
           </a>
         </div>
-        <span v-if="!canMessageOwner" class="contact-unavailable">This is your report</span>
+        <span v-if="!canMessageOwner" class="contact-unavailable">{{ t('pets.yourReport') }}</span>
         <span
           v-else-if="!contactActions"
           class="contact-unavailable"
-          aria-label="Owner accepts contact through PawRadar messages"
+          :aria-label="t('pets.messagesOnlyA11y')"
         >
-          This user accepts contact through PawRadar messages.
+          {{ t('pets.messagesOnly') }}
         </span>
       </div>
 
@@ -265,7 +263,7 @@
         @click="showReunionConfirm = true"
       >
         <span aria-hidden="true">🎉</span>
-        Mark as Reunited
+        {{ t('pets.markReunited') }}
       </button>
       <p v-if="reunionError" class="reunion-error" role="alert">{{ reunionError }}</p>
 
@@ -276,11 +274,11 @@
         @click="emit('found')"
       >
         <AppIcon name="eye" :size="20" />
-        Found it? Report a sighting
+        {{ t('sightings.report') }}
       </button>
       <button v-else class="found-cta sightings-closed" type="button" disabled>
         <AppIcon name="check" :size="20" />
-        Reunited · Sightings closed
+        {{ t('pets.sightingsClosed') }}
       </button>
     </div>
 
@@ -297,11 +295,8 @@
           aria-labelledby="reunion-dialog-title"
         >
           <span class="reunion-dialog-icon" aria-hidden="true">🎉</span>
-          <h2 id="reunion-dialog-title">Has your pet safely returned home?</h2>
-          <p>
-            Marking {{ pet.name }} as reunited will close this report and disable new
-            sighting submissions.
-          </p>
+          <h2 id="reunion-dialog-title">{{ t('pets.reunionQuestion') }}</h2>
+          <p>{{ t('pets.reunionHelp', { name: pet.name }) }}</p>
           <div class="reunion-dialog-actions">
             <button
               class="cancel-reunion"
@@ -309,7 +304,7 @@
               :disabled="reunionSaving"
               @click="closeReunionConfirmation"
             >
-              Not yet
+              {{ t('pets.notYet') }}
             </button>
             <button
               class="confirm-reunion"
@@ -317,7 +312,7 @@
               :disabled="reunionSaving"
               @click="confirmReunion"
             >
-              {{ reunionSaving ? 'Updating…' : 'Yes, safely home' }}
+              {{ reunionSaving ? t('pets.updating') : t('pets.yesHome') }}
             </button>
           </div>
         </section>
@@ -336,6 +331,8 @@ import { createContactActions } from '../utils/contact'
 import { normalizeSightingHistory } from '../utils/sightings'
 import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
+import { translateApiError, useAppI18n } from '../i18n'
+import { districtLabel, formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
 
 const props = defineProps<{
   pet: Pet
@@ -353,6 +350,7 @@ const emit = defineEmits<{
 }>()
 
 const { isSaved, toggleSave } = useSavedPets()
+const { t } = useAppI18n()
 
 const sightings = ref<Sighting[]>([])
 const sightingsLoading = ref(true)
@@ -373,11 +371,7 @@ const isOwner = computed(() => {
   const userId = props.user?.id || legacyUserId
   return Boolean(userId && props.pet.reportedBy && String(props.pet.reportedBy) === String(userId))
 })
-const statusLabel = computed(() => {
-  if (currentStatus.value === 'reunited') return 'REUNITED'
-  if (currentStatus.value === 'sighted') return 'SIGHTED NEARBY'
-  return 'LOST'
-})
+const statusLabel = computed(() => petStatusLabel(currentStatus.value))
 const trajectorySightings = computed(() => normalizeSightingHistory(sightings.value))
 const trajectoryCenter = computed(() => {
   const first = trajectorySightings.value.find((sighting) => sighting.coordinates?.length === 2)
@@ -389,8 +383,8 @@ const trajectoryCenter = computed(() => {
 })
 const contactActions = computed(() => {
   if (!props.pet.canViewContact) return null
-  const location = props.pet.location ? `, last seen near ${props.pet.location}` : ''
-  const message = `Hi, I'm contacting you through PawRadar about ${props.pet.name}${location}.`
+  const location = props.pet.location ? `, ${t('pets.lastSeenAt', { location: props.pet.location })}` : ''
+  const message = t('pets.contactMessage', { name: props.pet.name, location })
   return createContactActions(props.pet.ownerPhone, message)
 })
 const canMessageOwner = computed(() => !isOwner.value)
@@ -433,8 +427,7 @@ async function confirmReunion() {
     showCelebration.value = true
     emit('status-updated', updatedPet)
   } catch (error) {
-    reunionError.value =
-      error instanceof Error ? error.message : 'Unable to mark this pet as reunited.'
+    reunionError.value = translateApiError(error, 'errors.markReunited')
     showReunionConfirm.value = false
   } finally {
     reunionSaving.value = false
@@ -496,7 +489,7 @@ async function confirmSightingEntry(sighting: Sighting) {
   } catch (error) {
     confirmationErrors.value = {
       ...confirmationErrors.value,
-      [sightingId]: error instanceof Error ? error.message : 'Unable to confirm this sighting.',
+      [sightingId]: translateApiError(error, 'errors.confirmSighting'),
     }
   } finally {
     const next = new Set(confirmingSightings.value)
@@ -521,7 +514,7 @@ async function loadSightings() {
   } catch (error) {
     if (request !== sightingsRequestSequence) return
     sightings.value = []
-    sightingsError.value = error instanceof Error ? error.message : 'Failed to load sightings.'
+    sightingsError.value = translateApiError(error, 'errors.loadSightings')
   } finally {
     if (request === sightingsRequestSequence) sightingsLoading.value = false
   }
@@ -554,16 +547,7 @@ async function focusTimelineSighting(sightingId: string) {
   })
 }
 
-function relativeTime(value: string | Date) {
-  const elapsed = Math.max(0, Date.now() - new Date(value).getTime())
-  const minutes = Math.floor(elapsed / 60000)
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}
+const relativeTime = formatRelativeDate
 
 watch(() => props.pet.id, loadSightings, { immediate: true })
 watch(() => props.focusSightingId, () => void focusRequestedSighting())
@@ -588,7 +572,7 @@ onBeforeUnmount(() => {
   max-height: 55vh;
   width: 100%;
   overflow: hidden;
-  background: #fcf9f2;
+  background: var(--color-surface-subtle);
 }
 
 .hero img {
@@ -604,7 +588,7 @@ onBeforeUnmount(() => {
   place-items: center;
   background:
     radial-gradient(circle at 50% 42%, rgba(29, 99, 96, 0.12), transparent 34%),
-    #fcf9f2;
+    var(--color-surface-subtle);
   color: rgba(29, 99, 96, 0.55);
 }
 
@@ -629,7 +613,7 @@ onBeforeUnmount(() => {
 
 .save {
   right: 66px;
-  color: #1d6360;
+  color: var(--color-icon-primary);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -699,7 +683,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(29, 99, 96, 0.18);
   border-radius: 14px;
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-text-accent);
 }
 
 .celebration-banner > span {
@@ -745,7 +729,7 @@ h2 {
   padding: 7px 13px;
   border-radius: 999px;
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
   font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
@@ -783,7 +767,7 @@ h2 {
 }
 
 .value.reward {
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 .sighting-history {
@@ -801,7 +785,7 @@ h2 {
 }
 
 .timeline-state.error {
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 .trajectory-card {
@@ -932,14 +916,14 @@ h2 {
   padding: 9px 10px;
   border-radius: 10px;
   background: rgba(29, 99, 96, 0.08);
-  color: #1d6360;
+  color: var(--color-text-accent);
   font-size: 12px;
   font-weight: 700;
 }
 
 .reporter-details a {
   flex-shrink: 0;
-  color: #1d6360;
+  color: var(--color-icon-primary);
   font-weight: 800;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -970,7 +954,7 @@ h2 {
   margin-top: 10px;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  background: #fcf9f2;
+  background: var(--color-surface-subtle);
 }
 
 .sighting-thumbnail img {
@@ -1004,7 +988,7 @@ h2 {
   padding: 0 13px;
   border-radius: 999px;
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-text-accent);
   font-size: 12px;
   font-weight: 800;
   transition:
@@ -1023,12 +1007,14 @@ h2 {
 
 .confirm-button:disabled {
   cursor: default;
-  opacity: 0.78;
+  border-color: var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
 }
 
 .confirmation-error {
   margin-top: 8px;
-  color: #ef6351;
+  color: var(--color-text-urgent);
   font-size: 11.5px;
   font-weight: 700;
 }
@@ -1127,7 +1113,7 @@ h3 {
   padding: 0 13px;
   border: 1px solid rgba(29, 99, 96, 0.18);
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-text-accent);
 }
 
 .contact-unavailable {
@@ -1151,7 +1137,7 @@ h3 {
   border: 1px solid rgba(29, 99, 96, 0.2);
   border-radius: var(--radius-md);
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-icon-primary);
   font-size: 15px;
   font-weight: 800;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1164,7 +1150,7 @@ h3 {
 
 .reunion-error {
   margin: 0 4px 10px;
-  color: #ef6351;
+  color: var(--color-text-urgent);
   font-size: 12.5px;
   font-weight: 700;
   text-align: center;
@@ -1192,7 +1178,7 @@ h3 {
 
 .found-cta.sightings-closed {
   background: rgba(29, 99, 96, 0.12);
-  color: #1d6360;
+  color: var(--color-text-accent);
   box-shadow: none;
   cursor: not-allowed;
   opacity: 1;
@@ -1214,7 +1200,8 @@ h3 {
   width: min(100%, 400px);
   padding: 24px 20px 20px;
   border-radius: 18px;
-  background: #fcf9f2;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
   box-shadow: 0 22px 60px rgba(20, 35, 34, 0.3);
   text-align: center;
 }
@@ -1265,7 +1252,10 @@ h3 {
 
 .reunion-dialog-actions button:disabled {
   cursor: wait;
-  opacity: 0.65;
+  border-color: var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
+  box-shadow: none;
 }
 
 .cancel-reunion {

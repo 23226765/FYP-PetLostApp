@@ -2,7 +2,7 @@
   <section class="location-picker" aria-labelledby="sighting-location-title">
     <header class="location-heading">
       <div>
-        <span class="required-label">Required</span>
+        <span class="required-label">{{ t('sightings.required') }}</span>
         <h3 id="sighting-location-title">{{ title }}</h3>
       </div>
       <button
@@ -11,20 +11,19 @@
         type="button"
         @click="changeLocation"
       >
-        Change location
+        {{ t('sightings.changeLocation') }}
       </button>
     </header>
 
     <p class="location-guidance">
-      Select the exact sighting point—not a location mentioned in your description. Avoid
-      selecting your home unless the pet was genuinely seen there.
+      {{ t('sightings.pickerGuidance') }}
     </p>
 
     <div
       ref="mapElement"
       class="picker-map"
       role="application"
-      aria-label="Select the pet sighting location on the map"
+      :aria-label="t('sightings.mapPickerLabel')"
     />
 
     <button
@@ -34,12 +33,12 @@
       @click="useCurrentLocation"
     >
       <AppIcon name="pin" :size="18" />
-      {{ locating ? 'Finding your location…' : 'Use my current location' }}
+      {{ locating ? t('sightings.findingLocation') : t('sightings.useCurrentLocation') }}
     </button>
 
-    <div class="coordinate-fields" aria-label="Fine tune sighting coordinates">
+    <div class="coordinate-fields" :aria-label="t('sightings.fineTune')">
       <label>
-        <span>Latitude</span>
+        <span>{{ t('sightings.latitude') }}</span>
         <input
           v-model="latitudeInput"
           inputmode="decimal"
@@ -49,7 +48,7 @@
         />
       </label>
       <label>
-        <span>Longitude</span>
+        <span>{{ t('sightings.longitude') }}</span>
         <input
           v-model="longitudeInput"
           inputmode="decimal"
@@ -64,12 +63,11 @@
       {{ locationError }}
     </p>
     <p v-else-if="draftLocation" class="location-summary" role="status">
-      <strong>{{ modelValue ? 'Confirmed sighting point' : 'Selected point—confirm to continue' }}</strong>
+      <strong>{{ modelValue ? t('sightings.confirmedPoint') : t('sightings.selectedPoint') }}</strong>
       <span>{{ formattedCoordinates }}</span>
     </p>
     <p v-else class="location-message" role="status">
-      Tap the map, use your current location, or enter coordinates. The map centre is not
-      submitted automatically.
+      {{ t('sightings.pickerHelp') }}
     </p>
 
     <button
@@ -79,7 +77,7 @@
       @click="confirmLocation"
     >
       <AppIcon name="check" :size="18" />
-      {{ modelValue ? 'Location confirmed' : 'Confirm sighting location' }}
+      {{ modelValue ? t('sightings.locationConfirmed') : t('sightings.confirmLocation') }}
     </button>
   </section>
 </template>
@@ -90,6 +88,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { getCurrentLocation } from '../services/geolocation'
 import AppIcon from './AppIcon.vue'
+import { useAppI18n } from '../i18n'
 
 type CoordinatePair = [number, number]
 
@@ -102,9 +101,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [coordinates: CoordinatePair | null]
 }>()
+const { t } = useAppI18n()
 
 const HONG_KONG_CENTER: CoordinatePair = [114.1694, 22.3193]
-const title = computed(() => props.title || 'Where did you see the pet?')
+const title = computed(() => props.title || t('sightings.whereSeen'))
 const mapElement = ref<HTMLElement | null>(null)
 const draftLocation = ref<CoordinatePair | null>(props.modelValue)
 const longitudeInput = ref(props.modelValue ? String(props.modelValue[0]) : '')
@@ -178,7 +178,7 @@ function applyCoordinateInputs() {
     !latitudeInput.value.trim() ||
     !validCoordinates(coordinates)
   ) {
-    locationError.value = 'Enter a valid longitude and latitude before confirming.'
+    locationError.value = t('sightings.invalidCoordinates')
     return
   }
   selectDraft(coordinates)
@@ -194,8 +194,7 @@ async function useCurrentLocation() {
     if (!validCoordinates(coordinates)) throw new Error('Invalid location coordinates')
     selectDraft(coordinates)
   } catch {
-    locationError.value =
-      'Current location is unavailable or permission was denied. Select the point manually on the map.'
+    locationError.value = t('sightings.geolocationUnavailable')
   } finally {
     locating.value = false
   }
@@ -203,7 +202,7 @@ async function useCurrentLocation() {
 
 function confirmLocation() {
   if (!draftLocation.value) {
-    locationError.value = 'Select a sighting location before continuing.'
+    locationError.value = t('sightings.selectBeforeContinue')
     return
   }
   emit('update:modelValue', [...draftLocation.value] as CoordinatePair)
@@ -279,13 +278,13 @@ onBeforeUnmount(() => {
 
 .location-heading h3 {
   margin-top: 3px;
-  color: #3d3835;
+  color: var(--color-text-primary);
   font-size: 15px;
   line-height: 1.3;
 }
 
 .required-label {
-  color: #ef6351;
+  color: var(--color-text-urgent);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.07em;
@@ -297,7 +296,7 @@ onBeforeUnmount(() => {
   padding: 0 10px;
   border-radius: 999px;
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-text-accent);
   font-size: 11.5px;
   font-weight: 800;
 }
@@ -306,7 +305,7 @@ onBeforeUnmount(() => {
 .location-message,
 .location-summary {
   margin: 0;
-  color: #756e68;
+  color: var(--color-text-muted);
   font-size: 11.5px;
   font-weight: 600;
   line-height: 1.5;
@@ -317,7 +316,7 @@ onBeforeUnmount(() => {
   height: 230px;
   overflow: hidden;
   border-radius: 14px;
-  background: #e8f0ec;
+  background: var(--color-surface-selected);
 }
 
 .current-location,
@@ -335,8 +334,8 @@ onBeforeUnmount(() => {
 
 .current-location {
   border: 1px solid rgba(29, 99, 96, 0.18);
-  background: #fff;
-  color: #1d6360;
+  background: var(--color-surface-elevated);
+  color: var(--color-icon-primary);
 }
 
 .confirm-location {
@@ -354,7 +353,9 @@ onBeforeUnmount(() => {
 .current-location:disabled,
 .confirm-location:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  border-color: var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
   box-shadow: none;
 }
 
@@ -368,7 +369,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  color: #756e68;
+  color: var(--color-text-muted);
   font-size: 10.5px;
   font-weight: 800;
 }
@@ -379,13 +380,13 @@ onBeforeUnmount(() => {
   padding: 0 10px;
   border: 1.5px solid rgba(29, 99, 96, 0.16);
   border-radius: 11px;
-  background: #fff;
-  color: #3d3835;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   font: inherit;
 }
 
 .coordinate-fields input:focus {
-  border-color: #1d6360;
+  border-color: var(--color-border-accent);
   outline: 3px solid rgba(29, 99, 96, 0.14);
 }
 
@@ -396,7 +397,7 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   border-radius: 12px;
   background: rgba(29, 99, 96, 0.08);
-  color: #1d6360;
+  color: var(--color-text-accent);
 }
 
 .location-summary strong {
@@ -404,7 +405,7 @@ onBeforeUnmount(() => {
 }
 
 .location-message.error {
-  color: #ef6351;
+  color: var(--color-text-urgent);
 }
 </style>
 
@@ -426,6 +427,6 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 8px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--color-surface);
 }
 </style>

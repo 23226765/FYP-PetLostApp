@@ -13,15 +13,15 @@
       <div v-else class="photo-placeholder" aria-hidden="true">
         <AppIcon name="paw" :size="42" />
       </div>
-      <span class="sr-only">Photo of {{ pet.name }}, a missing {{ pet.breed || pet.species }}</span>
+      <span class="sr-only">{{ t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) }) }}</span>
       <span class="badge" :class="pet.status">
-        {{ pet.status === 'lost' ? 'LOST' : 'SIGHTED' }}
+        {{ petStatusLabel(pet.status) }}
       </span>
       <button
         class="save-button"
         :class="{ saved: isSaved(pet.id) }"
         type="button"
-        :aria-label="isSaved(pet.id) ? `Remove ${pet.name} from saved posts` : `Save ${pet.name}`"
+        :aria-label="isSaved(pet.id) ? t('pets.removeSaved', { name: pet.name }) : t('pets.savePost', { name: pet.name })"
         :aria-pressed="isSaved(pet.id)"
         @click.stop="toggleSave(pet.id)"
       >
@@ -42,21 +42,21 @@
       </button>
       <span class="distance">
         <AppIcon name="pin" :size="14" />
-        {{ pet.distanceKm }} km
+        {{ t('common.kilometres', { count: pet.distanceKm }) }}
       </span>
     </div>
     <div class="body">
       <div class="row">
         <h3>{{ pet.name }}</h3>
-        <span class="posted">{{ pet.postedAgo }}</span>
+        <span class="posted">{{ pet.createdAt ? formatRelativeDate(pet.createdAt) : pet.postedAgo }}</span>
       </div>
-      <p class="meta"><template v-if="pet.breed">{{ pet.breed }} &middot; </template>Last seen {{ formatTime(pet.lastSeen) }}</p>
+      <p class="meta"><template v-if="pet.breed">{{ pet.breed }} &middot; </template>{{ t('pets.lastSeen', { time: pet.lastSeenAt ? formatRelativeDate(pet.lastSeenAt) : pet.lastSeen }) }}</p>
       <div class="actions">
         <button class="found-btn" @click.stop="emit('found')">
           <AppIcon name="eye" :size="17" />
-          Found it?
+          {{ t('pets.foundIt') }}
         </button>
-        <span v-if="pet.reward" class="reward">{{ pet.reward }} reward</span>
+        <span v-if="pet.reward" class="reward">{{ t('pets.reward', { amount: pet.reward }) }}</span>
       </div>
     </div>
   </article>
@@ -67,10 +67,13 @@ import { computed, ref, watch } from 'vue'
 import type { Pet } from '../data/pets'
 import { useSavedPets } from '../composables/useSavedPets'
 import AppIcon from './AppIcon.vue'
+import { useAppI18n } from '../i18n'
+import { formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
 
 const props = defineProps<{ pet: Pet }>()
 const emit = defineEmits<{ open: []; found: [] }>()
 const { isSaved, toggleSave } = useSavedPets()
+const { t } = useAppI18n()
 
 const imageFailed = ref(false)
 const petImage = computed(
@@ -103,22 +106,6 @@ function handleImageError(event: Event) {
   }
 }
 
-function formatTime(value: string): string {
-  const time = value?.trim()
-  if (!time) return 'recently'
-
-  const timestamp = Date.parse(time)
-  if (Number.isNaN(timestamp)) return time
-
-  const elapsed = Math.max(0, Date.now() - timestamp)
-  const minutes = Math.floor(elapsed / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return days === 1 ? 'Yesterday' : `${days}d ago`
-}
 </script>
 
 <style scoped>
@@ -138,7 +125,7 @@ function formatTime(value: string): string {
   position: relative;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: #fcf9f2;
+  background: var(--color-surface-subtle);
 }
 
 .photo-wrap img {
@@ -153,9 +140,9 @@ function formatTime(value: string): string {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at 50% 42%, rgba(29, 99, 96, 0.12), transparent 34%),
-    #fcf9f2;
-  color: rgba(29, 99, 96, 0.55);
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--color-icon-primary) 12%, transparent), transparent 34%),
+    var(--color-surface-subtle);
+  color: var(--color-icon-primary);
 }
 
 .badge {
@@ -189,7 +176,7 @@ function formatTime(value: string): string {
   border: 1px solid rgba(29, 99, 96, 0.08);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.94);
-  color: #1d6360;
+  color: var(--color-icon-on-light);
   box-shadow: 0 5px 16px rgba(29, 99, 96, 0.15);
   backdrop-filter: blur(8px);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -262,7 +249,7 @@ h3 {
   padding: 9px 16px;
   border-radius: 999px;
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
   font-size: 14px;
   font-weight: 800;
   transition: background 0.15s ease;
@@ -275,7 +262,7 @@ h3 {
 .reward {
   font-size: 13.5px;
   font-weight: 800;
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 @media (prefers-reduced-motion: reduce) {

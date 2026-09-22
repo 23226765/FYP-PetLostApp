@@ -137,6 +137,13 @@ test('contact privacy reads and updates require authentication', () => {
   assert.deepEqual(middlewareNames(update), ['requireAuth', 'updatePrivacy'])
 })
 
+test('language and appearance preferences read and update require authentication', () => {
+  const read = findRoute(authRouter, '/me/preferences', 'get')
+  const update = findRoute(authRouter, '/me/preferences', 'patch')
+  assert.deepEqual(middlewareNames(read), ['requireAuth', 'getPreferences'])
+  assert.deepEqual(middlewareNames(update), ['requireAuth', 'updatePreferences'])
+})
+
 test('public pet details still resolve optional requester identity', () => {
   const detail = findRoute(petsRouter, '/:id', 'get')
   assert.deepEqual(middlewareNames(detail), ['optionalAuth', 'getPet'])

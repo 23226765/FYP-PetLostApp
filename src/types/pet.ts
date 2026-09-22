@@ -41,6 +41,8 @@ export interface Pet {
   distanceKm?: number
   lastSeen: string
   postedAgo: string
+  lastSeenAt?: string | null
+  createdAt?: string | null
   mapX: number
   mapY: number
   coordinates?: [number, number] | null

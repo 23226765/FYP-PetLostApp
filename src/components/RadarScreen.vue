@@ -2,20 +2,20 @@
   <div class="radar">
     <header class="top">
       <div>
-        <p class="greeting">Community Radar</p>
+        <p class="greeting">{{ t('radar.community') }}</p>
         <h1>
           <AppIcon name="pin" :size="18" />
-          {{ district || 'Hong Kong' }}, {{ radiusKm }} km radius
+          {{ t('radar.locationRadius', { location: district ? districtLabel(district) : 'Hong Kong', radius: radiusKm }) }}
         </h1>
       </div>
       <div class="header-actions">
         <button class="smart-match" type="button" @click="emit('smart-match')">
-          Photo Compare
+          {{ t('radar.smartMatch') }}
         </button>
         <button
           class="bell"
           type="button"
-          :aria-label="`Notifications, ${unreadCount} unread`"
+          :aria-label="t('navigation.unreadMessages', { count: unreadCount })"
           @click="emit('notifications')"
         >
           <AppIcon name="bell" :size="21" />
@@ -24,47 +24,49 @@
       </div>
     </header>
 
-    <div class="toggle" role="tablist" aria-label="Feed view">
+    <div class="toggle theme-segmented-control" role="tablist" :aria-label="t('radar.feedView')">
       <button
+        class="theme-segmented-option"
         role="tab"
         :aria-selected="view === 'list'"
         :class="{ active: view === 'list' }"
         @click="view = 'list'"
       >
         <AppIcon name="list" :size="17" />
-        List
+        {{ t('radar.list') }}
       </button>
       <button
+        class="theme-segmented-option"
         role="tab"
         :aria-selected="view === 'map'"
         :class="{ active: view === 'map' }"
         @click="view = 'map'"
       >
         <AppIcon name="map" :size="17" />
-        Map
+        {{ t('radar.map') }}
       </button>
     </div>
 
-    <div class="detail-filters" aria-label="Filter by breed and district">
+    <div class="detail-filters" :aria-label="t('radar.filterBreedDistrict')">
       <label>
-        <span>Breed</span>
+        <span>{{ t('radar.breed') }}</span>
         <input
           type="search"
           :value="breed"
-          placeholder="Any breed"
+          :placeholder="t('radar.anyBreed')"
           @input="handleBreed"
         />
       </label>
       <label>
-        <span>District</span>
+        <span>{{ t('radar.district') }}</span>
         <select :value="district" @change="handleDistrict">
-          <option value="">All districts</option>
-          <option v-for="item in HK_DISTRICTS" :key="item" :value="item">{{ item }}</option>
+          <option value="">{{ t('radar.allDistricts') }}</option>
+          <option v-for="item in HK_DISTRICTS" :key="item" :value="item">{{ districtLabel(item) }}</option>
         </select>
       </label>
     </div>
 
-    <div class="chips" role="group" aria-label="Filter by species">
+    <div class="chips" role="group" :aria-label="t('radar.filterSpecies')">
       <button
         v-for="chip in chips"
         :key="chip"
@@ -72,14 +74,14 @@
         :class="{ active: species === chip }"
         @click="handleSpecies(chip)"
       >
-        {{ chip }}
+        {{ speciesLabel(chip) }}
       </button>
     </div>
 
     <div class="radius">
       <div class="radius-head">
-        <span>Search radius</span>
-        <span class="radius-value">{{ radiusKm }} km</span>
+        <span>{{ t('radar.searchRadius') }}</span>
+        <span class="radius-value">{{ t('common.kilometres', { count: radiusKm }) }}</span>
       </div>
       <input
         type="range"
@@ -87,27 +89,27 @@
         max="20"
         step="1"
         :value="radiusKm"
-        aria-label="Search radius in kilometers"
+        :aria-label="t('radar.radiusA11y')"
         @change="handleRadius"
       />
-      <div class="radius-labels"><span>1 km</span><span>20 km</span></div>
+      <div class="radius-labels"><span>{{ t('common.kilometres', { count: 1 }) }}</span><span>{{ t('common.kilometres', { count: 20 }) }}</span></div>
     </div>
 
-    <p class="count">{{ pets.length }} pets missing nearby</p>
+    <p class="count">{{ t('radar.petsNearby', { count: pets.length }, pets.length) }}</p>
 
-    <div v-if="view === 'map'" class="map-layer-control" aria-label="Map display layer">
+    <div v-if="view === 'map'" class="map-layer-control" :aria-label="t('radar.mapLayerA11y')">
       <div>
-        <strong>Map layer</strong>
-        <span>{{ mapLayer === 'heatmap' ? 'Recent community activity' : 'Individual reports' }}</span>
+        <strong>{{ t('radar.mapLayer') }}</strong>
+        <span>{{ mapLayer === 'heatmap' ? t('radar.recentActivity') : t('radar.individualReports') }}</span>
       </div>
-      <div class="layer-buttons" role="group" aria-label="Choose map layer">
+      <div class="layer-buttons" role="group" :aria-label="t('radar.chooseLayer')">
         <button
           type="button"
           :class="{ active: mapLayer === 'pins' }"
           :aria-pressed="mapLayer === 'pins'"
           @click="mapLayer = 'pins'"
         >
-          Pins
+          {{ t('radar.pins') }}
         </button>
         <button
           type="button"
@@ -115,21 +117,21 @@
           :aria-pressed="mapLayer === 'heatmap'"
           @click="mapLayer = 'heatmap'"
         >
-          Hotspots
+          {{ t('radar.hotspots') }}
         </button>
       </div>
     </div>
 
     <div v-if="loading" class="state">
       <span class="spinner" />
-      Loading nearby pets…
+      {{ t('radar.loadingPets') }}
     </div>
     <div v-else-if="error" class="state error">
       <p>{{ error }}</p>
-      <button class="retry-btn" @click="emit('retry')">Retry</button>
+      <button class="retry-btn" @click="emit('retry')">{{ t('common.retry') }}</button>
     </div>
     <div v-else-if="view === 'list' && pets.length === 0" class="state">
-      No pets reported nearby yet. Be the first to post one!
+      {{ t('radar.emptyNearby') }}
     </div>
     <template v-else-if="view === 'list'">
       <div class="feed">
@@ -146,22 +148,20 @@
       <div v-if="mapLayer === 'heatmap'" class="analytics-card" aria-live="polite">
         <template v-if="hotspotLoading">
           <span class="analytics-spinner" aria-hidden="true" />
-          <span>Calculating recent hotspots…</span>
+          <span>{{ t('radar.calculatingHotspots') }}</span>
         </template>
         <template v-else-if="hotspotError">
           <span>{{ hotspotError }}</span>
-          <button type="button" @click="loadHotspots">Retry</button>
+          <button type="button" @click="loadHotspots">{{ t('common.retry') }}</button>
         </template>
         <template v-else-if="hotspotSummary && hotspotSummary.total > 0">
           <div>
-            <strong>{{ hotspotSummary.total }} recent reports</strong>
-            <span>
-              {{ hotspotSummary.sightings }} sightings · {{ hotspotSummary.strays }} stray reports
-            </span>
+            <strong>{{ t('radar.recentReports', { count: hotspotSummary.total }, hotspotSummary.total) }}</strong>
+            <span>{{ t('radar.hotspotSummary', { sightings: hotspotSummary.sightings, strays: hotspotSummary.strays }) }}</span>
           </div>
-          <span class="analytics-window">{{ hotspotSummary.windowDays }} days</span>
+          <span class="analytics-window">{{ t('radar.dayWindow', { count: hotspotSummary.windowDays }) }}</span>
         </template>
-        <span v-else>No hotspot activity found within this area.</span>
+        <span v-else>{{ t('radar.noHotspots') }}</span>
       </div>
       <MapView
         :pets="pets"
@@ -171,10 +171,10 @@
         :show-heatmap="mapLayer === 'heatmap' && !hotspotLoading && !hotspotError"
         @open="(p) => emit('open', p)"
       />
-      <div v-if="mapLayer === 'heatmap'" class="heat-legend" aria-label="Hotspot intensity legend">
-        <span>Lower activity</span>
+      <div v-if="mapLayer === 'heatmap'" class="heat-legend" :aria-label="t('radar.hotspotLegend')">
+        <span>{{ t('radar.lowerActivity') }}</span>
         <span class="legend-gradient" aria-hidden="true" />
-        <span>Higher urgency</span>
+        <span>{{ t('radar.higherUrgency') }}</span>
       </div>
     </div>
   </div>
@@ -189,6 +189,8 @@ import { getHotspots } from '../services/api'
 import AppIcon from './AppIcon.vue'
 import PetCard from './PetCard.vue'
 import MapView from './MapView.vue'
+import { translateApiError, useAppI18n } from '../i18n'
+import { districtLabel, speciesLabel } from '../i18n/formatters'
 
 const props = defineProps<{
   pets: Pet[]
@@ -213,6 +215,8 @@ const emit = defineEmits<{
   'breed-change': [value: string]
   'district-change': [value: string]
 }>()
+
+const { t } = useAppI18n()
 
 const view = ref<'list' | 'map'>('list')
 const mapLayer = ref<'pins' | 'heatmap'>('pins')
@@ -260,8 +264,7 @@ async function loadHotspots() {
     if (sequence !== hotspotRequestSequence) return
     hotspotPoints.value = []
     hotspotSummary.value = null
-    hotspotError.value =
-      error instanceof Error ? error.message : 'Unable to load hotspot analytics.'
+    hotspotError.value = translateApiError(error, 'errors.loadHotspots')
   } finally {
     if (sequence === hotspotRequestSequence) {
       hotspotLoading.value = false
@@ -336,7 +339,7 @@ h1 {
 }
 
 h1 svg {
-  color: var(--teal);
+  color: var(--color-text-accent);
 }
 
 .bell {
@@ -362,7 +365,7 @@ h1 svg {
   padding: 0 13px;
   border-radius: 999px;
   background: var(--teal);
-  color: #fff;
+  color: var(--color-text-on-accent);
   font-size: 12.5px;
   font-weight: 800;
   box-shadow: var(--shadow-card);
@@ -378,7 +381,7 @@ h1 svg {
   border-radius: 50%;
   background: var(--coral);
   border: 1.5px solid var(--surface);
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 9px;
   font-weight: 800;
   line-height: 14px;
@@ -386,31 +389,11 @@ h1 svg {
 }
 
 .toggle {
-  display: flex;
-  background: var(--line);
-  border-radius: 999px;
-  padding: 4px;
   margin-bottom: 14px;
 }
 
 .toggle button {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 10px 0;
-  border-radius: 999px;
   font-size: 14.5px;
-  font-weight: 800;
-  color: var(--ink-muted);
-  transition: all 0.2s ease;
-}
-
-.toggle button.active {
-  background: var(--surface);
-  color: var(--teal);
-  box-shadow: var(--shadow-card);
 }
 
 .chips {
@@ -439,7 +422,7 @@ h1 svg {
 
 .chip.active {
   background: var(--teal);
-  border-color: var(--teal);
+  border-color: var(--color-border-accent);
   color: #fff;
 }
 
@@ -479,7 +462,7 @@ h1 svg {
 
 .detail-filters input:focus,
 .detail-filters select:focus {
-  border-color: var(--teal);
+  border-color: var(--color-border-accent);
 }
 
 .count {
@@ -565,7 +548,7 @@ h1 svg {
   border: 1px solid rgba(29, 99, 96, 0.15);
   border-radius: 14px;
   background: rgba(29, 99, 96, 0.08);
-  color: #1d6360;
+  color: var(--color-text-accent);
   font-size: 12px;
   font-weight: 700;
 }
@@ -596,7 +579,7 @@ h1 svg {
   padding: 4px 9px;
   border-radius: 999px;
   background: #fcf9f2;
-  color: #1d6360 !important;
+  color: var(--color-text-on-light) !important;
   font-size: 10.5px !important;
   font-weight: 800 !important;
 }
@@ -606,7 +589,7 @@ h1 svg {
   height: 18px;
   flex-shrink: 0;
   border: 2px solid rgba(29, 99, 96, 0.2);
-  border-top-color: #1d6360;
+  border-top-color: var(--color-icon-primary);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -647,7 +630,7 @@ h1 svg {
 }
 
 .radius-value {
-  color: var(--teal);
+  color: var(--color-text-accent);
   font-weight: 800;
 }
 
@@ -684,14 +667,14 @@ h1 svg {
 }
 
 .state.error {
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 .spinner {
   width: 26px;
   height: 26px;
   border: 3px solid var(--teal-soft);
-  border-top-color: var(--teal);
+  border-top-color: var(--color-icon-primary);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

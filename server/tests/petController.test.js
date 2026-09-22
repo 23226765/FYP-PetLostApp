@@ -7,6 +7,7 @@ import User from '../models/User.js'
 import Notification from '../models/Notification.js'
 import {
   getNearbyPets,
+  listMyPets,
   listPets,
   listSightings,
   submitSighting,
@@ -27,6 +28,49 @@ function responseRecorder() {
     },
   }
 }
+
+test('current-user pets are paginated, ownership-scoped, and omit contact details', async () => {
+  const originalCountDocuments = Pet.countDocuments
+  const originalFind = Pet.find
+  const originalUserFind = User.find
+  const ownerId = new mongoose.Types.ObjectId()
+  const ownedPet = petRecord({ reportedBy: ownerId, ownerPhone: '+852 5555 0101' })
+  const countFilters = []
+
+  try {
+    Pet.countDocuments = async (filter) => {
+      countFilters.push(filter)
+      return filter.status === 'reunited' ? 1 : 3
+    }
+    Pet.find = (filter) => {
+      assert.equal(String(filter.reportedBy), String(ownerId))
+      return {
+        sort() { return this },
+        skip(value) { assert.equal(value, 1); return this },
+        limit(value) { assert.equal(value, 1); return Promise.resolve([ownedPet]) },
+      }
+    }
+    User.find = () => { throw new Error('profile listing must not query private contact fields') }
+
+    const response = responseRecorder()
+    await listMyPets(
+      { user: { _id: ownerId }, query: { page: '2', limit: '1' } },
+      response,
+      failOnNext,
+    )
+
+    assert.equal(countFilters.length, 2)
+    assert.deepEqual(response.payload.pagination, { page: 2, limit: 1, total: 3, totalPages: 3 })
+    assert.deepEqual(response.payload.summary, { total: 3, reunited: 1, active: 2 })
+    assert.equal(response.payload.pets.length, 1)
+    assert.equal('ownerPhone' in response.payload.pets[0], false)
+    assert.equal(response.payload.pets[0].canViewContact, false)
+  } finally {
+    Pet.countDocuments = originalCountDocuments
+    Pet.find = originalFind
+    User.find = originalUserFind
+  }
+})
 
 function failOnNext(error) {
   throw error

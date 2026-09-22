@@ -4,6 +4,7 @@ export type RescueStatus = 'reported' | 'rescue_dispatched' | 'rescued'
 export interface StrayReport {
   id: string
   species: 'Dog' | 'Cat' | 'Other'
+  animalType: string
   description: string
   photo: string
   photos: string[]

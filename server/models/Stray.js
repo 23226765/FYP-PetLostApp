@@ -25,6 +25,7 @@ const pointSchema = new mongoose.Schema(
 const straySchema = new mongoose.Schema(
   {
     species: { type: String, enum: ['Dog', 'Cat', 'Other'], required: true },
+    animalType: { type: String, trim: true, maxlength: 80, default: '' },
     description: { type: String, required: true, trim: true },
     photo: { type: String, default: '' },
     photos: {

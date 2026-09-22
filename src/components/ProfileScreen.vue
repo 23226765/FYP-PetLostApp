@@ -5,7 +5,7 @@
       <button
         class="menu-button"
         type="button"
-        aria-label="Open settings"
+        :aria-label="t('profile.openSettings')"
         @click="router.push('/settings')"
       >
         <svg
@@ -31,9 +31,9 @@
       <img
         class="avatar"
         :src="user?.avatar || '/avatar.svg'"
-        :alt="user ? `Profile photo of ${user.name}` : 'Guest profile'"
+        :alt="user ? t('settings.profilePhotoAlt', { name: user.name }) : t('profile.guest')"
       />
-      <h1>{{ user ? user.name : 'Guest' }}</h1>
+      <h1>{{ user ? user.name : t('profile.guest') }}</h1>
       <p class="area">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -50,82 +50,105 @@
           <rect x="3" y="5" width="18" height="14" rx="2" />
           <path d="m3 7 9 6 9-6" />
         </svg>
-        {{ user ? user.email : 'Sign in to sync your alerts across devices' }}
+        {{ user ? user.email : t('profile.guestHelp') }}
       </p>
       <p v-if="user?.phone" class="area phone">{{ user.phone }}</p>
       <button v-if="!user" class="auth-btn primary" @click="emit('login')">
-        Sign in / Create account
+        {{ t('profile.signInCreate') }}
       </button>
     </section>
 
     <div class="stats">
       <div class="stat">
         <span class="num">{{ sightingCount }}</span>
-        <span class="lbl">Sightings reported</span>
+        <span class="lbl">{{ t('profile.sightingsReported') }}</span>
       </div>
       <div class="stat highlight">
         <span class="num">{{ reunitedCount }}</span>
-        <span class="lbl">Pet reunited</span>
+        <span class="lbl">{{ t('profile.petsReunited') }}</span>
       </div>
       <div class="stat">
         <span class="num">{{ activePostCount }}</span>
-        <span class="lbl">Active reports</span>
+        <span class="lbl">{{ t('profile.activeReports') }}</span>
       </div>
     </div>
 
-    <h2>My pets</h2>
-    <div class="my-pets">
-      <p v-if="!user" class="my-pets-state">Sign in to see your posts.</p>
-      <p v-else-if="loading" class="my-pets-state" role="status">Loading your posts...</p>
-      <div v-else-if="error" class="my-pets-state error" role="alert">
-        <p>{{ error }}</p>
-        <button type="button" @click="loadMyPets">Try again</button>
-      </div>
-      <p v-else-if="myPets.length === 0" class="my-pets-state">
-        You haven't reported any pets yet.
-      </p>
-      <div v-else class="my-pets-list">
-        <article
-          v-for="pet in myPets"
-          :key="pet.id"
-          class="my-pet"
-          role="link"
-          tabindex="0"
-          :aria-label="`Open ${pet.name}'s pet profile`"
-          @click="openPet(pet, $event)"
-          @keydown.enter.prevent="openPet(pet, $event)"
-          @keydown.space.prevent="openPet(pet, $event)"
-        >
-          <img :src="pet.photo" :alt="`Photo of ${pet.name}`" />
-          <div class="my-pet-info">
-            <span class="my-pet-name">{{ pet.name }}</span>
-            <span class="my-pet-status">{{ pet.breed || pet.species }}</span>
-          </div>
-          <span class="status-badge" :class="pet.status">{{ pet.status.toUpperCase() }}</span>
-        </article>
-      </div>
+    <ProfileContentTabs :model-value="activeTab" @update:model-value="selectTab" />
+
+    <div v-if="!user" class="profile-auth-state">
+      <AppIcon name="user" :size="30" />
+      <p>{{ t('profile.signInPosts') }}</p>
+      <button type="button" @click="emit('login')">{{ t('profile.signInCreate') }}</button>
     </div>
+    <template v-else>
+      <MyPetsTab
+        v-show="activeTab === 'pets'"
+        :user-id="user.id"
+        :active="profileVisible && activeTab === 'pets'"
+        :refresh-key="refreshKey"
+        @stats="petStats = $event"
+        @open-pet="openPet"
+        @add-pet="emit('add-pet')"
+      />
+      <MyRescuePostsTab
+        v-if="loadedTabs.has('rescue')"
+        v-show="activeTab === 'rescue'"
+        :user-id="user.id"
+        :active="profileVisible && activeTab === 'rescue'"
+        :refresh-key="refreshKey"
+        @open-stray="openStray"
+        @create-rescue="emit('create-rescue')"
+      />
+      <SavedRescuePostsTab
+        v-if="loadedTabs.has('saved')"
+        v-show="activeTab === 'saved'"
+        :user-id="user.id"
+        :active="profileVisible && activeTab === 'saved'"
+        :refresh-key="refreshKey"
+        @open-stray="openStray"
+        @explore-rescue="emit('explore-rescue')"
+      />
+    </template>
 
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getMyPets, getMySightings } from '../services/api'
-import type { Pet } from '../types/pet'
+import { useRoute, useRouter } from 'vue-router'
+import AppIcon from './AppIcon.vue'
+import ProfileContentTabs from './profile/ProfileContentTabs.vue'
+import type { ProfileTab } from './profile/ProfileContentTabs.vue'
+import MyPetsTab from './profile/MyPetsTab.vue'
+import MyRescuePostsTab from './profile/MyRescuePostsTab.vue'
+import SavedRescuePostsTab from './profile/SavedRescuePostsTab.vue'
+import { getMySightings } from '../services/api'
 import type { User } from '../types/user'
+import { useAppI18n } from '../i18n'
 
 const props = defineProps<{ user: User | null }>()
 const emit = defineEmits<{
   login: []
+  'add-pet': []
+  'create-rescue': []
+  'explore-rescue': []
 }>()
 
 const router = useRouter()
-const myPets = ref<Pet[]>([])
+const route = useRoute()
+const { t } = useAppI18n()
 const sightingCount = ref(0)
-const reunitedCount = computed(() => myPets.value.filter((pet) => pet.status === 'reunited').length)
-const activePostCount = computed(() => myPets.value.filter((pet) => pet.status !== 'reunited').length)
+const petStats = ref({ total: 0, reunited: 0, active: 0 })
+const reunitedCount = computed(() => petStats.value.reunited)
+const activePostCount = computed(() => petStats.value.active)
+const validTabs = new Set<ProfileTab>(['pets', 'rescue', 'saved'])
+const activeTab = computed<ProfileTab>(() => {
+  const value = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
+  return validTabs.has(value as ProfileTab) ? value as ProfileTab : 'pets'
+})
+const loadedTabs = ref(new Set<ProfileTab>(['pets']))
+const refreshKey = ref(0)
+const profileVisible = computed(() => route.name === 'profile')
 const userHandle = computed(() => {
   const emailHandle = props.user?.email?.split('@')[0]?.replace(/[^a-zA-Z0-9._]/g, '')
   if (emailHandle) return `@${emailHandle}`
@@ -133,52 +156,24 @@ const userHandle = computed(() => {
   const nameHandle = props.user?.name?.trim().toLowerCase().replace(/\s+/g, '.')
   return nameHandle ? `@${nameHandle}` : '@guest'
 })
-const loading = ref(false)
-const error = ref('')
-let requestId = 0
-
-async function loadMyPets() {
-  const currentRequest = ++requestId
-  myPets.value = []
-  sightingCount.value = 0
-  error.value = ''
-
-  if (!props.user) {
-    loading.value = false
-    return
-  }
-
-  loading.value = true
-  try {
-    const [petsResult, sightingsResult] = await Promise.allSettled([
-      getMyPets(),
-      getMySightings(),
-    ])
-    if (petsResult.status === 'rejected') throw petsResult.reason
-    if (currentRequest === requestId) {
-      myPets.value = petsResult.value
-      sightingCount.value = sightingsResult.status === 'fulfilled' ? sightingsResult.value.length : 0
-    }
-  } catch (e) {
-    if (currentRequest === requestId) {
-      error.value = e instanceof Error ? e.message : 'Failed to load your posts.'
-    }
-  } finally {
-    if (currentRequest === requestId) loading.value = false
-  }
+let sightingsRequest = 0
+async function loadSightingCount() {
+  const current = ++sightingsRequest
+  if (!props.user) { sightingCount.value = 0; return }
+  try { const sightings = await getMySightings(); if (current === sightingsRequest) sightingCount.value = sightings.length }
+  catch { if (current === sightingsRequest) sightingCount.value = 0 }
 }
 
-watch(() => props.user?.id, loadMyPets, { immediate: true })
-
-function openPet(pet: Pet, event: MouseEvent | KeyboardEvent) {
-  const target = event.target
-  const currentTarget = event.currentTarget
-  if (target instanceof Element && currentTarget instanceof Element) {
-    const nestedControl = target.closest('button, a, input, select, textarea, [role="button"]')
-    if (nestedControl && nestedControl !== currentTarget) return
-  }
-  void router.push({ name: 'pet-detail', params: { id: pet.id } })
+function selectTab(tab: ProfileTab) {
+  loadedTabs.value = new Set([...loadedTabs.value, tab])
+  void router.push({ name: 'profile', query: { ...route.query, tab } })
 }
+function openPet(id: string) { void router.push({ name: 'pet-detail', params: { id }, query: { from: 'profile', tab: 'pets' } }) }
+function openStray(id: string) { void router.push({ name: 'stray-detail', params: { id }, query: { from: 'profile', tab: activeTab.value } }) }
+
+watch(() => props.user?.id, () => { petStats.value = { total: 0, reunited: 0, active: 0 }; void loadSightingCount() }, { immediate: true })
+watch(activeTab, (tab) => { loadedTabs.value = new Set([...loadedTabs.value, tab]) }, { immediate: true })
+watch(() => route.name, (name, previous) => { if (name === 'profile' && previous && previous !== 'profile') refreshKey.value += 1 })
 </script>
 
 <style scoped>
@@ -220,7 +215,7 @@ function openPet(pet: Pet, event: MouseEvent | KeyboardEvent) {
   flex-shrink: 0;
   border-radius: 50%;
   background: transparent;
-  color: #1d6360;
+  color: var(--color-icon-primary);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -262,7 +257,7 @@ h1 {
 }
 
 .area svg {
-  color: var(--teal);
+  color: var(--color-text-accent);
 }
 
 .area.phone {
@@ -329,6 +324,24 @@ h2 {
   margin-bottom: 10px;
 }
 
+.profile-auth-state {
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.profile-auth-state > svg { color: var(--color-icon-primary); }
+.profile-auth-state button { min-height: 44px; padding: 0 18px; border-radius: 12px; background: var(--teal); color: var(--color-text-on-accent); font-weight: 850; }
+
 .my-pets {
   margin-bottom: 26px;
 }
@@ -351,7 +364,7 @@ h2 {
 }
 
 .my-pets-state.error {
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 .my-pets-state.error button {
@@ -359,7 +372,7 @@ h2 {
   padding: 8px 16px;
   border-radius: 999px;
   background: var(--teal);
-  color: #fff;
+  color: var(--color-text-on-accent);
   font-weight: 800;
 }
 
@@ -385,7 +398,7 @@ h2 {
 }
 
 .my-pet:focus-visible {
-  outline: 3px solid #1d6360;
+  outline: 3px solid var(--color-focus);
   outline-offset: 3px;
 }
 
@@ -418,7 +431,7 @@ h2 {
   padding: 4px 11px;
   border-radius: 999px;
   background: var(--coral);
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -427,6 +440,7 @@ h2 {
 .status-badge.sighted,
 .status-badge.reunited {
   background: var(--teal);
+  color: var(--color-text-on-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {

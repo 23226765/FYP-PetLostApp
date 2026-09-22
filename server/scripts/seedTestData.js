@@ -314,6 +314,7 @@ async function seedStrays(users) {
     {
       key: 'tai-po-bird',
       species: 'Other',
+      animalType: 'Parrot',
       description: 'Fictional green parrot resting safely beside a covered market entrance.',
       photo: imageUrl('Demo stray green parrot'),
       photos: [imageUrl('Demo stray green parrot'), imageUrl('Demo parrot location')],
@@ -339,7 +340,7 @@ async function seedStrays(users) {
     const result = await ensureDocument(Stray, 'stray', key, strayData)
     await Stray.updateOne(
       { _id: result.document._id, seedBatch: SEED_BATCH },
-      { $set: { photos: strayData.photos, observedAt: strayData.observedAt, active: true } },
+      { $set: { animalType: strayData.animalType || '', photos: strayData.photos, observedAt: strayData.observedAt, active: true } },
     )
     strays[key] = result.document
     if (result.created) created += 1

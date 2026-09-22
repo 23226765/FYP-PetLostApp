@@ -21,6 +21,7 @@
               <label
                 v-for="option in languageOptions"
                 :key="option.value"
+                class="option-card"
                 :class="{ active: language === option.value }"
               >
                 <input
@@ -30,6 +31,7 @@
                   :checked="language === option.value"
                   @change="changeLanguage(option.value)"
                 />
+                <span class="radio-indicator" aria-hidden="true" />
                 <span>{{ t(option.labelKey) }}</span>
               </label>
             </div>
@@ -37,12 +39,14 @@
           <fieldset class="preference-fieldset" :disabled="preferenceSaving">
             <legend>{{ t('settings.appearance') }}</legend>
             <div class="segmented-control">
-              <label :class="{ active: theme === 'light' }">
+              <label class="option-card" :class="{ active: theme === 'light' }">
                 <input type="radio" name="app-theme" value="light" :checked="theme === 'light'" @change="changeTheme('light')" />
+                <span class="radio-indicator" aria-hidden="true" />
                 <span aria-hidden="true">☀</span><span>{{ t('settings.light') }}</span>
               </label>
-              <label :class="{ active: theme === 'dark' }">
+              <label class="option-card" :class="{ active: theme === 'dark' }">
                 <input type="radio" name="app-theme" value="dark" :checked="theme === 'dark'" @change="changeTheme('dark')" />
+                <span class="radio-indicator" aria-hidden="true" />
                 <span aria-hidden="true">☾</span><span>{{ t('settings.dark') }}</span>
               </label>
             </div>
@@ -58,19 +62,19 @@
 
       <template v-if="user">
         <section class="settings-group" aria-labelledby="account-heading">
-          <h2 id="account-heading">Your account</h2>
+          <h2 id="account-heading">{{ t('settings.yourAccount') }}</h2>
           <div class="settings-card account-card">
             <div class="profile-summary">
               <button
                 class="avatar-picker"
                 type="button"
                 :disabled="pickingAvatar || savingAvatar"
-                :aria-label="pickingAvatar ? 'Opening photo picker' : 'Change profile photo'"
+                :aria-label="pickingAvatar ? t('settings.openingPicker') : t('settings.changePhoto')"
                 @click="pickAvatar"
               >
                 <img
                   :src="form.avatar || user.avatar || '/avatar.svg'"
-                  :alt="`Profile photo of ${user.name}`"
+                  :alt="t('settings.profilePhotoAlt', { name: user.name })"
                   @error="handleAvatarError"
                 />
                 <span class="camera-badge" aria-hidden="true"><AppIcon name="camera" :size="14" /></span>
@@ -85,40 +89,40 @@
                 @change="handleAvatarFile"
               />
               <button class="account-copy" type="button" @click="toggleProfileEditor">
-                <strong>Account &amp; privacy</strong>
-                <span>Profile, contact info, and security</span>
+                <strong>{{ t('settings.accountPrivacy') }}</strong>
+                <span>{{ t('settings.accountPrivacySubtitle') }}</span>
               </button>
               <button class="edit-button" type="button" :aria-expanded="editingProfile" @click="toggleProfileEditor">
-                {{ editingProfile ? 'Cancel' : 'Edit' }}
+                {{ editingProfile ? t('common.cancel') : t('common.edit') }}
               </button>
             </div>
 
-            <p v-if="savingAvatar" class="form-message" role="status">Saving profile photo...</p>
+            <p v-if="savingAvatar" class="form-message" role="status">{{ t('settings.savingPhoto') }}</p>
             <p v-else-if="profileError" class="form-message error" role="alert">{{ profileError }}</p>
             <p v-else-if="profileMessage" class="form-message" role="status">{{ profileMessage }}</p>
 
             <Transition name="expand">
               <form v-if="editingProfile" class="profile-form" @submit.prevent="saveProfile">
                 <label>
-                  <span>Display name</span>
+                  <span>{{ t('settings.displayName') }}</span>
                   <input v-model="form.name" required maxlength="100" autocomplete="name" />
                 </label>
                 <label>
-                  <span>Real name (Private)</span>
-                  <input v-model="form.realName" maxlength="100" placeholder="e.g. Chan Tai Man" autocomplete="off" />
-                  <small>🔒 Kept strictly private. Used solely for anti-bot identity verification.</small>
+                  <span>{{ t('settings.realName') }}</span>
+                  <input v-model="form.realName" maxlength="100" :placeholder="t('settings.realNamePlaceholder')" autocomplete="off" />
+                  <small>🔒 {{ t('settings.realNameHelp') }}</small>
                 </label>
                 <label>
-                  <span>Email</span>
+                  <span>{{ t('authentication.email') }}</span>
                   <input v-model="form.email" required type="email" autocomplete="email" />
                 </label>
                 <label>
-                  <span>Phone number</span>
+                  <span>{{ t('authentication.phone') }}</span>
                   <input v-model="form.phone" type="tel" maxlength="30" autocomplete="tel" />
                 </label>
                 <button class="save-profile-button" type="submit" :disabled="savingProfile">
                   <AppIcon name="check" :size="18" />
-                  {{ savingProfile ? 'Saving...' : 'Save profile' }}
+                  {{ savingProfile ? t('common.saving') : t('settings.saveProfile') }}
                 </button>
               </form>
             </Transition>
@@ -126,7 +130,7 @@
         </section>
 
         <section class="settings-group" aria-labelledby="activity-heading">
-          <h2 id="activity-heading">Your activity</h2>
+          <h2 id="activity-heading">{{ t('settings.yourActivity') }}</h2>
           <div class="settings-card">
             <button class="setting-row" type="button" @click="router.push('/saved')">
               <span class="setting-icon">
@@ -134,31 +138,31 @@
                   <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
                 </svg>
               </span>
-              <span class="setting-copy"><strong>Saved</strong><span>Saved pets and sighting reports</span></span>
+              <span class="setting-copy"><strong>{{ t('settings.saved') }}</strong><span>{{ t('settings.savedSubtitle') }}</span></span>
               <AppIcon class="chevron" name="chevron" :size="16" />
             </button>
             <button class="setting-row" type="button" @click="router.push('/my-reports')">
               <span class="setting-icon"><AppIcon name="list" :size="20" /></span>
-              <span class="setting-copy"><strong>Activity</strong><span>My reports and sightings</span></span>
+              <span class="setting-copy"><strong>{{ t('settings.activity') }}</strong><span>{{ t('settings.activitySubtitle') }}</span></span>
               <AppIcon class="chevron" name="chevron" :size="16" />
             </button>
             <button class="setting-row" type="button" @click="emit('open-boost')">
               <span class="setting-icon coral"><AppIcon name="zap" :size="20" /></span>
-              <span class="setting-copy"><strong>Boost alert</strong><span>Expand your radar coverage</span></span>
+              <span class="setting-copy"><strong>{{ t('settings.boost') }}</strong><span>{{ t('settings.boostSubtitle') }}</span></span>
               <AppIcon class="chevron" name="chevron" :size="16" />
             </button>
           </div>
         </section>
 
         <section class="settings-group" aria-labelledby="preferences-heading">
-          <h2 id="preferences-heading">Preferences</h2>
+          <h2 id="preferences-heading">{{ t('settings.preferences') }}</h2>
           <div class="settings-card preferences-card">
             <div class="setting-row radius-row">
               <span class="setting-icon"><AppIcon name="radar" :size="20" /></span>
-              <span class="setting-copy"><strong>Radar radius</strong><span>Search and notification coverage</span></span>
-              <span class="setting-value">{{ radiusKm }} km</span>
+              <span class="setting-copy"><strong>{{ t('settings.radarRadius') }}</strong><span>{{ t('settings.radarRadiusSubtitle') }}</span></span>
+              <span class="setting-value">{{ t('common.kilometres', { count: radiusKm }) }}</span>
             </div>
-            <div class="radius-options" role="group" aria-label="Radar radius">
+            <div class="radius-options" role="group" :aria-label="t('settings.radarRadius')">
               <button
                 v-for="option in radiusOptions"
                 :key="option"
@@ -167,48 +171,49 @@
                 :aria-pressed="radiusKm === option"
                 @click="emit('radius-change', option)"
               >
-                {{ option }} km
+                {{ t('common.kilometres', { count: option }) }}
               </button>
             </div>
             <div class="setting-row">
               <span class="setting-icon"><AppIcon name="bell" :size="20" /></span>
-              <span class="setting-copy"><strong>Proximity alerts</strong><span>Notify me about nearby reports</span></span>
+              <span class="setting-copy"><strong>{{ t('settings.proximityAlerts') }}</strong><span>{{ t('settings.proximityAlertsSubtitle') }}</span></span>
               <button
                 class="switch"
                 :class="{ on: alertsEnabled }"
                 type="button"
                 role="switch"
                 :aria-checked="alertsEnabled"
-                aria-label="Toggle proximity alerts"
+                :aria-label="t('settings.toggleAlerts')"
                 @click="emit('toggle-alerts', !alertsEnabled)"
               >
                 <span />
               </button>
             </div>
             <fieldset class="contact-privacy" :disabled="privacyLoading || privacySaving">
-              <legend>Contact privacy</legend>
+              <legend>{{ t('settings.contactPrivacy') }}</legend>
               <p class="privacy-intro">
-                Choose whether signed-in users can access your Call and WhatsApp options.
-                In-app messages remain available in both modes.
+                {{ t('settings.contactPrivacyIntro') }}
               </p>
               <label
-                class="privacy-option"
+                class="option-card privacy-option"
                 :class="{ selected: contactVisibility === 'private' }"
               >
                 <input v-model="contactVisibility" type="radio" value="private" />
+                <span class="radio-indicator" aria-hidden="true" />
                 <span>
-                  <strong>Private</strong>
-                  <small>People can contact me only through in-app messages.</small>
+                  <strong>{{ t('settings.private') }}</strong>
+                  <small>{{ t('settings.privateHelp') }}</small>
                 </span>
               </label>
               <label
-                class="privacy-option"
+                class="option-card privacy-option"
                 :class="{ selected: contactVisibility === 'authenticated' }"
               >
                 <input v-model="contactVisibility" type="radio" value="authenticated" />
+                <span class="radio-indicator" aria-hidden="true" />
                 <span>
-                  <strong>Visible to signed-in users</strong>
-                  <small>Show Call and WhatsApp options on all my reports.</small>
+                  <strong>{{ t('settings.authenticated') }}</strong>
+                  <small>{{ t('settings.authenticatedHelp') }}</small>
                 </span>
               </label>
               <button
@@ -217,10 +222,10 @@
                 :disabled="privacyLoading || privacySaving || !privacyDirty"
                 @click="saveContactPrivacy"
               >
-                {{ privacySaving ? 'Saving privacy...' : 'Save contact privacy' }}
+                {{ privacySaving ? t('settings.savingPrivacy') : t('settings.savePrivacy') }}
               </button>
               <p v-if="privacyLoading" class="privacy-message" role="status">
-                Loading contact privacy...
+                {{ t('settings.loadingPrivacy') }}
               </p>
               <p v-else-if="privacyError" class="privacy-message error" role="alert">
                 {{ privacyError }}
@@ -233,16 +238,16 @@
         </section>
 
         <section class="settings-group danger-group" aria-labelledby="danger-heading">
-          <h2 id="danger-heading">Danger zone</h2>
-          <button class="logout-button" type="button" @click="emit('logout')">Log out</button>
+          <h2 id="danger-heading">{{ t('settings.dangerZone') }}</h2>
+          <button class="logout-button" type="button" @click="emit('logout')">{{ t('authentication.signOut') }}</button>
         </section>
       </template>
 
       <section v-else class="auth-card">
         <span class="auth-icon"><AppIcon name="user" :size="28" /></span>
-        <h2>Sign in to manage settings</h2>
-        <p>Your alert radius and account preferences are linked to your PawRadar profile.</p>
-        <button type="button" @click="emit('auth-needed')">Sign in</button>
+        <h2>{{ t('settings.signInTitle') }}</h2>
+        <p>{{ t('settings.signInHelp') }}</p>
+        <button type="button" @click="emit('auth-needed')">{{ t('authentication.signIn') }}</button>
       </section>
     </main>
   </div>
@@ -254,13 +259,15 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { Capacitor } from '@capacitor/core'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
+import { usePreferences } from '../composables/usePreferences'
+import { translateApiError, useAppI18n } from '../i18n'
 import {
   getContactPrivacy,
   updateContactPrivacy,
   updateProfile,
 } from '../services/api'
 import type { ContactVisibility } from '../services/api'
-import type { User } from '../types/user'
+import type { AppLanguage, AppTheme, User } from '../types/user'
 
 const props = defineProps<{ user: User | null; alertsEnabled: boolean; radiusKm: number }>()
 const emit = defineEmits<{
@@ -273,6 +280,21 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { t } = useAppI18n()
+const {
+  language,
+  theme,
+  saving: preferenceSaving,
+  setPreferences,
+  clearPreferenceStatus,
+} = usePreferences()
+const languageOptions: ReadonlyArray<{ value: AppLanguage; labelKey: string }> = [
+  { value: 'en', labelKey: 'settings.english' },
+  { value: 'zh-HK', labelKey: 'settings.traditionalChinese' },
+  { value: 'zh-CN', labelKey: 'settings.simplifiedChinese' },
+]
+const preferenceError = ref('')
+const preferenceMessage = ref('')
 const radiusOptions = [1, 3, 5, 10, 15] as const
 const editingProfile = ref(false)
 const savingProfile = ref(false)
@@ -291,6 +313,26 @@ const avatarInput = ref<HTMLInputElement | null>(null)
 const form = reactive({ name: '', realName: '', email: '', phone: '', avatar: '' })
 const MAX_SOURCE_FILE_BYTES = 8 * 1024 * 1024
 const MAX_AVATAR_DATA_URL_LENGTH = 8_000_000
+
+async function updatePreference(update: { language?: AppLanguage; theme?: AppTheme }) {
+  preferenceError.value = ''
+  preferenceMessage.value = ''
+  clearPreferenceStatus()
+  try {
+    await setPreferences(update)
+    preferenceMessage.value = t('settings.preferencesSaved')
+  } catch (caught) {
+    preferenceError.value = `${t('settings.preferencesSaveFailed')} ${translateApiError(caught, 'errors.savePreferences')}`
+  }
+}
+
+function changeLanguage(value: AppLanguage) {
+  if (language.value !== value) void updatePreference({ language: value })
+}
+
+function changeTheme(value: AppTheme) {
+  if (theme.value !== value) void updatePreference({ theme: value })
+}
 
 function resetForm(user: User | null) {
   form.name = user?.name || ''
@@ -327,8 +369,7 @@ async function loadContactPrivacy() {
     contactVisibility.value = privacy.contactVisibility
     savedContactVisibility.value = privacy.contactVisibility
   } catch (caught) {
-    privacyError.value =
-      caught instanceof Error ? caught.message : 'Unable to load contact privacy.'
+    privacyError.value = translateApiError(caught, 'errors.loadPrivacy')
   } finally {
     privacyLoading.value = false
   }
@@ -346,11 +387,10 @@ async function saveContactPrivacy() {
     emit('updated', { ...props.user, privacy })
     privacyMessage.value =
       privacy.contactVisibility === 'private'
-        ? 'Contact details are now private on all reports.'
-        : 'Signed-in users can now access Call and WhatsApp options.'
+        ? t('settings.privacyPrivateSaved')
+        : t('settings.privacyAuthenticatedSaved')
   } catch (caught) {
-    privacyError.value =
-      caught instanceof Error ? caught.message : 'Unable to save contact privacy.'
+    privacyError.value = translateApiError(caught, 'errors.savePrivacy')
   } finally {
     privacySaving.value = false
   }
@@ -382,12 +422,12 @@ async function pickAvatar() {
       width: 512,
       height: 512,
     })
-    if (!photo.dataUrl) throw new Error('The selected photo could not be read.')
+    if (!photo.dataUrl) throw new Error(t('errors.readImage'))
     await persistAvatar(await prepareAvatar(photo.dataUrl))
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : ''
     if (!/cancel(?:led|ed)|no image/i.test(message)) {
-      profileError.value = message || 'Unable to open the photo picker.'
+      profileError.value = t('errors.photoPicker')
     }
   } finally {
     pickingAvatar.value = false
@@ -403,11 +443,11 @@ async function handleAvatarFile(event: Event) {
   profileError.value = ''
   profileMessage.value = ''
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    profileError.value = 'Choose a JPEG, PNG, or WebP image.'
+    profileError.value = t('validation.imageType')
     return
   }
   if (file.size > MAX_SOURCE_FILE_BYTES) {
-    profileError.value = 'Choose an image smaller than 8 MB.'
+    profileError.value = t('validation.imageSize')
     return
   }
 
@@ -415,7 +455,7 @@ async function handleAvatarFile(event: Event) {
   try {
     await persistAvatar(await prepareAvatar(await readFileAsDataUrl(file)))
   } catch (caught) {
-    profileError.value = caught instanceof Error ? caught.message : 'Unable to read that image.'
+    profileError.value = translateApiError(caught, 'errors.readImage')
   } finally {
     pickingAvatar.value = false
   }
@@ -430,7 +470,7 @@ async function persistAvatar(avatar: string) {
     form.avatar = updatedUser.avatar || avatar
     emit('updated', updatedUser)
     profileError.value = ''
-    profileMessage.value = 'Profile photo updated.'
+    profileMessage.value = t('settings.photoUpdated')
   } catch (caught) {
     form.avatar = previousAvatar
     throw caught
@@ -442,8 +482,8 @@ async function persistAvatar(avatar: string) {
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Unable to read that image.'))
-    reader.onerror = () => reject(new Error('Unable to read that image.'))
+    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error(t('errors.readImage')))
+    reader.onerror = () => reject(new Error(t('errors.readImage')))
     reader.readAsDataURL(file)
   })
 }
@@ -460,7 +500,7 @@ function prepareAvatar(dataUrl: string): Promise<string> {
       canvas.width = width
       canvas.height = height
       const context = canvas.getContext('2d')
-      if (!context) return reject(new Error('Unable to process that image.'))
+      if (!context) return reject(new Error(t('errors.readImage')))
 
       context.fillStyle = '#fcf9f2'
       context.fillRect(0, 0, width, height)
@@ -472,7 +512,7 @@ function prepareAvatar(dataUrl: string): Promise<string> {
       }
       resolve(prepared)
     }
-    image.onerror = () => reject(new Error('The selected image format could not be processed.'))
+    image.onerror = () => reject(new Error(t('errors.readImage')))
     image.src = dataUrl
   })
 }
@@ -499,10 +539,10 @@ async function saveProfile() {
     resetForm(updatedUser)
     emit('updated', updatedUser)
     profileError.value = ''
-    profileMessage.value = 'Profile updated.'
+    profileMessage.value = t('settings.profileUpdated')
     editingProfile.value = false
   } catch (caught) {
-    profileError.value = caught instanceof Error ? caught.message : 'Unable to update your profile.'
+    profileError.value = translateApiError(caught, 'errors.updateProfile')
   } finally {
     savingProfile.value = false
   }
@@ -510,39 +550,61 @@ async function saveProfile() {
 </script>
 
 <style scoped>
-.settings-page { position: fixed; inset: 0; z-index: 45; width: 100%; max-width: 480px; margin: 0 auto; overflow-y: auto; background: #fcf9f2; color: var(--ink); -webkit-overflow-scrolling: touch; }
-.settings-header { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 10px; padding: calc(var(--safe-top) + 12px) 16px 12px; border-bottom: 1px solid rgba(29,99,96,.09); background: rgba(252,249,242,.95); backdrop-filter: blur(16px); }
+.settings-page { position: fixed; inset: 0; z-index: 45; width: 100%; max-width: 480px; margin: 0 auto; overflow-y: auto; background: var(--page-bg); color: var(--ink); -webkit-overflow-scrolling: touch; }
+.settings-header { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 10px; padding: calc(var(--safe-top) + 12px) 16px 12px; border-bottom: 1px solid var(--divider); background: color-mix(in srgb, var(--page-bg) 95%, transparent); backdrop-filter: blur(16px); }
 .settings-header h1 { font-size: 17px; font-weight: 850; text-align: center; }
 .back-button, .header-spacer { width: 44px; height: 44px; }
-.back-button { display: grid; place-items: center; border-radius: 50%; background: #fff; color: #1d6360; box-shadow: 0 4px 14px rgba(29,99,96,.1); transition: all .2s cubic-bezier(.4,0,.2,1); }
+.back-button { display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--color-icon-primary); box-shadow: 0 4px 14px rgba(29,99,96,.1); transition: all .2s cubic-bezier(.4,0,.2,1); }
 .back-button:active, .avatar-picker:active, .edit-button:active, .save-profile-button:active, .logout-button:active { transform: scale(.97); }
 .settings-content { padding: 10px 16px calc(var(--safe-bottom) + 42px); }
 .settings-group { margin-top: 22px; }
 .settings-group h2 { margin: 0 4px 9px; color: var(--ink-muted); font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-.settings-card { overflow: hidden; border: 1px solid rgba(29,99,96,.08); border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgba(29,99,96,.065); }
+.settings-card { overflow: hidden; border: 1px solid var(--divider); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card); }
+.preference-selector-card { display: flex; flex-direction: column; gap: 15px; padding: 16px; overflow: visible; }
+.preference-help, .preference-account-help { margin: 0; color: var(--text-muted); font-size: 12px; font-weight: 650; line-height: 1.5; }
+.preference-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.preference-fieldset legend { margin-bottom: 8px; color: var(--text-primary); font-size: 13px; font-weight: 850; }
+.segmented-control { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 4px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); }
+.segmented-control.language-control { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.option-card { position: relative; border: 1.5px solid var(--option-border); border-radius: 14px; background: var(--option-surface); color: var(--option-text); cursor: pointer; transition: background-color .2s cubic-bezier(.4,0,.2,1), border-color .2s cubic-bezier(.4,0,.2,1), box-shadow .2s cubic-bezier(.4,0,.2,1), transform .2s cubic-bezier(.4,0,.2,1); }
+.option-card.active, .option-card.selected { border-color: var(--option-accent-border); background: var(--option-selected-surface); box-shadow: 0 2px 9px color-mix(in srgb, var(--radio-indicator) 18%, transparent); }
+.option-card input[type='radio'] { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); appearance: none; opacity: 0; white-space: nowrap; }
+.option-card input[type='radio']:focus-visible { outline: none; }
+.option-card .radio-indicator { width: 18px; height: 18px; display: grid; place-items: center; flex: 0 0 18px; border: 2px solid var(--radio-border); border-radius: 50%; background: var(--option-surface); transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease; }
+.option-card .radio-indicator::after { width: 8px; height: 8px; border-radius: 50%; background: var(--radio-indicator); content: ''; opacity: 0; transform: scale(.45); transition: opacity .15s ease, transform .15s ease; }
+.option-card:has(input[type='radio']:checked) .radio-indicator { border-color: var(--radio-indicator); background: var(--option-selected-surface); box-shadow: 0 0 0 2px color-mix(in srgb, var(--radio-indicator) 14%, transparent); }
+.option-card:has(input[type='radio']:checked) .radio-indicator::after { opacity: 1; transform: scale(1); }
+.option-card:has(input[type='radio']:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.option-card:has(input[type='radio']:disabled) { border-color: var(--color-disabled-border); background: var(--color-disabled-surface); color: var(--color-disabled-text); cursor: not-allowed; }
+@media (hover: hover) { .option-card:not(:has(input[type='radio']:disabled)):hover { border-color: var(--option-accent-border); background: color-mix(in srgb, var(--option-selected-surface) 58%, var(--option-surface)); } }
+.segmented-control .option-card { min-width: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 8px; border-radius: 10px; font-size: 12px; font-weight: 800; line-height: 1.2; text-align: center; }
+.preference-fieldset:disabled .option-card { border-color: var(--color-disabled-border); background: var(--color-disabled-surface); color: var(--color-disabled-text); cursor: not-allowed; }
+.preference-message { margin: -3px 0 0; color: var(--success); font-size: 12px; font-weight: 750; line-height: 1.45; }
+.preference-message.error { color: var(--error); }
+@media (max-width: 370px) { .segmented-control.language-control { grid-template-columns: 1fr; } }
 .profile-summary { display: grid; grid-template-columns: 64px minmax(0,1fr) auto; align-items: center; gap: 13px; padding: 15px; }
-.avatar-picker { position: relative; width: 64px; height: 64px; padding: 0; border-radius: 50%; background: #fcf9f2; box-shadow: 0 5px 15px rgba(29,99,96,.14); transition: transform .2s ease; }
+.avatar-picker { position: relative; width: 64px; height: 64px; padding: 0; border-radius: 50%; background: var(--color-surface-subtle); box-shadow: 0 5px 15px rgba(29,99,96,.14); transition: transform .2s ease; }
 .avatar-picker img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
-.avatar-picker:disabled { cursor: wait; opacity: .7; }
+.avatar-picker:disabled { outline: 2px solid var(--color-disabled-border); background: var(--color-disabled-surface); cursor: wait; }
 .camera-badge { position: absolute; right: -3px; bottom: -2px; width: 27px; height: 27px; display: grid; place-items: center; border: 2px solid #fff; border-radius: 50%; background: #1d6360; color: #fff; box-shadow: 0 3px 9px rgba(29,99,96,.24); }
 .file-input { display: none; }
 .account-copy { min-width: 0; display: flex; flex-direction: column; padding: 0; background: transparent; color: var(--ink); text-align: left; }
 .account-copy strong { font-size: 14px; font-weight: 800; }
 .account-copy span { overflow: hidden; color: var(--ink-muted); font-size: 11.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.edit-button { min-height: 42px; padding: 0 14px; border-radius: 999px; background: rgba(29,99,96,.1); color: #1d6360; font-size: 12.5px; font-weight: 800; transition: transform .2s ease; }
-.form-message { margin: 0 15px 13px; color: #1d6360; font-size: 12px; font-weight: 750; }
-.form-message.error { color: #ef6351; }
-.profile-form { display: flex; flex-direction: column; gap: 12px; padding: 15px; border-top: 1px solid rgba(29,99,96,.08); background: rgba(252,249,242,.55); }
+.edit-button { min-height: 42px; padding: 0 14px; border-radius: 999px; background: var(--color-surface-selected); color: var(--color-text-accent); font-size: 12.5px; font-weight: 800; transition: transform .2s ease; }
+.form-message { margin: 0 15px 13px; color: var(--color-text-accent); font-size: 12px; font-weight: 750; }
+.form-message.error { color: var(--color-text-urgent); }
+.profile-form { display: flex; flex-direction: column; gap: 12px; padding: 15px; border-top: 1px solid var(--color-border); background: var(--color-surface-subtle); }
 .profile-form label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; }
-.profile-form input { min-height: 46px; padding: 0 13px; border: 1.5px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); outline: none; }
-.profile-form input:focus { border-color: #1d6360; }
+.profile-form input { min-height: 46px; padding: 0 13px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--input-bg); color: var(--color-text-primary); outline: none; }
+.profile-form input:focus { border-color: var(--color-border-accent); }
 .profile-form small { color: var(--ink-muted); font-size: 11.5px; font-weight: 600; line-height: 1.45; }
 .save-profile-button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; background: #1d6360; color: #fff; font-weight: 800; box-shadow: 0 5px 15px rgba(29,99,96,.18); transition: transform .2s ease; }
-.save-profile-button:disabled { opacity: .65; }
+.save-profile-button:disabled { border: 1px solid var(--color-disabled-border); background: var(--color-disabled-surface); color: var(--color-disabled-text); cursor: not-allowed; box-shadow: none; }
 .setting-row { width: 100%; min-height: 70px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(29,99,96,.075); background: transparent; color: var(--ink); text-align: left; transition: background .18s ease, transform .18s ease; }
 button.setting-row:active { transform: scale(.99); background: rgba(29,99,96,.055); }
-.setting-icon { width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; border-radius: 12px; background: rgba(29,99,96,.09); color: #1d6360; }
-.setting-icon.coral { background: rgba(239,99,81,.1); color: #ef6351; }
+.setting-icon { width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; border-radius: 12px; background: var(--color-surface-selected); color: var(--color-icon-primary); }
+.setting-icon.coral { background: rgba(239,99,81,.1); color: var(--color-text-urgent); }
 .setting-copy { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: 2px; }
 .setting-copy strong { font-size: 14px; font-weight: 780; }
 .setting-copy span { color: var(--ink-muted); font-size: 11.5px; font-weight: 600; }
@@ -550,7 +612,7 @@ button.setting-row:active { transform: scale(.99); background: rgba(29,99,96,.05
 .setting-value { font-size: 12.5px; font-weight: 750; }
 .radius-row { border-bottom: 0; }
 .radius-options { display: grid; grid-template-columns: repeat(5,1fr); gap: 5px; padding: 0 14px 14px; border-bottom: 1px solid rgba(29,99,96,.075); }
-.radius-options button { min-height: 42px; padding: 0 3px; border-radius: 12px; background: #fcf9f2; color: var(--ink-muted); font-size: 11.5px; font-weight: 800; }
+.radius-options button { min-height: 42px; padding: 0 3px; border-radius: 12px; background: var(--color-surface-subtle); color: var(--color-text-muted); font-size: 11.5px; font-weight: 800; }
 .radius-options button.active { background: #1d6360; color: #fff; }
 .switch { position: relative; width: 50px; height: 30px; flex-shrink: 0; border-radius: 999px; background: var(--line); transition: background .2s ease; }
 .switch span { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 7px rgba(29,99,96,.18); transition: transform .2s cubic-bezier(.4,0,.2,1); }
@@ -559,22 +621,20 @@ button.setting-row:active { transform: scale(.99); background: rgba(29,99,96,.05
 .contact-privacy { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 15px 14px; border: 0; }
 .contact-privacy legend { padding: 0; color: var(--ink); font-size: 14px; font-weight: 800; }
 .privacy-intro { margin: 0 0 2px; color: var(--ink-muted); font-size: 11.5px; font-weight: 600; line-height: 1.5; }
-.privacy-option { display: grid; grid-template-columns: 20px 1fr; align-items: flex-start; gap: 10px; padding: 12px; border: 1.5px solid var(--line); border-radius: 14px; background: #fff; cursor: pointer; transition: all .2s cubic-bezier(.4,0,.2,1); }
-.privacy-option.selected { border-color: #1d6360; background: rgba(29,99,96,.07); }
-.privacy-option input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: #1d6360; }
-.privacy-option span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
-.privacy-option strong { color: var(--ink); font-size: 13px; font-weight: 800; }
-.privacy-option small { color: var(--ink-muted); font-size: 11.5px; font-weight: 600; line-height: 1.4; }
-.privacy-option:focus-within { outline: 3px solid rgba(29,99,96,.24); outline-offset: 2px; }
+.privacy-option { display: grid; grid-template-columns: 18px 1fr; align-items: flex-start; gap: 10px; padding: 12px; }
+.privacy-option > .radio-indicator { margin-top: 1px; }
+.privacy-option > span:last-child { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.privacy-option strong { color: var(--option-text); font-size: 13px; font-weight: 800; }
+.privacy-option small { color: var(--option-secondary-text); font-size: 11.5px; font-weight: 600; line-height: 1.4; }
 .save-privacy-button { min-height: 46px; border-radius: 14px; background: #1d6360; color: #fff; font-size: 13px; font-weight: 800; box-shadow: 0 5px 15px rgba(29,99,96,.18); transition: transform .2s ease, opacity .2s ease; }
 .save-privacy-button:not(:disabled):active { transform: scale(.98); }
-.save-privacy-button:disabled { cursor: not-allowed; opacity: .55; box-shadow: none; }
-.privacy-message { margin: 0 2px; color: #1d6360; font-size: 11.5px; font-weight: 700; line-height: 1.45; }
-.privacy-message.error { color: #ef6351; }
+.save-privacy-button:disabled { border: 1px solid var(--color-disabled-border); background: var(--color-disabled-surface); color: var(--color-disabled-text); cursor: not-allowed; box-shadow: none; }
+.privacy-message { margin: 0 2px; color: var(--color-text-accent); font-size: 11.5px; font-weight: 700; line-height: 1.45; }
+.privacy-message.error { color: var(--color-text-urgent); }
 .danger-group { margin-top: 28px; }
-.logout-button { width: 100%; min-height: 52px; border: 1px solid rgba(239,99,81,.2); border-radius: 14px; background: rgba(239,99,81,.08); color: #ef6351; font-size: 14px; font-weight: 850; transition: all .2s cubic-bezier(.4,0,.2,1); }
-.auth-card { min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 24px; padding: 28px; border-radius: 14px; background: #fff; box-shadow: 0 10px 28px rgba(29,99,96,.07); text-align: center; }
-.auth-icon { width: 62px; height: 62px; display: grid; place-items: center; margin-bottom: 14px; border-radius: 50%; background: rgba(29,99,96,.1); color: #1d6360; }
+.logout-button { width: 100%; min-height: 52px; border: 1px solid color-mix(in srgb, var(--color-text-urgent) 38%, transparent); border-radius: 14px; background: rgba(239,99,81,.08); color: var(--color-text-urgent); font-size: 14px; font-weight: 850; transition: all .2s cubic-bezier(.4,0,.2,1); }
+.auth-card { min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 24px; padding: 28px; border-radius: 14px; background: var(--color-surface); box-shadow: var(--shadow-card); text-align: center; }
+.auth-icon { width: 62px; height: 62px; display: grid; place-items: center; margin-bottom: 14px; border-radius: 50%; background: var(--color-surface-selected); color: var(--color-icon-primary); }
 .auth-card h2 { font-size: 18px; }
 .auth-card p { max-width: 290px; margin-top: 7px; color: var(--ink-muted); font-size: 13px; line-height: 1.5; }
 .auth-card button { min-height: 46px; margin-top: 18px; padding: 0 24px; border-radius: 999px; background: #1d6360; color: #fff; font-weight: 800; }

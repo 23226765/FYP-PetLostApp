@@ -4,7 +4,7 @@
       ref="mapEl"
       class="leaflet-map"
       role="application"
-      :aria-label="showHeatmap ? 'Interactive animal report hotspot heatmap' : strays?.length ? 'Interactive map of nearby stray rescue reports' : 'Interactive map of nearby missing pets'"
+      :aria-label="showHeatmap ? t('radar.mapHeatLabel') : strays?.length ? t('radar.mapStraysLabel') : t('radar.mapPetsLabel')"
     ></div>
     <p v-if="heatmapError" class="heatmap-notice" role="alert">
       {{ heatmapError }}
@@ -13,7 +13,7 @@
       {{ locationMessage }}
     </p>
     <p v-if="showTrajectoryEmpty" class="trajectory-empty" role="status">
-      No sightings with valid map coordinates are available.
+      {{ t('sightings.noCoordinates') }}
     </p>
   </div>
 </template>
@@ -29,6 +29,8 @@ import type { Pet, Sighting } from '../types/pet'
 import type { StrayReport } from '../types/stray'
 import type { HotspotPoint } from '../types/analytics'
 import { getCurrentLocation } from '../services/geolocation'
+import { translateApiError, useAppI18n } from '../i18n'
+import { formatDateTime, petStatusLabel, rescueStatusLabel, strayAnimalLabel, strayConditionLabel } from '../i18n/formatters'
 
 const props = defineProps<{
   pets: Pet[]
@@ -40,6 +42,7 @@ const props = defineProps<{
   showHeatmap?: boolean
   focusedSightingId?: string
 }>()
+const { t, locale } = useAppI18n()
 
 const emit = defineEmits<{
   open: [pet: Pet]
@@ -168,7 +171,7 @@ async function resolveCenter(): Promise<{
     locationMessage.value = null
     return { coordinates, showUserMarker: true }
   } catch {
-    locationMessage.value = 'Location unavailable. Showing the default Hong Kong area.'
+    locationMessage.value = t('radar.locationUnavailable')
     return { coordinates: HK_CENTER, showUserMarker: false }
   }
 }
@@ -184,7 +187,7 @@ function petLatLng(pet: Pet): [number, number] | null {
 function petIcon(pet: Pet): L.DivIcon {
   return L.divIcon({
     className: '',
-    html: `<div class="pawradar-pin ${esc(pet.status)}">${imageMarkup(pet.photo, `Photo of ${pet.name}`, 'pawradar-pin-media')}</div>`,
+    html: `<div class="pawradar-pin ${esc(pet.status)}">${imageMarkup(pet.photo, t('pets.photoAlt', { name: pet.name }), 'pawradar-pin-media')}</div>`,
     iconSize: [48, 54],
     iconAnchor: [24, 54],
     popupAnchor: [0, -46],
@@ -192,14 +195,15 @@ function petIcon(pet: Pet): L.DivIcon {
 }
 
 function popupHtml(pet: Pet): string {
-  const status = pet.status === 'lost' ? 'LOST' : 'SIGHTED'
+  const status = petStatusLabel(pet.status)
+  const breed = pet.breed ? `${esc(pet.breed)} · ` : ''
   return `<div class="pawradar-popup">
-      ${imageMarkup(pet.photo, `Photo of ${pet.name}`, 'pawradar-popup-media')}
+      ${imageMarkup(pet.photo, t('pets.photoAlt', { name: pet.name }), 'pawradar-popup-media')}
       <div class="pawradar-popup-body">
         <strong>${esc(pet.name)}</strong>
         <span class="pawradar-popup-status ${esc(pet.status)}">${status}</span>
-        <p>${esc(pet.breed)} · ${pet.distanceKm} km away</p>
-        <button class="pawradar-view" data-id="${esc(pet.id)}">View Details</button>
+        <p>${breed}${esc(t('radar.distanceAway', { distance: pet.distanceKm }))}</p>
+        <button class="pawradar-view" data-id="${esc(pet.id)}">${esc(t('radar.viewDetails'))}</button>
       </div>
     </div>`
 }
@@ -234,11 +238,12 @@ function strayLatLng(stray: StrayReport): [number, number] | null {
 }
 
 function strayIcon(stray: StrayReport): L.DivIcon {
+  const animal = strayAnimalLabel(stray.species, stray.animalType)
   return L.divIcon({
     className: '',
     html: `<div class="pawradar-stray-pin ${esc(stray.condition)} ${esc(stray.rescueStatus)}">
-      ${imageMarkup(stray.photo, `Reported stray ${stray.species}`, 'pawradar-stray-media')}
-      <span>RESCUE</span>
+      ${imageMarkup(stray.photo, t('strays.reportedAlt', { species: animal }), 'pawradar-stray-media')}
+      <span>${esc(t('strays.rescuePin'))}</span>
     </div>`,
     iconSize: [50, 62],
     iconAnchor: [25, 62],
@@ -247,14 +252,15 @@ function strayIcon(stray: StrayReport): L.DivIcon {
 }
 
 function strayPopup(stray: StrayReport): string {
-  const rescueLabel = stray.rescueStatus.replace(/_/g, ' ')
+  const rescueLabel = rescueStatusLabel(stray.rescueStatus)
+  const animal = strayAnimalLabel(stray.species, stray.animalType)
   return `<div class="pawradar-popup">
-    ${imageMarkup(stray.photo, `Reported stray ${stray.species}`, 'pawradar-popup-media')}
+    ${imageMarkup(stray.photo, t('strays.reportedAlt', { species: animal }), 'pawradar-popup-media')}
     <div class="pawradar-popup-body">
-      <strong>${esc(stray.species)} needs help</strong>
-      <span class="pawradar-popup-status ${esc(stray.condition)}">${esc(stray.condition.toUpperCase())}</span>
+      <strong>${esc(t('strays.needsHelp', { species: animal }))}</strong>
+      <span class="pawradar-popup-status ${esc(stray.condition)}">${esc(strayConditionLabel(stray.condition))}</span>
       <p>${esc(stray.location)} · ${esc(rescueLabel)}</p>
-      <button class="pawradar-view" data-stray-id="${esc(stray.id)}">View rescue report</button>
+      <button class="pawradar-view" data-stray-id="${esc(stray.id)}">${esc(t('strays.viewReport'))}</button>
     </div>
   </div>`
 }
@@ -301,7 +307,7 @@ async function ensureHeatPlugin() {
       ;(window as Window & { L?: typeof L }).L = L
       await import('leaflet.heat')
       if (typeof L.heatLayer !== 'function') {
-        throw new Error('The heatmap renderer could not be initialized.')
+        throw new Error(t('errors.heatmap'))
       }
     })()
   }
@@ -350,19 +356,16 @@ async function renderHeatmap() {
         if (layer && !map.hasLayer(layer)) layer.addTo(map)
       }
     }
-    heatmapError.value =
-      error instanceof Error ? error.message : 'The hotspot layer could not be displayed.'
+    heatmapError.value = translateApiError(error, 'errors.heatmap')
   }
 }
 
 function trajectoryPopup(sighting: Sighting, number: number): string {
   const reportTime = sighting.sightedAt || sighting.createdAt
-  const recordedAt = reportTime
-    ? new Date(reportTime).toLocaleString()
-    : 'Time unavailable'
+  const recordedAt = reportTime ? formatDateTime(reportTime) : t('common.unknown')
   return `<div class="pawradar-trajectory-popup">
-    <strong>Sighting ${number}</strong>
-    <span>${esc(sighting.locationName || 'Location not provided')}</span>
+    <strong>${esc(t('sightings.numbered', { number }))}</strong>
+    <span>${esc(sighting.locationName || t('sightings.locationNotProvided'))}</span>
     <time>${esc(recordedAt)}</time>
     ${sighting.note ? `<p>${esc(sighting.note)}</p>` : ''}
   </div>`
@@ -515,7 +518,7 @@ async function initialiseMap() {
     iconCreateFunction: (cluster) =>
       L.divIcon({
         className: '',
-        html: `<span class="pawradar-sighting-cluster" aria-label="${cluster.getChildCount()} overlapping sighting reports">${cluster.getChildCount()}</span>`,
+        html: `<span class="pawradar-sighting-cluster" aria-label="${esc(t('sightings.overlapping', { count: cluster.getChildCount() }))}">${cluster.getChildCount()}</span>`,
         iconSize: [38, 38],
         iconAnchor: [19, 19],
       }),
@@ -528,7 +531,7 @@ async function initialiseMap() {
         zoomToBoundsOnClick: true,
         iconCreateFunction: (cluster) => L.divIcon({
           className: '',
-          html: `<span class="pawradar-sighting-cluster" aria-label="${cluster.getChildCount()} stray animal posts">${cluster.getChildCount()}</span>`,
+          html: `<span class="pawradar-sighting-cluster" aria-label="${esc(t('strays.clusterPosts', { count: cluster.getChildCount() }))}">${cluster.getChildCount()}</span>`,
           iconSize: [38, 38],
           iconAnchor: [19, 19],
         }),
@@ -563,6 +566,11 @@ watch(() => props.pets, () => renderPets(), { deep: true })
 watch(() => props.sightings, () => renderTrajectory(), { deep: true })
 watch(() => props.focusedSightingId, (id) => focusSightingMarker(id))
 watch(() => props.strays, () => renderStrays(), { deep: true })
+watch(locale, () => {
+  renderPets()
+  renderTrajectory()
+  renderStrays()
+})
 watch([() => props.heatPoints, () => props.showHeatmap], () => void renderHeatmap(), { deep: true })
 watch(() => props.radiusKm, () => renderRadius())
 watch(
@@ -624,7 +632,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(239, 99, 81, 0.35);
   border-radius: var(--radius-lg);
   background: rgba(252, 249, 242, 0.96);
-  color: #1d6360;
+  color: var(--color-text-accent);
   font-size: 12px;
   font-weight: 700;
   box-shadow: var(--shadow-card);
@@ -641,7 +649,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(239, 99, 81, 0.35);
   border-radius: var(--radius-lg);
   background: rgba(252, 249, 242, 0.96);
-  color: #ef6351;
+  color: var(--color-text-urgent);
   font-size: 12px;
   font-weight: 700;
   box-shadow: var(--shadow-card);
@@ -657,7 +665,7 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(252, 249, 242, 0.96);
-  color: #1d6360;
+  color: var(--color-text-accent);
   font-size: 12px;
   font-weight: 700;
   text-align: center;
@@ -746,7 +754,7 @@ onBeforeUnmount(() => {
   border: 2px solid #fcf9f2;
   border-radius: 999px;
   background: #ef6351;
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.05em;
@@ -768,6 +776,7 @@ onBeforeUnmount(() => {
 .pawradar-popup-status.injured,
 .pawradar-popup-status.critical {
   background: #ef6351;
+  color: var(--color-text-on-coral);
 }
 
 .pawradar-you {
@@ -839,7 +848,7 @@ onBeforeUnmount(() => {
 
 .pawradar-popup-body strong {
   font-size: 14px;
-  color: #3d3835;
+  color: var(--color-text-primary);
 }
 
 .pawradar-popup-status {
@@ -854,6 +863,7 @@ onBeforeUnmount(() => {
 
 .pawradar-popup-status.lost {
   background: #ef6351;
+  color: var(--color-text-on-coral);
 }
 
 .pawradar-popup-status.sighted {
@@ -862,7 +872,7 @@ onBeforeUnmount(() => {
 
 .pawradar-popup-body p {
   font-size: 12px;
-  color: #8b827a;
+  color: var(--color-text-muted);
   margin: 2px 0 6px;
 }
 
@@ -889,7 +899,7 @@ onBeforeUnmount(() => {
   border: 3px solid #fcf9f2;
   border-radius: 50%;
   background: #ef6351;
-  color: #fff;
+  color: var(--color-text-on-coral);
   box-shadow: 0 4px 12px rgba(61, 56, 53, 0.28);
   font-size: 12px;
   font-weight: 800;
@@ -914,11 +924,11 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 3px;
   min-width: 160px;
-  color: #3d3835;
+  color: var(--color-text-primary);
 }
 
 .pawradar-trajectory-popup strong {
-  color: #ef6351;
+  color: var(--color-text-urgent);
   font-size: 13px;
 }
 
@@ -929,7 +939,7 @@ onBeforeUnmount(() => {
 }
 
 .pawradar-trajectory-popup time {
-  color: #8b827a;
+  color: var(--color-text-muted);
 }
 
 .pawradar-trajectory-popup p {

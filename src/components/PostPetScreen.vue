@@ -1,33 +1,33 @@
 <template>
   <div class="post">
     <header class="top">
-      <h1>Post a lost pet</h1>
-      <p>Your report appears on the nearby community radar immediately.</p>
+      <h1>{{ t('pets.postTitle') }}</h1>
+      <p>{{ t('pets.postSubtitle') }}</p>
     </header>
 
     <form v-if="!submitted" @submit.prevent="submit">
       <button
         type="button"
         class="photo-drop"
-        aria-label="Add photos of your pet"
+        :aria-label="t('pets.addPhotosA11y')"
         @click="addPhoto"
       >
-        <img v-if="photo" class="photo-preview" :src="photo" alt="Selected pet" />
+        <img v-if="photo" class="photo-preview" :src="photo" :alt="t('pets.selectedPhotoAlt')" />
         <template v-else>
           <AppIcon name="camera" :size="26" />
-          <span>Add photos</span>
-          <span class="hint">A clear face photo helps the most</span>
+          <span>{{ t('pets.addPhotos') }}</span>
+          <span class="hint">{{ t('pets.photoHint') }}</span>
         </template>
       </button>
 
       <label class="field">
-        <span>Pet name</span>
-        <input v-model="form.name" type="text" placeholder="e.g. Buddy" required />
+        <span>{{ t('pets.nameLabel') }}</span>
+        <input v-model="form.name" type="text" :placeholder="t('pets.namePlaceholder')" required />
       </label>
 
       <div class="field">
-        <span>Species</span>
-        <div class="seg" role="group" aria-label="Species">
+        <span>{{ t('pets.speciesLabel') }}</span>
+        <div class="seg" role="group" :aria-label="t('pets.speciesLabel')">
           <button
             v-for="s in species"
             :key="s"
@@ -35,55 +35,55 @@
             :class="{ active: form.species === s }"
             @click="form.species = s"
           >
-            {{ s }}
+            {{ speciesLabel(s) }}
           </button>
         </div>
       </div>
 
       <label class="field">
-        <span>Breed / description</span>
-        <input v-model="form.breed" type="text" placeholder="e.g. Golden Retriever, blue collar" />
+        <span>{{ t('pets.breedDescription') }}</span>
+        <input v-model="form.breed" type="text" :placeholder="t('pets.breedPlaceholder')" />
       </label>
 
       <label class="field">
-        <span>District</span>
+        <span>{{ t('pets.districtLabel') }}</span>
         <select v-model="form.district" required>
-          <option value="" disabled>Select the last-seen district</option>
+          <option value="" disabled>{{ t('pets.selectDistrict') }}</option>
           <option v-for="district in HK_DISTRICTS" :key="district" :value="district">
-            {{ district }}
+            {{ districtLabel(district) }}
           </option>
         </select>
       </label>
 
       <label class="field">
-        <span>Last seen location</span>
+        <span>{{ t('pets.lastSeenLocation') }}</span>
         <div class="input-icon">
           <AppIcon name="pin" :size="17" />
-          <input v-model="form.location" type="text" placeholder="Tap to use current location" required />
+          <input v-model="form.location" type="text" :placeholder="t('pets.locationPlaceholder')" required />
         </div>
       </label>
 
       <label class="field">
-        <span>Details for the community</span>
+        <span>{{ t('pets.communityDetails') }}</span>
         <textarea
           v-model="form.details"
           rows="3"
-          placeholder="Temperament, microchip, how to approach&hellip;"
+          :placeholder="t('pets.detailsPlaceholder')"
         />
       </label>
 
       <label class="field">
-        <span>Reward (optional)</span>
+        <span>{{ t('pets.rewardOptional') }}</span>
         <input v-model="form.reward" type="text" inputmode="numeric" placeholder="$" />
       </label>
 
       <label class="field">
-        <span>Contact name</span>
+        <span>{{ t('pets.contactName') }}</span>
         <input v-model="form.ownerName" type="text" autocomplete="name" required />
       </label>
 
       <label class="field">
-        <span>Contact phone</span>
+        <span>{{ t('pets.contactPhone') }}</span>
         <input
           v-model="form.ownerPhone"
           type="tel"
@@ -97,18 +97,18 @@
       <p v-if="error" class="error-msg">{{ error }}</p>
       <button type="submit" class="submit" :disabled="submitting">
         <AppIcon name="radar" :size="20" />
-        {{ submitting ? 'POSTING…' : 'POST LOST PET' }}
+        {{ submitting ? t('pets.posting') : t('pets.postAction') }}
       </button>
-      <p class="note">Nearby community members can discover the report through Radar.</p>
+      <p class="note">{{ t('pets.postDiscoveryHelp') }}</p>
     </form>
 
     <div v-else class="success" role="status">
       <span class="success-icon">
         <AppIcon name="check" :size="30" />
       </span>
-      <h2>{{ form.name || 'Your pet' }} is on the radar</h2>
-      <p>Your report is live on Radar. Check back for sightings and community messages.</p>
-      <button class="back-btn" @click="emit('done')">Back to radar</button>
+      <h2>{{ t('pets.onRadar', { name: form.name || t('pets.yourPet') }) }}</h2>
+      <p>{{ t('pets.postSuccess') }}</p>
+      <button class="back-btn" @click="emit('done')">{{ t('pets.backToRadar') }}</button>
     </div>
   </div>
 </template>
@@ -121,9 +121,12 @@ import { reportLostPet } from '../services/api'
 import { getCurrentLocation } from '../services/geolocation'
 import type { User } from '../types/user'
 import { HK_DISTRICTS } from '../types/pet'
+import { translateApiError, useAppI18n } from '../i18n'
+import { districtLabel, speciesLabel } from '../i18n/formatters'
 
 const props = defineProps<{ user?: User | null }>()
 const emit = defineEmits<{ done: [] }>()
+const { t } = useAppI18n()
 
 const species = ['Dog', 'Cat', 'Other'] as const
 const submitted = ref(false)
@@ -152,7 +155,7 @@ async function addPhoto() {
     })
     photo.value = image.dataUrl ?? ''
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Unable to open the camera.'
+    error.value = translateApiError(e, 'errors.camera')
   }
 }
 
@@ -187,7 +190,7 @@ async function submit() {
     })
     submitted.value = true
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to post pet'
+    error.value = translateApiError(e, 'errors.postPet')
   } finally {
     submitting.value = false
   }
@@ -232,7 +235,7 @@ form {
   border-radius: var(--radius-lg);
   border: 2px dashed #bfd8d3;
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
   font-weight: 800;
   font-size: 15px;
 }
@@ -278,7 +281,7 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--teal);
+  border-color: var(--color-border-accent);
 }
 
 input::placeholder,
@@ -295,7 +298,7 @@ textarea::placeholder {
 .input-icon svg {
   position: absolute;
   left: 15px;
-  color: var(--teal);
+  color: var(--color-text-accent);
   pointer-events: none;
 }
 
@@ -322,7 +325,7 @@ textarea::placeholder {
 
 .seg button.active {
   background: var(--surface);
-  color: var(--teal);
+  color: var(--color-text-accent);
   box-shadow: var(--shadow-card);
 }
 
@@ -334,7 +337,7 @@ textarea::placeholder {
   padding: 17px 0;
   border-radius: var(--radius-md);
   background: var(--coral);
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -348,11 +351,15 @@ textarea::placeholder {
 }
 
 .submit:disabled {
-  opacity: 0.7;
+  border: 1px solid var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .error-msg {
-  color: var(--coral);
+  color: var(--color-text-urgent);
   font-size: 13.5px;
   font-weight: 700;
   text-align: center;
@@ -381,7 +388,7 @@ textarea::placeholder {
   place-items: center;
   border-radius: 50%;
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
   margin-bottom: 6px;
 }
 

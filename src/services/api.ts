@@ -56,6 +56,19 @@ export interface NearbyParams {
   district?: string
 }
 
+export interface PageParams {
+  page?: number
+  limit?: number
+}
+
+export interface Pagination {
+  page: number
+  limit: number
+  total: number
+  totalPages?: number
+  hasMore: boolean
+}
+
 export async function getNearbyPets(
   params: NearbyParams,
   signal?: AbortSignal,
@@ -124,9 +137,33 @@ export async function getSmartMatches(
   return data.matches
 }
 
+export async function getMyPetsPage(
+  params: PageParams = {},
+  signal?: AbortSignal,
+): Promise<{
+  pets: Pet[]
+  pagination: Pagination
+  summary: { total: number; reunited: number; active: number }
+}> {
+  const { data } = await http.get<{
+    pets: Pet[]
+    pagination: Omit<Pagination, 'hasMore'> & { hasMore?: boolean }
+    summary: { total: number; reunited: number; active: number }
+  }>('/pets/mine', { params, signal })
+  return {
+    pets: data.pets,
+    summary: data.summary,
+    pagination: {
+      ...data.pagination,
+      hasMore:
+        data.pagination.hasMore ??
+        data.pagination.page < (data.pagination.totalPages ?? data.pagination.page),
+    },
+  }
+}
+
 export async function getMyPets(): Promise<Pet[]> {
-  const { data } = await http.get<{ pets: Pet[] }>('/pets/mine')
-  return data.pets
+  return (await getMyPetsPage({ limit: 50 })).pets
 }
 
 export interface MySightingPet {
@@ -210,7 +247,7 @@ export interface ChatMessage {
   text: string
   photo?: string
   createdAt: string
-  sharedStray?: Pick<StrayReport, 'id' | 'species' | 'description' | 'photo' | 'district' | 'rescueStatus'> & { location: string }
+  sharedStray?: Pick<StrayReport, 'id' | 'species' | 'animalType' | 'description' | 'photo' | 'district' | 'rescueStatus'> & { location: string }
   sharedStrayUnavailable?: boolean
 }
 
@@ -348,13 +385,24 @@ export async function getStrayById(id: string): Promise<StrayReport> {
   return data.stray
 }
 
+export async function getMyStraysPage(
+  params: PageParams = {},
+  signal?: AbortSignal,
+): Promise<{ strays: StrayReport[]; pagination: Pagination }> {
+  const { data } = await http.get<{ strays: StrayReport[]; pagination: Pagination }>(
+    '/strays/mine',
+    { params, signal },
+  )
+  return data
+}
+
 export async function getMyStrays(): Promise<StrayReport[]> {
-  const { data } = await http.get<{ strays: StrayReport[] }>('/strays/mine')
-  return data.strays
+  return (await getMyStraysPage({ limit: 50 })).strays
 }
 
 export interface ReportStrayPayload {
   species: StrayReport['species']
+  animalType?: string
   description: string
   photo?: string
   photos: string[]
@@ -410,12 +458,24 @@ export async function setStraySaved(id: string, saved: boolean): Promise<boolean
   return data.saved
 }
 
-export async function getSavedStrays(): Promise<{ strays: StrayReport[]; unavailableCount: number }> {
-  const { data } = await http.get<{ strays: StrayReport[]; unavailableCount: number }>('/strays/saved')
+export async function getSavedStraysPage(
+  params: PageParams = {},
+  signal?: AbortSignal,
+): Promise<{ strays: StrayReport[]; unavailableCount: number; pagination: Pagination }> {
+  const { data } = await http.get<{
+    strays: StrayReport[]
+    unavailableCount: number
+    pagination: Pagination
+  }>('/strays/saved', { params, signal })
   return data
 }
 
-export async function updateStray(id: string, payload: Pick<StrayReport, 'description' | 'species' | 'condition'>): Promise<StrayReport> {
+export async function getSavedStrays(): Promise<{ strays: StrayReport[]; unavailableCount: number }> {
+  const { strays, unavailableCount } = await getSavedStraysPage({ limit: 50 })
+  return { strays, unavailableCount }
+}
+
+export async function updateStray(id: string, payload: Pick<StrayReport, 'description' | 'species' | 'animalType' | 'condition'>): Promise<StrayReport> {
   const { data } = await http.patch<{ stray: StrayReport }>(`/strays/${id}`, payload)
   return data.stray
 }

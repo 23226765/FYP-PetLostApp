@@ -2,25 +2,25 @@
   <div class="chat">
     <!-- Deep teal header -->
     <header class="chat-header">
-      <button class="back-btn" aria-label="Back to pet details" @click="emit('close')">
+      <button class="back-btn" :aria-label="t('messages.backToPet')" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
-      <img class="pet-avatar" :src="pet.photo" :alt="`Photo of ${pet.name}`" />
+      <img class="pet-avatar" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" />
       <div class="chat-title">
         <h1>
           {{
             currentSender === 'owner'
-              ? `Chatting with ${pet.participantName || 'finder'}`
-              : `Chatting with ${pet.owner || 'pet owner'}`
+              ? t('messages.chattingWith', { name: pet.participantName || t('messages.finder') })
+              : t('messages.chattingWith', { name: pet.owner || t('messages.petOwner') })
           }}
         </h1>
-        <p>Context: {{ pet.name }}</p>
+        <p>{{ t('messages.context', { name: pet.name }) }}</p>
       </div>
       <div v-if="ownerContactActions" class="header-contact">
         <a
           class="contact-btn"
           :href="ownerContactActions.callHref"
-          :aria-label="`Call ${pet.owner || 'the pet owner'}`"
+          :aria-label="t('pets.callOwner', { owner: pet.owner || t('messages.petOwner') })"
         >
           <AppIcon name="phone" :size="17" />
         </a>
@@ -29,7 +29,7 @@
           :href="ownerContactActions.whatsappHref"
           target="_blank"
           rel="noopener noreferrer"
-          :aria-label="`Message ${pet.owner || 'the pet owner'} on WhatsApp`"
+          :aria-label="t('pets.whatsappOwner', { owner: pet.owner || t('messages.petOwner') })"
         >
           WA
         </a>
@@ -37,19 +37,19 @@
       <span
         v-else-if="currentSender === 'finder'"
         class="contact-missing"
-        aria-label="Owner accepts contact through PawRadar messages"
+        :aria-label="t('pets.messagesOnlyA11y')"
       >
-        Message only
+        {{ t('messages.messageOnly') }}
       </span>
     </header>
 
     <!-- Chat feed -->
-    <main ref="feedEl" class="chat-feed" aria-label="Chat messages">
-      <p class="day-divider">Today</p>
+    <main ref="feedEl" class="chat-feed" :aria-label="t('messages.chatMessages')">
+      <p class="day-divider">{{ t('common.today') }}</p>
 
-      <p v-if="loading" class="chat-state" role="status">Loading messages...</p>
+      <p v-if="loading" class="chat-state" role="status">{{ t('messages.loadingMessages') }}</p>
       <p v-else-if="error" class="chat-state error" role="alert">{{ error }}</p>
-      <p v-else-if="messages.length === 0" class="chat-state">No messages yet.</p>
+      <p v-else-if="messages.length === 0" class="chat-state">{{ t('messages.noMessages') }}</p>
 
       <template v-for="msg in messages" :key="msg.id">
         <div class="bubble-row" :class="msg.sender === currentSender ? 'out' : 'in'">
@@ -62,14 +62,14 @@
           <div class="bubble" :class="msg.sender === currentSender ? 'out' : 'in'">
             <button v-if="msg.sharedStray" class="shared-post" type="button" @click="openSharedPost(msg.sharedStray.id)">
               <img v-if="msg.sharedStray.photo" :src="imageUrl(msg.sharedStray.photo)" alt="" />
-              <span><strong>{{ msg.sharedStray.species }} rescue post</strong><small>{{ msg.sharedStray.location }}, {{ msg.sharedStray.district }}</small><span>{{ msg.sharedStray.description }}</span></span>
+              <span><strong>{{ t('messages.sharedRescuePost', { species: strayAnimalLabel(msg.sharedStray.species, msg.sharedStray.animalType) }) }}</strong><small>{{ msg.sharedStray.location }}, {{ districtLabel(msg.sharedStray.district) }}</small><span>{{ msg.sharedStray.description }}</span></span>
             </button>
-            <div v-else-if="msg.sharedStrayUnavailable" class="shared-unavailable">This post is no longer available.</div>
+            <div v-else-if="msg.sharedStrayUnavailable" class="shared-unavailable">{{ t('messages.sharedUnavailable') }}</div>
             <img
               v-if="msg.photo"
               class="bubble-photo"
               :src="msg.photo"
-              :alt="`Photo shared in the chat about ${pet.name}`"
+              :alt="t('messages.sharedChatPhotoAlt', { name: pet.name })"
             />
             <p v-if="msg.text">{{ msg.text }}</p>
             <span class="time">{{ formatTime(msg.createdAt) }}</span>
@@ -81,8 +81,8 @@
     <!-- Input footer -->
     <footer class="chat-footer">
       <div v-if="pendingPhoto" class="attachment-preview">
-        <img :src="pendingPhoto" alt="Photo ready to send" />
-        <button type="button" aria-label="Remove attached photo" @click="pendingPhoto = ''">
+        <img :src="pendingPhoto" :alt="t('messages.readyPhotoAlt')" />
+        <button type="button" :aria-label="t('messages.removePhoto')" @click="pendingPhoto = ''">
           <AppIcon name="close" :size="14" />
         </button>
       </div>
@@ -93,20 +93,20 @@
         accept="image/*"
         @change="onAttachmentSelected"
       />
-      <button class="attach-btn" type="button" aria-label="Attach a photo" @click="attachPhoto">
+      <button class="attach-btn" type="button" :aria-label="t('messages.attachPhoto')" @click="attachPhoto">
         <AppIcon name="camera" :size="22" />
       </button>
       <input
         v-model="draft"
         class="chat-input"
         type="text"
-        placeholder="Type a message&hellip;"
-        aria-label="Type a message"
+        :placeholder="t('messages.typeMessage')"
+        :aria-label="t('messages.typeMessage')"
         @keydown.enter="onEnter"
       />
       <button
         class="send-btn"
-        aria-label="Send message"
+        :aria-label="t('messages.sendMessage')"
         :disabled="sending || loading"
         @click="send"
       >
@@ -129,10 +129,13 @@ import {
 } from '../services/api'
 import type { User } from '../types/user'
 import { createContactActions } from '../utils/contact'
+import { translateApiError, useAppI18n } from '../i18n'
+import { districtLabel, strayAnimalLabel } from '../i18n/formatters'
 
 const props = defineProps<{ pet: ChatPet; user?: User | null }>()
 const emit = defineEmits<{ close: [] }>()
 const router = useRouter()
+const { t } = useAppI18n()
 
 const messages = ref<ChatMessage[]>([])
 const draft = ref('')
@@ -146,7 +149,7 @@ const currentSender = ref<ChatMessage['sender'] | null>(null)
 const ownerContactActions = computed(() => {
   if (currentSender.value !== 'finder') return null
   if (!props.pet.canViewContact) return null
-  const message = `Hi, I'm contacting you through PawRadar about ${props.pet.name}.`
+  const message = t('pets.contactMessage', { name: props.pet.name, location: '' })
   return createContactActions(props.pet.ownerPhone, message)
 })
 
@@ -180,7 +183,7 @@ async function loadMessages(showLoading = false) {
     if (showLoading || messages.value.length > previousCount) await scrollToBottom()
   } catch (e) {
     if (showLoading) {
-      error.value = e instanceof Error ? e.message : 'Failed to load messages.'
+      error.value = translateApiError(e, 'errors.loadMessages')
     }
   } finally {
     refreshing = false
@@ -220,7 +223,7 @@ function onAttachmentSelected(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   if (!file.type.startsWith('image/')) {
-    error.value = 'Choose a valid image file.'
+    error.value = t('validation.imageType')
     input.value = ''
     return
   }
@@ -231,7 +234,7 @@ function onAttachmentSelected(event: Event) {
     input.value = ''
   }
   reader.onerror = () => {
-    error.value = 'Unable to read the selected image.'
+    error.value = t('errors.readImage')
     input.value = ''
   }
   reader.readAsDataURL(file)
@@ -256,7 +259,7 @@ async function send() {
     pendingPhoto.value = ''
     await scrollToBottom('smooth')
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to send message.'
+    error.value = translateApiError(e, 'errors.sendMessage')
   } finally {
     sending.value = false
   }
@@ -408,7 +411,7 @@ onBeforeUnmount(() => {
   align-self: center;
   font-size: 11.5px;
   font-weight: 800;
-  color: #8b827a;
+  color: var(--color-text-muted);
   background: rgba(61, 56, 53, 0.06);
   border-radius: 999px;
   padding: 4px 14px;
@@ -418,14 +421,14 @@ onBeforeUnmount(() => {
 .chat-state {
   align-self: center;
   padding: 12px 16px;
-  color: #8b827a;
+  color: var(--color-text-muted);
   font-size: 13px;
   font-weight: 700;
   text-align: center;
 }
 
 .chat-state.error {
-  color: #ef6351;
+  color: var(--color-text-urgent);
 }
 
 .bubble-row {
@@ -462,8 +465,8 @@ onBeforeUnmount(() => {
 }
 
 .bubble.in {
-  background: #ffffff;
-  color: #3d3835;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
   border-radius: 18px 18px 18px 4px;
 }
 
@@ -487,7 +490,7 @@ onBeforeUnmount(() => {
 }
 
 .bubble.in .time {
-  color: #8b827a;
+  color: var(--color-text-muted);
 }
 
 .bubble.out .time {
@@ -506,12 +509,12 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
-.shared-post { width: min(250px, 66vw); overflow: hidden; border-radius: 12px; background: rgba(252,249,242,.96); color: #3d3835; text-align: left; }
+.shared-post { width: min(250px, 66vw); overflow: hidden; border-radius: 12px; background: var(--color-surface-subtle); color: var(--color-text-primary); text-align: left; }
 .shared-post > img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
 .shared-post > span { display: grid; gap: 3px; padding: 10px; }
-.shared-post strong { color: #1d6360; font-size: 12px; }
+.shared-post strong { color: var(--color-text-accent); font-size: 12px; }
 .shared-post small,.shared-post span span { overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
-.shared-unavailable { padding: 10px; border-radius: 10px; background: rgba(239,99,81,.1); color: #ef6351; font-size: 12px; font-weight: 750; }
+.shared-unavailable { padding: 10px; border-radius: 10px; background: rgba(239,99,81,.1); color: var(--color-text-urgent); font-size: 12px; font-weight: 750; }
 
 .attachment-input {
   display: none;
@@ -523,7 +526,7 @@ onBeforeUnmount(() => {
   height: 84px;
   overflow: hidden;
   border-radius: 14px;
-  background: #fcf9f2;
+  background: var(--page-bg);
 }
 
 .attachment-preview img {
@@ -551,7 +554,7 @@ onBeforeUnmount(() => {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  color: #1d6360;
+  color: var(--color-icon-primary);
   flex-shrink: 0;
   transition: background 0.15s ease;
 }
@@ -573,11 +576,11 @@ onBeforeUnmount(() => {
 }
 
 .chat-input:focus {
-  border-color: #1d6360;
+  border-color: var(--color-border-accent);
 }
 
 .chat-input::placeholder {
-  color: #8b827a;
+  color: var(--color-text-muted);
 }
 
 .send-btn {
@@ -598,6 +601,10 @@ onBeforeUnmount(() => {
 }
 
 .send-btn:disabled {
-  opacity: 0.65;
+  border: 1px solid var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
+  cursor: not-allowed;
+  box-shadow: none;
 }
 </style>

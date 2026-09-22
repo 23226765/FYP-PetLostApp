@@ -31,6 +31,7 @@ function serializeMessage(message, strayById = new Map()) {
     sharedStray: stray ? {
       id: String(stray._id),
       species: stray.species,
+      animalType: stray.animalType || '',
       description: stray.description,
       photo: stray.photo || stray.photos?.[0] || '',
       location: stray.locationName,
@@ -43,7 +44,7 @@ function serializeMessage(message, strayById = new Map()) {
 
 async function serializeMessages(messages) {
   const ids = [...new Set(messages.map(strayReferenceId).filter(Boolean).map(String))]
-  const strays = ids.length ? await Stray.find({ _id: { $in: ids }, active: { $ne: false } }).select('species description photo photos locationName district rescueStatus') : []
+  const strays = ids.length ? await Stray.find({ _id: { $in: ids }, active: { $ne: false } }).select('species animalType description photo photos locationName district rescueStatus') : []
   const strayById = new Map(strays.map((stray) => [String(stray._id), stray]))
   return messages.map((message) => serializeMessage(message, strayById))
 }

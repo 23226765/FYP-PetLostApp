@@ -79,7 +79,7 @@ export async function setPreferences(update: Partial<UserPreferences>) {
   apply(next)
   status.value = 'idle'
 
-  if (!localStorage.getItem('token')) return next
+  if (typeof localStorage === 'undefined' || !localStorage.getItem('token')) return next
 
   saving.value = true
   try {

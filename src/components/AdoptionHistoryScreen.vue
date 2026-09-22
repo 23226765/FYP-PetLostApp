@@ -22,14 +22,14 @@
       <button class="back-btn" aria-label="Go back" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
-      <h1>My Activity</h1>
+      <h1>{{ t('profile.activityTitle') }}</h1>
       <span class="spacer" aria-hidden="true" />
     </header>
 
     <div v-if="celebrationMessage" class="celebration-banner" role="status">
       <span aria-hidden="true">🎉</span>
       <div>
-        <strong>Pet reunited</strong>
+        <strong>{{ t('profile.petsReunited') }}</strong>
         <p>{{ celebrationMessage }}</p>
       </div>
     </div>
@@ -38,15 +38,15 @@
     <div class="stats">
       <div class="stat">
         <span class="num">{{ stats.sightings }}</span>
-        <span class="lbl">Sightings reported</span>
+        <span class="lbl">{{ t('profile.sightingsReported') }}</span>
       </div>
       <div class="stat highlight">
         <span class="num">{{ stats.reunited }}</span>
-        <span class="lbl">Pets reunited</span>
+        <span class="lbl">{{ t('profile.petsReunited') }}</span>
       </div>
       <div class="stat">
         <span class="num">{{ stats.posts }}</span>
-        <span class="lbl">Pets posted</span>
+        <span class="lbl">{{ t('profile.petsPosted') }}</span>
       </div>
     </div>
 
@@ -65,9 +65,9 @@
 
     <!-- ── Result count ── -->
     <p v-if="!loading && !loadError" class="count">{{ filtered.length }} {{ filtered.length === 1 ? 'entry' : 'entries' }}</p>
-    <div v-if="loading" class="load-state" role="status">Loading your activity...</div>
+    <div v-if="loading" class="load-state" role="status">{{ t('profile.loadingActivity') }}</div>
     <div v-else-if="loadError" class="load-state error" role="alert">
-      <span>{{ loadError }}</span><button type="button" @click="loadEntries">Try again</button>
+      <span>{{ loadError }}</span><button type="button" @click="loadEntries">{{ t('common.retry') }}</button>
     </div>
 
     <!-- ── Activity feed ── -->
@@ -112,8 +112,8 @@
       <span class="empty-icon">
         <AppIcon name="paw" :size="32" />
       </span>
-      <h2>Nothing here yet</h2>
-      <p>When you report a sighting or post a lost pet, it will appear here.</p>
+      <h2>{{ t('profile.nothingHere') }}</h2>
+      <p>{{ t('profile.nothingHelp') }}</p>
     </div>
 
     <!-- ── Entry detail bottom sheet ── -->
@@ -139,28 +139,28 @@
             <li>
               <span class="detail-icon"><AppIcon name="pin" :size="16" /></span>
               <div>
-                <span class="detail-label">Location</span>
+                <span class="detail-label">{{ t('profile.location') }}</span>
                 <span class="detail-value">{{ selectedEntry.location }}</span>
               </div>
             </li>
             <li>
               <span class="detail-icon"><AppIcon name="list" :size="16" /></span>
               <div>
-                <span class="detail-label">Activity type</span>
+                <span class="detail-label">{{ t('profile.activityType') }}</span>
                 <span class="detail-value">{{ typePillLabel(selectedEntry.type) }}</span>
               </div>
             </li>
             <li v-if="selectedEntry.note">
               <span class="detail-icon"><AppIcon name="eye" :size="16" /></span>
               <div>
-                <span class="detail-label">Your note</span>
+                <span class="detail-label">{{ t('profile.yourNote') }}</span>
                 <span class="detail-value">{{ selectedEntry.note }}</span>
               </div>
             </li>
             <li v-if="selectedEntry.reward">
               <span class="detail-icon"><AppIcon name="check" :size="16" /></span>
               <div>
-                <span class="detail-label">Reward</span>
+                <span class="detail-label">{{ t('pets.rewardLabel') }}</span>
                 <span class="detail-value reward-text">{{ selectedEntry.reward }}</span>
               </div>
             </li>
@@ -168,8 +168,8 @@
 
           <section v-if="selectedEntry.type === 'sighting'" class="contact-panel">
             <div class="contact-copy">
-              <span class="contact-title">Contact pet owner</span>
-              <span class="contact-sub">Share useful details directly and safely.</span>
+              <span class="contact-title">{{ t('profile.contactOwner') }}</span>
+              <span class="contact-sub">{{ t('profile.contactOwnerHelp') }}</span>
             </div>
             <div class="contact-actions">
               <button
@@ -218,7 +218,7 @@
           </button>
           <p v-if="reunionError" class="reunion-error" role="alert">{{ reunionError }}</p>
 
-          <button class="sheet-close" @click="selectedEntry = null">Done</button>
+          <button class="sheet-close" @click="selectedEntry = null">{{ t('common.done') }}</button>
         </div>
       </div>
     </Transition>
@@ -232,7 +232,7 @@
           aria-labelledby="history-reunion-title"
         >
           <span class="reunion-dialog-icon" aria-hidden="true">🎉</span>
-          <h2 id="history-reunion-title">Has your pet safely returned home?</h2>
+          <h2 id="history-reunion-title">{{ t('pets.reunionQuestion') }}</h2>
           <p>
             Marking {{ reunionTarget.petName }} as reunited will close this report and stop
             new sighting submissions.
@@ -272,12 +272,14 @@ import { getMyPets, getMySightings, updatePetStatus } from '../services/api'
 import type { MySighting } from '../services/api'
 import type { Pet } from '../types/pet'
 import { createContactActions } from '../utils/contact'
+import { translateApiError, useAppI18n } from '../i18n'
 
 /* ── Emits ── */
 const emit = defineEmits<{
   close: []
   'message-pet': [petId: string]
 }>()
+const { t } = useAppI18n()
 
 /* ── Types ── */
 type Outcome = 'reunited' | 'sighted' | 'lost'
@@ -362,7 +364,7 @@ async function loadEntries() {
     ]
   } catch (caught) {
     entries.value = []
-    loadError.value = caught instanceof Error ? caught.message : 'Unable to load your activity.'
+    loadError.value = translateApiError(caught, 'errors.loadActivity')
   } finally {
     loading.value = false
   }
@@ -437,8 +439,7 @@ async function confirmReunion() {
     celebrationMessage.value = `${updatedPet.name} is safely home. The report is now closed.`
     reunionTarget.value = null
   } catch (error) {
-    reunionError.value =
-      error instanceof Error ? error.message : 'Unable to mark this pet as reunited.'
+    reunionError.value = translateApiError(error, 'errors.markReunited')
   } finally {
     reunionSaving.value = false
   }
@@ -541,7 +542,7 @@ h1 {
   border: 1px solid rgba(29, 99, 96, 0.18);
   border-radius: 14px;
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-icon-primary);
 }
 
 .celebration-banner > span {
@@ -631,7 +632,7 @@ h1 {
 
 .chip.active {
   background: var(--teal);
-  border-color: var(--teal);
+  border-color: var(--color-border-accent);
   color: #fff;
 }
 
@@ -656,7 +657,7 @@ h1 {
 }
 
 .load-state.error {
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 .load-state button {
@@ -803,23 +804,23 @@ h3 {
 
 .type-pill.sighting {
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
 }
 
 .type-pill.post {
   background: #fde8e4; /* coral-soft */
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 .type-pill.adoption {
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
 }
 
 .reward {
   font-size: 12.5px;
   font-weight: 800;
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 /* ── Empty state — mirrors PostPetScreen .success ── */
@@ -839,7 +840,7 @@ h3 {
   place-items: center;
   border-radius: 50%;
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
   margin-bottom: 6px;
 }
 
@@ -942,7 +943,7 @@ h3 {
 }
 
 .detail-icon {
-  color: var(--teal);
+  color: var(--color-text-accent);
   margin-top: 2px;
   flex-shrink: 0;
 }
@@ -968,7 +969,7 @@ h3 {
 }
 
 .reward-text {
-  color: var(--coral);
+  color: var(--color-text-urgent);
 }
 
 .contact-panel {
@@ -1017,7 +1018,7 @@ h3 {
   gap: 6px;
   padding: 0 13px;
   border-radius: 999px;
-  color: #1d6360;
+  color: var(--color-icon-primary);
   font-size: 12.5px;
   font-weight: 800;
   text-decoration: none;
@@ -1038,12 +1039,12 @@ h3 {
 
 .contact-action.message {
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-text-accent);
 }
 
 .contact-action.whatsapp {
   border: 1px solid rgba(29, 99, 96, 0.18);
-  background: #fcf9f2;
+  background: var(--color-surface-subtle);
 }
 
 .reunited-action {
@@ -1057,7 +1058,7 @@ h3 {
   border: 1px solid rgba(29, 99, 96, 0.2);
   border-radius: 14px;
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-text-accent);
   font-size: 15px;
   font-weight: 800;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1070,7 +1071,7 @@ h3 {
 
 .reunion-error,
 .reunion-dialog-error {
-  color: #ef6351;
+  color: var(--color-text-urgent);
   font-size: 12.5px;
   font-weight: 700;
   text-align: center;
@@ -1096,7 +1097,8 @@ h3 {
   width: min(100%, 400px);
   padding: 24px 20px 20px;
   border-radius: 18px;
-  background: #fcf9f2;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
   box-shadow: 0 22px 60px rgba(20, 35, 34, 0.3);
   text-align: center;
 }
@@ -1151,7 +1153,10 @@ h3 {
 
 .reunion-dialog-actions button:disabled {
   cursor: wait;
-  opacity: 0.65;
+  border-color: var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
+  box-shadow: none;
 }
 
 .cancel-reunion {

@@ -1,18 +1,18 @@
 <template>
   <div class="auth-screen">
     <header class="auth-head">
-      <button class="close-btn" aria-label="Close" @click="emit('close')">
+      <button class="close-btn" :aria-label="t('common.close')" @click="emit('close')">
         <AppIcon name="close" :size="20" />
       </button>
       <div class="logo-circle"><AppIcon name="paw" :size="34" /></div>
       <h1>PawRadar</h1>
-      <p class="tagline">Your neighborhood is watching out for every lost pet.</p>
+      <p class="tagline">{{ t('authentication.tagline') }}</p>
     </header>
 
-    <div class="tabs" role="tablist" aria-label="Authentication mode">
-      <button :class="{ active: mode === 'login' }" @click="switchMode('login')">Log In</button>
+    <div class="tabs" role="tablist" :aria-label="t('authentication.mode')">
+      <button :class="{ active: mode === 'login' }" @click="switchMode('login')">{{ t('authentication.login') }}</button>
       <button :class="{ active: mode === 'register' }" @click="switchMode('register')">
-        Create Account
+        {{ t('authentication.signUp') }}
       </button>
     </div>
 
@@ -25,28 +25,28 @@
       </Transition>
 
       <label v-if="mode === 'register'" class="field">
-        <span>Full name</span>
-        <input v-model="name" type="text" placeholder="e.g. Emma Carter" required />
+        <span>{{ t('authentication.fullName') }}</span>
+        <input v-model="name" type="text" :placeholder="t('authentication.namePlaceholder')" required />
       </label>
 
       <label class="field">
-        <span>Email</span>
+        <span>{{ t('authentication.email') }}</span>
         <input
           v-model="email"
           type="email"
-          placeholder="you@example.com"
+          :placeholder="t('authentication.emailPlaceholder')"
           autocomplete="email"
           required
         />
       </label>
 
       <label v-if="mode === 'register'" class="field">
-        <span>Phone number</span>
+        <span>{{ t('authentication.phone') }}</span>
         <input v-model="phone" type="tel" placeholder="+852 5555 0000" />
       </label>
 
       <label class="field">
-        <span>Password</span>
+        <span>{{ t('authentication.password') }}</span>
         <input
           v-model="password"
           type="password"
@@ -59,11 +59,11 @@
 
       <button class="submit-btn" type="submit" :disabled="loading">
         <span v-if="loading" class="spinner" />
-        <template v-else>{{ mode === 'login' ? 'Log in' : 'Create account' }}</template>
+        <template v-else>{{ mode === 'login' ? t('authentication.login') : t('authentication.signUp') }}</template>
       </button>
     </form>
 
-    <button class="guest-link" @click="emit('guest')">Continue as Guest</button>
+    <button class="guest-link" @click="emit('guest')">{{ t('authentication.continueGuest') }}</button>
   </div>
 </template>
 
@@ -72,8 +72,10 @@ import { ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { login, register } from '../services/api'
 import type { User } from '../types/user'
+import { translateApiError, useAppI18n } from '../i18n'
 
 const emit = defineEmits<{ close: []; guest: []; authenticated: [user: User] }>()
+const { t } = useAppI18n()
 
 const mode = ref<'login' | 'register'>('login')
 const name = ref('')
@@ -109,7 +111,7 @@ async function submit() {
     }
   } catch (e) {
     const err = e as { response?: { data?: { error?: string } }; message?: string }
-    error.value = err?.response?.data?.error || err?.message || 'Something went wrong.'
+    error.value = err?.response?.data?.error || err?.message || translateApiError(e)
   } finally {
     loading.value = false
   }
@@ -195,7 +197,7 @@ h1 {
 
 .tabs button.active {
   background: var(--surface);
-  color: var(--teal);
+  color: var(--color-text-accent);
   box-shadow: var(--shadow-card);
 }
 
@@ -211,7 +213,7 @@ h1 {
   gap: 8px;
   padding: 12px 16px;
   background: #fde8e4;
-  color: var(--coral);
+  color: var(--color-text-urgent);
   border-radius: var(--radius-md);
   font-size: 13.5px;
   font-weight: 700;
@@ -239,7 +241,7 @@ h1 {
 }
 
 .field input:focus {
-  border-color: var(--teal);
+  border-color: var(--color-border-accent);
 }
 
 .submit-btn {
@@ -259,7 +261,11 @@ h1 {
 }
 
 .submit-btn:disabled {
-  opacity: 0.7;
+  border: 1px solid var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .spinner {
@@ -282,7 +288,7 @@ h1 {
   text-align: center;
   font-size: 14px;
   font-weight: 800;
-  color: var(--teal);
+  color: var(--color-text-accent);
 }
 
 .expand-enter-active,

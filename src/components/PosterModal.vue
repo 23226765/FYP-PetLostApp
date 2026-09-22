@@ -3,14 +3,14 @@
     class="poster-overlay"
     role="dialog"
     aria-modal="true"
-    :aria-label="`Lost pet flyer for ${pet.name}`"
+    :aria-label="t('poster.flyerAria', { name: pet.name })"
   >
     <header class="poster-toolbar no-print">
-      <button class="tool-button" type="button" aria-label="Close flyer" @click="emit('close')">
+      <button class="tool-button" type="button" :aria-label="t('poster.close')" @click="emit('close')">
         <AppIcon name="close" :size="21" />
       </button>
-      <strong>Lost Pet Flyer</strong>
-      <button class="tool-button" type="button" aria-label="Share pet link" @click="sharePoster">
+      <strong>{{ t('poster.title') }}</strong>
+      <button class="tool-button" type="button" :aria-label="t('poster.shareAria')" @click="sharePoster">
         <AppIcon name="share" :size="19" />
       </button>
     </header>
@@ -18,12 +18,12 @@
     <main class="poster-scroll">
       <article class="poster-sheet">
         <header class="alert-banner">
-          <span>LOST PET</span>
-          <span lang="zh-Hant">走失協尋</span>
+          <span>{{ t('poster.lostPet') }}</span>
+          <span>{{ t('poster.helpFind') }}</span>
         </header>
 
         <section class="identity-block">
-          <p>Please help us find</p>
+          <p>{{ t('poster.pleaseHelp') }}</p>
           <h1>{{ pet.name }}</h1>
           <span class="species-tag">{{ speciesBreed }}</span>
         </section>
@@ -32,7 +32,7 @@
           <img
             v-if="petPhoto && !photoFailed"
             :src="petPhoto"
-            :alt="`Photo of ${pet.name}, a missing ${pet.breed || pet.species}`"
+            :alt="t('poster.photoAlt', { name: pet.name, animal: pet.breed || speciesLabel(pet.species) })"
             class="poster-photo"
             crossorigin="anonymous"
             referrerpolicy="no-referrer"
@@ -42,7 +42,7 @@
             v-else
             class="photo-placeholder"
             role="img"
-            :aria-label="`Photo unavailable for ${pet.name}`"
+            :aria-label="t('poster.photoUnavailable', { name: pet.name })"
           >
             <AppIcon name="paw" :size="64" />
           </div>
@@ -52,26 +52,26 @@
 
         <dl class="detail-grid">
           <div>
-            <dt>Last seen</dt>
-            <dd>{{ pet.lastSeen || 'Not provided' }}</dd>
+            <dt>{{ t('pets.lastSeenLabel') }}</dt>
+            <dd>{{ pet.lastSeenAt ? formatDateTime(pet.lastSeenAt) : pet.lastSeen || t('poster.notProvided') }}</dd>
           </div>
           <div>
-            <dt>District / Location</dt>
+            <dt>{{ t('poster.districtLocation') }}</dt>
             <dd>{{ districtLocation }}</dd>
           </div>
         </dl>
 
         <section class="description-block">
-          <h2>Identifying details</h2>
-          <p>{{ pet.details || pet.description || 'No additional details provided.' }}</p>
+          <h2>{{ t('poster.identifyingDetails') }}</h2>
+          <p>{{ pet.details || pet.description || t('poster.noDetails') }}</p>
         </section>
 
         <section class="recovery-block">
           <div class="contact-block">
-            <p class="contact-heading">If you see {{ pet.name }}</p>
-            <strong>{{ pet.canViewContact && pet.ownerPhone ? pet.ownerPhone : 'Report through PawRadar' }}</strong>
-            <span>{{ pet.owner ? `Contact ${pet.owner}` : 'Please submit a sighting immediately' }}</span>
-            <small>Please do not chase. Note the location and direction of travel.</small>
+            <p class="contact-heading">{{ t('poster.ifSeen', { name: pet.name }) }}</p>
+            <strong>{{ pet.canViewContact && pet.ownerPhone ? pet.ownerPhone : t('poster.reportThrough') }}</strong>
+            <span>{{ pet.owner ? t('poster.contactOwner', { owner: pet.owner }) : t('poster.submitImmediately') }}</span>
+            <small>{{ t('poster.doNotChase') }}</small>
           </div>
 
           <div class="qr-block">
@@ -79,19 +79,19 @@
               v-if="qrSvg"
               class="qr-code"
               role="img"
-              :aria-label="`Scannable QR code linking to ${deepLink}`"
+              :aria-label="t('poster.qrAria', { link: deepLink })"
               v-html="qrSvg"
             />
             <div v-else class="qr-loading" role="status">
-              {{ qrError || 'Generating QR code…' }}
+              {{ qrError ? t(qrError) : t('poster.generatingQr') }}
             </div>
-            <p>Scan to report sighting on PawRadar</p>
+            <p>{{ t('poster.scanCaption') }}</p>
           </div>
         </section>
 
         <footer class="poster-footer">
           <span><AppIcon name="paw" :size="16" /> PawRadar</span>
-          <span>Live report: {{ shortDeepLink }}</span>
+          <span>{{ t('poster.liveReport', { link: shortDeepLink }) }}</span>
         </footer>
       </article>
     </main>
@@ -102,11 +102,11 @@
       </Transition>
       <button class="share-button" type="button" @click="sharePoster">
         <AppIcon name="share" :size="18" />
-        Share Link
+        {{ t('poster.shareLink') }}
       </button>
       <button class="print-button" type="button" :disabled="!qrSvg" @click="printPoster">
         <AppIcon name="list" :size="18" />
-        Print / Save PDF
+        {{ t('poster.printPdf') }}
       </button>
     </footer>
   </div>
@@ -117,6 +117,10 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import AppIcon from './AppIcon.vue'
 import type { Pet } from '../types/pet'
+import { useAppI18n } from '../i18n'
+import { districtLabel, formatDateTime, speciesLabel } from '../i18n/formatters'
+
+const { t } = useAppI18n()
 
 const props = defineProps<{ pet: Pet }>()
 const emit = defineEmits<{ close: [] }>()
@@ -152,20 +156,20 @@ const petPhoto = computed(() =>
 )
 
 const speciesBreed = computed(() =>
-  [props.pet.species, props.pet.breed].filter((value) => value?.trim()).join(' · '),
+  [speciesLabel(props.pet.species), props.pet.breed].filter((value) => value?.trim()).join(' · '),
 )
 
 const districtLocation = computed(() => {
-  const parts = [props.pet.district, props.pet.location].filter(
+  const parts = [props.pet.district ? districtLabel(props.pet.district) : '', props.pet.location].filter(
     (value): value is string => Boolean(value?.trim()),
   )
-  return [...new Set(parts)].join(' · ') || 'Location not provided'
+  return [...new Set(parts)].join(' · ') || t('sightings.locationNotProvided')
 })
 
 const rewardLabel = computed(() => {
   const reward = props.pet.reward?.trim()
   if (!reward) return ''
-  return /reward/i.test(reward) ? reward : `${reward} Reward`
+  return /reward/i.test(reward) ? reward : t('poster.reward', { value: reward })
 })
 
 watch(petPhoto, () => {
@@ -180,7 +184,7 @@ watch(
     qrError.value = ''
 
     if (!petIdentifier.value) {
-      qrError.value = 'Pet link unavailable'
+      qrError.value = 'poster.linkUnavailable'
       return
     }
 
@@ -194,7 +198,7 @@ watch(
       })
       if (sequence === qrRequestSequence) qrSvg.value = svg
     } catch {
-      if (sequence === qrRequestSequence) qrError.value = 'Unable to generate QR code'
+      if (sequence === qrRequestSequence) qrError.value = 'poster.qrError'
     }
   },
   { immediate: true },
@@ -215,7 +219,7 @@ function normalizeImageUrl(value: string): string {
 
 function printPoster() {
   if (!qrSvg.value) {
-    showFeedback('Please wait for the QR code to finish generating.')
+    showFeedback(t('poster.waitForQr'))
     return
   }
   window.print()
@@ -223,22 +227,22 @@ function printPoster() {
 
 async function sharePoster() {
   const shareData = {
-    title: `Missing: ${props.pet.name}`,
-    text: `${props.pet.name} is missing. Open the live PawRadar report to view details or submit a sighting.`,
+    title: t('poster.shareTitle', { name: props.pet.name }),
+    text: t('poster.shareText', { name: props.pet.name }),
     url: deepLink.value,
   }
 
   try {
     if (navigator.share) {
       await navigator.share(shareData)
-      showFeedback('Pet report shared.')
+      showFeedback(t('poster.shared'))
       return
     }
     await navigator.clipboard.writeText(deepLink.value)
-    showFeedback('Pet report link copied.')
+    showFeedback(t('poster.copied'))
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return
-    showFeedback('Unable to share. Copy the link from the flyer instead.')
+    showFeedback(t('poster.shareError'))
   }
 }
 
@@ -390,7 +394,7 @@ onBeforeUnmount(() => {
   padding: 8px 18px;
   border-radius: 999px;
   background: #ef6351;
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 18px;
   font-weight: 900;
   box-shadow: 0 5px 14px rgba(239, 99, 81, 0.25);
@@ -534,7 +538,7 @@ onBeforeUnmount(() => {
 }
 
 .share-button { background: rgba(255, 255, 255, 0.14); }
-.print-button { background: #ef6351; box-shadow: 0 6px 18px rgba(239, 99, 81, 0.34); }
+.print-button { background: #ef6351; color: var(--color-text-on-coral); box-shadow: 0 6px 18px rgba(239, 99, 81, 0.34); }
 .poster-actions button:active:not(:disabled) { transform: scale(0.98); }
 .poster-actions button:disabled { opacity: 0.55; }
 

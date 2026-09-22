@@ -1,12 +1,12 @@
 <template>
   <div class="boost">
     <header class="head">
-      <button class="back" aria-label="Go back" @click="emit('back')">
+      <button class="back" :aria-label="t('common.back')" @click="emit('back')">
         <AppIcon name="back" :size="22" />
       </button>
       <div class="head-text">
-        <h1>Expand radar coverage</h1>
-        <p>Monitor a wider area with your existing web alerts</p>
+        <h1>{{ t('settings.boostTitle') }}</h1>
+        <p>{{ t('settings.boostHelp') }}</p>
       </div>
     </header>
 
@@ -30,35 +30,35 @@
       <!-- Comparison card -->
       <div class="compare">
         <section class="plan">
-          <h2>Current coverage</h2>
+          <h2>{{ t('settings.currentCoverage') }}</h2>
           <span class="price">{{ radiusKm }} km</span>
           <ul>
-            <li><AppIcon name="check" :size="15" /> Nearby report filtering</li>
-            <li><AppIcon name="check" :size="15" /> Radar feed listing</li>
-            <li><AppIcon name="check" :size="15" /> In-app notifications</li>
+            <li><AppIcon name="check" :size="15" /> {{ t('settings.nearbyFiltering') }}</li>
+            <li><AppIcon name="check" :size="15" /> {{ t('settings.radarListing') }}</li>
+            <li><AppIcon name="check" :size="15" /> {{ t('settings.inAppNotifications') }}</li>
           </ul>
         </section>
         <section class="plan featured">
-          <span class="badge"><AppIcon name="zap" :size="12" /> BOOSTED</span>
-          <h2>Wider coverage</h2>
-          <span class="price">Free</span>
+          <span class="badge"><AppIcon name="zap" :size="12" /> {{ t('settings.boosted') }}</span>
+          <h2>{{ t('settings.widerCoverage') }}</h2>
+          <span class="price">{{ t('settings.free') }}</span>
           <ul>
             <li><AppIcon name="check" :size="15" /> 15 km radius</li>
-            <li><AppIcon name="check" :size="15" /> Wider Radar results</li>
-            <li><AppIcon name="check" :size="15" /> Wider web alert area</li>
+            <li><AppIcon name="check" :size="15" /> {{ t('settings.widerResults') }}</li>
+            <li><AppIcon name="check" :size="15" /> {{ t('settings.widerAlerts') }}</li>
           </ul>
         </section>
       </div>
 
       <p class="note">
-        A wider radius can surface more reports, but may also include less relevant results.
+        {{ t('settings.boostNote') }}
       </p>
     </div>
 
     <footer class="foot">
       <button class="boost-btn" :class="{ done: boosted }" :disabled="boosted" @click="emit('activate', 15)">
         <AppIcon :name="boosted ? 'check' : 'zap'" :size="20" />
-        {{ boosted ? '15 km radius is active' : 'Use 15 km radius' }}
+        {{ boosted ? t('settings.radiusActive') : t('settings.useRadius') }}
       </button>
     </footer>
   </div>
@@ -67,9 +67,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { useAppI18n } from '../i18n'
 
 const props = defineProps<{ radiusKm: number }>()
 const emit = defineEmits<{ back: []; activate: [radiusKm: number] }>()
+const { t } = useAppI18n()
 
 const boosted = computed(() => props.radiusKm >= 15)
 </script>
@@ -154,7 +156,7 @@ const boosted = computed(() => props.radiusKm >= 15)
   width: 56px;
   height: 56px;
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
   border: 2px dashed var(--teal);
 }
 
@@ -162,7 +164,7 @@ const boosted = computed(() => props.radiusKm >= 15)
   width: 130px;
   height: 130px;
   background: rgba(29, 99, 96, 0.12);
-  color: var(--teal);
+  color: var(--color-text-accent);
   border: 2.5px solid var(--teal);
 }
 
@@ -181,7 +183,7 @@ const boosted = computed(() => props.radiusKm >= 15)
 }
 
 .circle-label.boosted {
-  color: var(--teal);
+  color: var(--color-text-accent);
 }
 
 /* Comparison card */
@@ -217,7 +219,7 @@ const boosted = computed(() => props.radiusKm >= 15)
   align-items: center;
   gap: 4px;
   background: var(--coral);
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -252,7 +254,7 @@ const boosted = computed(() => props.radiusKm >= 15)
 }
 
 .plan li svg {
-  color: var(--teal);
+  color: var(--color-text-accent);
   flex-shrink: 0;
 }
 
@@ -279,7 +281,7 @@ const boosted = computed(() => props.radiusKm >= 15)
 }
 
 .note strong {
-  color: var(--teal);
+  color: var(--color-text-accent);
 }
 
 .foot {
@@ -301,7 +303,7 @@ const boosted = computed(() => props.radiusKm >= 15)
   padding: 18px 0;
   border-radius: 999px;
   background: var(--coral);
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 16.5px;
   font-weight: 800;
   box-shadow: 0 8px 22px rgba(239, 99, 81, 0.4);

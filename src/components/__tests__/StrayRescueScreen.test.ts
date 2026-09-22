@@ -14,7 +14,7 @@ vi.mock('../../services/api', () => apiMocks)
 vi.mock('@capacitor/camera', () => ({ Camera: { getPhoto: vi.fn().mockResolvedValue({ dataUrl: 'data:image/png;base64,AAAA' }) }, CameraResultType: { DataUrl: 'dataUrl' } }))
 
 const stray: StrayReport = {
-  id: 'stray-one', species: 'Cat', description: 'Calm ginger cat by the market',
+  id: 'stray-one', species: 'Cat', animalType: '', description: 'Calm ginger cat by the market',
   photo: 'https://example.test/cat.jpg', photos: ['https://example.test/cat.jpg'],
   condition: 'healthy', district: 'Wan Chai', location: 'Market entrance',
   coordinates: [114.17, 22.28], rescueStatus: 'reported', reporterName: 'Finder',
@@ -81,5 +81,18 @@ describe('Stray community feed and report flow', () => {
     expect(apiMocks.reportStray).toHaveBeenCalledWith(expect.objectContaining({
       coordinates: [114.18, 22.29], photo: '/uploads/stray.png', photos: ['/uploads/stray.png'],
     }))
+  })
+
+  it('requires and displays a specific animal type for the Other category', async () => {
+    const parrot = { ...stray, id: 'stray-parrot', species: 'Other' as const, animalType: 'Parrot' }
+    const { wrapper } = await render([parrot])
+    expect(wrapper.get('.card-title strong').text()).toBe('Parrot')
+
+    await wrapper.get('.report-button').trigger('click')
+    const selects = wrapper.findAll('.report-sheet select')
+    await selects[0].setValue('Other')
+    const animalTypeInput = wrapper.get('.report-sheet input[maxlength="80"]')
+    await animalTypeInput.setValue('Rabbit')
+    expect((animalTypeInput.element as HTMLInputElement).value).toBe('Rabbit')
   })
 })

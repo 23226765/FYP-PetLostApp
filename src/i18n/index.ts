@@ -2,9 +2,25 @@ import { createI18n } from 'vue-i18n'
 import en from '../locales/en.json'
 import zhHK from '../locales/zh-HK.json'
 import zhCN from '../locales/zh-CN.json'
+import zhHKExtra from '../locales/zh-HK-extra.json'
+import zhCNExtra from '../locales/zh-CN-extra.json'
 import type { AppLanguage } from '../types/user'
 
 export const SUPPORTED_LANGUAGES: readonly AppLanguage[] = ['en', 'zh-HK', 'zh-CN']
+
+function mergeLocale<T extends Record<string, unknown>>(base: T, extra: Record<string, unknown>): T {
+  const result = { ...base } as Record<string, unknown>
+  for (const [key, value] of Object.entries(extra)) {
+    const current = result[key]
+    result[key] = value && typeof value === 'object' && !Array.isArray(value)
+      ? mergeLocale((current && typeof current === 'object' ? current : {}) as Record<string, unknown>, value as Record<string, unknown>)
+      : value
+  }
+  return result as T
+}
+
+const zhHKMessages = mergeLocale(zhHK, zhHKExtra)
+const zhCNMessages = mergeLocale(zhCN, zhCNExtra)
 
 export const i18n = createI18n({
   legacy: false,
@@ -15,8 +31,8 @@ export const i18n = createI18n({
   escapeParameter: true,
   messages: {
     en,
-    'zh-HK': zhHK,
-    'zh-CN': zhCN,
+    'zh-HK': zhHKMessages,
+    'zh-CN': zhCNMessages,
   },
   datetimeFormats: {
     en: {

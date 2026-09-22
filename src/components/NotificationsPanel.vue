@@ -11,16 +11,16 @@
   -->
   <div class="panel">
     <header class="top">
-      <button class="back-btn" aria-label="Go back" @click="emit('close')">
+      <button class="back-btn" :aria-label="t('common.back')" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
-      <h1>Notifications</h1>
-      <button class="mark-all" @click="markAll">Mark all read</button>
+      <h1>{{ t('notifications.title') }}</h1>
+      <button class="mark-all" @click="markAll">{{ t('notifications.markAllRead') }}</button>
     </header>
 
     <!-- Unread count pill -->
     <div v-if="unread > 0" class="unread-pill">
-      {{ unread }} unread
+      {{ t('notifications.unread', { count: unread }) }}
     </div>
 
     <div class="list">
@@ -55,8 +55,8 @@
 
     <div v-if="notifications.length === 0" class="empty">
       <span class="empty-icon"><AppIcon name="bell" :size="30" /></span>
-      <h2>All caught up!</h2>
-      <p>No notifications yet. When a pet is spotted nearby you'll see it here.</p>
+      <h2>{{ t('notifications.allCaughtUp') }}</h2>
+      <p>{{ t('notifications.emptyHelp') }}</p>
     </div>
   </div>
 </template>
@@ -65,8 +65,10 @@
 import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
 import type { AppNotification } from '../types/notification'
+import { useAppI18n } from '../i18n'
 
 const props = defineProps<{ notifications: AppNotification[] }>()
+const { t } = useAppI18n()
 const emit = defineEmits<{
   close: []
   'open-pet': [petId: string, sightingId?: string]
@@ -82,7 +84,8 @@ function typeIcon(type: AppNotification['type']): string {
 }
 
 function typeBadge(type: AppNotification['type']): string {
-  return { proximity: 'Nearby', sighting: 'Sighting', message: 'Message', reunited: 'Reunited', comment: 'Comment' }[type]
+  const key = { proximity: 'notifications.nearby', sighting: 'notifications.sighting', message: 'notifications.message', reunited: 'notifications.reunited', comment: 'notifications.comment' }[type]
+  return t(key)
 }
 
 function onTap(n: AppNotification) {
@@ -137,7 +140,7 @@ h1 { font-size: 17px; font-weight: 800; }
 .mark-all {
   font-size: 13px;
   font-weight: 800;
-  color: var(--teal);
+  color: var(--color-icon-primary);
 }
 
 .unread-pill {
@@ -146,7 +149,7 @@ h1 { font-size: 17px; font-weight: 800; }
   padding: 4px 14px;
   border-radius: 999px;
   background: var(--coral);
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 12px;
   font-weight: 800;
 }
@@ -165,7 +168,7 @@ h1 { font-size: 17px; font-weight: 800; }
   background: var(--surface);
 }
 
-.notif-row.unread { background: #f5faf9; }
+.notif-row.unread { background: var(--color-surface-selected); }
 .notif-row:active { background: var(--teal-soft); }
 
 .notif-photo-wrap {
@@ -183,7 +186,7 @@ h1 { font-size: 17px; font-weight: 800; }
   width: 50px; height: 50px;
   border-radius: var(--radius-sm);
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
   display: grid;
   place-items: center;
 }
@@ -236,11 +239,11 @@ h1 { font-size: 17px; font-weight: 800; }
   margin-top: 2px;
 }
 
-.type-badge.proximity { background: var(--teal-soft); color: var(--teal); }
-.type-badge.sighting  { background: var(--teal-soft); color: var(--teal); }
-.type-badge.message   { background: #fde8e4; color: var(--coral); }
+.type-badge.proximity { background: var(--teal-soft); color: var(--color-text-accent); }
+.type-badge.sighting  { background: var(--teal-soft); color: var(--color-text-accent); }
+.type-badge.message   { background: var(--status-coral-bg); color: var(--color-text-urgent); }
 .type-badge.reunited  { background: #e8f5e9; color: #388e3c; }
-.type-badge.comment   { background: var(--teal-soft); color: var(--teal); }
+.type-badge.comment   { background: var(--teal-soft); color: var(--color-text-accent); }
 
 /* Empty state */
 .empty {
@@ -251,7 +254,7 @@ h1 { font-size: 17px; font-weight: 800; }
   width: 72px; height: 72px;
   display: grid; place-items: center;
   border-radius: 50%;
-  background: var(--teal-soft); color: var(--teal);
+  background: var(--teal-soft); color: var(--color-text-accent);
   margin-bottom: 6px;
 }
 .empty h2 { font-size: 20px; font-weight: 800; }

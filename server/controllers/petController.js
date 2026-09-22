@@ -191,18 +191,25 @@ function serializePet(pet, { distanceMeters, requester, contactOwner } = {}) {
     distanceKm,
     lastSeen: pet.lastSeen ? relativeDay(pet.lastSeen) : '',
     postedAgo: pet.createdAt ? relativeTime(pet.createdAt) : '',
+    lastSeenAt: pet.lastSeen ? new Date(pet.lastSeen).toISOString() : null,
+    createdAt: pet.createdAt ? new Date(pet.createdAt).toISOString() : null,
     mapX: pet.mapX,
     mapY: pet.mapY,
     coordinates: isPoint(pet.location) ? pet.location.coordinates : null,
   }
 }
 
-async function serializePetDocuments(pets, requester, distanceForPet) {
-  const owners = await loadContactOwners(pets)
+async function serializePetDocuments(
+  pets,
+  requester,
+  distanceForPet,
+  { includeContact = true } = {},
+) {
+  const owners = includeContact ? await loadContactOwners(pets) : new Map()
   return pets.map((pet) =>
     serializePet(pet, {
       requester,
-      contactOwner: contactOwnerFrom(owners, pet.reportedBy),
+      contactOwner: includeContact ? contactOwnerFrom(owners, pet.reportedBy) : undefined,
       distanceMeters: distanceForPet?.(pet),
     }),
   )
@@ -258,17 +265,28 @@ export async function listPets(req, res, next) {
 // GET /api/pets/mine
 export async function listMyPets(req, res, next) {
   try {
+    const { page, limit, skip } = paginationFor(req.query)
+    const filter = { reportedBy: req.user._id }
+    const [total, reunited] = await Promise.all([
+      Pet.countDocuments(filter),
+      Pet.countDocuments({ ...filter, status: 'reunited' }),
+    ])
     let docs
     try {
-      docs = await Pet.find({ reportedBy: req.user._id }).sort({ createdAt: -1 })
+      docs = await Pet.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit)
     } catch (error) {
       const isUnsupportedOrderByError =
         error?.code === 2 && String(error.message).includes('order-by item is excluded')
       if (!isUnsupportedOrderByError) throw error
-      docs = await Pet.find({ reportedBy: req.user._id })
+      docs = await Pet.find(filter)
       docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      docs = docs.slice(skip, skip + limit)
     }
-    res.json({ pets: await serializePetDocuments(docs, req.user) })
+    res.json({
+      pets: await serializePetDocuments(docs, req.user, undefined, { includeContact: false }),
+      pagination: paginationPayload(page, limit, total),
+      summary: { total, reunited, active: total - reunited },
+    })
   } catch (err) {
     next(err)
   }

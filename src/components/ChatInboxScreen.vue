@@ -2,15 +2,15 @@
   <section class="inbox" aria-labelledby="messages-title">
     <header class="inbox-header">
       <div>
-        <p class="eyebrow">PawRadar Direct</p>
-        <h1 id="messages-title">Messages</h1>
-        <p>Conversations about active pet reports</p>
+        <p class="eyebrow">{{ t('messages.direct') }}</p>
+        <h1 id="messages-title">{{ t('messages.title') }}</h1>
+        <p>{{ t('messages.subtitle') }}</p>
       </div>
       <button
         class="refresh-button"
         type="button"
         :disabled="refreshing"
-        aria-label="Refresh conversations"
+        :aria-label="t('messages.refresh')"
         @click="refreshInbox"
       >
         <svg
@@ -42,12 +42,12 @@
             <path class="paw-pad" d="M44 42c-8 0-13 6-13 12 0 4 4 6 8 4 3-2 7-2 10 0 4 2 8 0 8-4 0-6-5-12-13-12Z" />
           </svg>
         </span>
-        <h2>Sign in to view your conversations</h2>
-        <p>Your conversations stay connected to your PawRadar account.</p>
-        <button type="button" @click="emit('auth-needed')">Sign in</button>
+        <h2>{{ t('messages.signInTitle') }}</h2>
+        <p>{{ t('messages.accountHelp') }}</p>
+        <button type="button" @click="emit('auth-needed')">{{ t('authentication.signIn') }}</button>
       </div>
 
-      <div v-else-if="loading" class="conversation-list" role="status" aria-label="Loading conversations">
+      <div v-else-if="loading" class="conversation-list" role="status" :aria-label="t('messages.loading')">
         <div v-for="index in 4" :key="index" class="conversation-card skeleton" aria-hidden="true">
           <span class="skeleton-avatar" />
           <span class="skeleton-copy">
@@ -59,9 +59,9 @@
 
       <div v-else-if="error" class="inbox-state error" role="alert">
         <span class="empty-icon"><AppIcon name="send" :size="28" /></span>
-        <h2>Messages are unavailable</h2>
+        <h2>{{ t('messages.unavailable') }}</h2>
         <p>{{ error }}</p>
-        <button type="button" @click="loadInbox(true)">Try again</button>
+        <button type="button" @click="loadInbox(true)">{{ t('common.retry') }}</button>
       </div>
 
       <div v-else-if="conversations.length === 0" class="inbox-state empty">
@@ -74,9 +74,9 @@
             <path class="paw-pad" d="M44 42c-8 0-13 6-13 12 0 4 4 6 8 4 3-2 7-2 10 0 4 2 8 0 8-4 0-6-5-12-13-12Z" />
           </svg>
         </span>
-        <h2>No messages yet</h2>
-        <p>Messages start when you reach out to an owner or reporter from a pet listing.</p>
-        <button type="button" @click="emit('explore-radar')">Explore Radar</button>
+        <h2>{{ t('messages.noMessages') }}</h2>
+        <p>{{ t('messages.noMessagesHelp') }}</p>
+        <button type="button" @click="emit('explore-radar')">{{ t('pets.exploreRadar') }}</button>
       </div>
 
       <ul v-else class="conversation-list">
@@ -92,7 +92,7 @@
               <img
                 v-if="normalizedImageUrl(conversation.pet.photo) && !failedPhotos.has(conversation.pet.id)"
                 :src="normalizedImageUrl(conversation.pet.photo)"
-                :alt="`Photo of ${conversation.pet.name}`"
+                :alt="t('pets.photoAlt', { name: conversation.pet.name })"
                 loading="lazy"
                 @error="markPhotoFailed(conversation.pet.id)"
               />
@@ -111,13 +111,13 @@
               <span class="pet-context">{{ conversation.pet.name }}</span>
               <span class="message-row">
                 <span class="message-preview">
-                  {{ conversation.lastMessage.text || (conversation.lastMessage.sharedStray ? 'Shared a stray post' : 'Shared a photo') }}
+                  {{ conversation.lastMessage.text || (conversation.lastMessage.sharedStray ? t('messages.sharedStray') : t('messages.sharedPhoto')) }}
                 </span>
                 <span
                   v-if="isConversationUnread(conversation)"
                   class="unread-badge"
-                  aria-label="Unread conversation"
-                >New</span>
+                  :aria-label="t('messages.unread')"
+                >{{ t('messages.new') }}</span>
               </span>
             </span>
           </button>
@@ -132,8 +132,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { getChatInbox, type ChatConversation, type ChatPet } from '../services/api'
 import type { User } from '../types/user'
+import { translateApiError, useAppI18n } from '../i18n'
+import { formatRelativeDate } from '../i18n/formatters'
 
 const props = defineProps<{ user: User | null }>()
+const { t } = useAppI18n()
 const emit = defineEmits<{
   'auth-needed': []
   'explore-radar': []
@@ -184,8 +187,8 @@ function viewerRole(conversation: ChatConversation): 'owner' | 'finder' {
 
 function conversationName(conversation: ChatConversation): string {
   return viewerRole(conversation) === 'owner'
-    ? conversation.pet.participantName || 'Finder'
-    : conversation.pet.owner || 'Pet owner'
+    ? conversation.pet.participantName || t('messages.finder')
+    : conversation.pet.owner || t('messages.petOwner')
 }
 
 function readStateKey(conversationId: string): string {
@@ -233,8 +236,8 @@ function openConversation(conversation: ChatConversation) {
 }
 
 function conversationAriaLabel(conversation: ChatConversation): string {
-  const unread = isConversationUnread(conversation) ? 'Unread conversation. ' : ''
-  return `${unread}Open messages with ${conversationName(conversation)} about ${conversation.pet.name}`
+  const unread = isConversationUnread(conversation) ? `${t('messages.unread')}.` : ''
+  return t('messages.openConversation', { unread, name: conversationName(conversation), pet: conversation.pet.name })
 }
 
 async function loadInbox(showLoading = false) {
@@ -258,7 +261,7 @@ async function loadInbox(showLoading = false) {
   } catch (cause) {
     if (sequence === requestSequence) {
       if (showLoading) conversations.value = []
-      error.value = cause instanceof Error ? cause.message : 'Failed to load conversations.'
+      error.value = translateApiError(cause, 'errors.loadConversations')
     }
   } finally {
     if (sequence === requestSequence && showLoading) loading.value = false
@@ -274,25 +277,7 @@ function refreshInbox() {
   void loadInbox(true)
 }
 
-function relativeTime(value: string): string {
-  const timestamp = new Date(value).getTime()
-  if (!Number.isFinite(timestamp)) return ''
-
-  const elapsed = Math.max(0, Date.now() - timestamp)
-  const minutes = Math.floor(elapsed / 60_000)
-  if (minutes < 1) return 'Now'
-  if (minutes < 60) return `${minutes}m ago`
-
-  const date = new Date(timestamp)
-  const today = new Date()
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-  const startOfMessageDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-  const dayDifference = Math.round((startOfToday - startOfMessageDay) / 86_400_000)
-  if (dayDifference === 0) return `${Math.floor(minutes / 60)}h ago`
-  if (dayDifference === 1) return 'Yesterday'
-  if (dayDifference < 7) return date.toLocaleDateString([], { weekday: 'short' })
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
-}
+const relativeTime = formatRelativeDate
 
 watch(
   () => props.user?.id,
@@ -317,7 +302,7 @@ onBeforeUnmount(() => {
   max-width: 480px;
   margin: 0 auto;
   padding-bottom: calc(106px + var(--safe-bottom));
-  background: #fcf9f2;
+  background: var(--page-bg);
 }
 
 .inbox-header {
@@ -336,7 +321,7 @@ onBeforeUnmount(() => {
 
 .eyebrow {
   margin-bottom: 2px;
-  color: #ef6351;
+  color: var(--color-text-urgent);
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.12em;
@@ -366,7 +351,7 @@ h1 {
   flex-shrink: 0;
   border-radius: 14px;
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-icon-primary);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -383,7 +368,9 @@ h1 {
 
 .refresh-button:disabled {
   cursor: wait;
-  opacity: 0.7;
+  border-color: var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
 }
 
 .refresh-button svg.spinning {
@@ -403,7 +390,7 @@ h1 {
   padding: 28px 22px;
   border: 1px solid rgba(29, 99, 96, 0.08);
   border-radius: 14px;
-  background: #fff;
+  background: var(--color-surface-elevated);
   color: var(--ink-muted);
   box-shadow: 0 12px 30px rgba(29, 99, 96, 0.07);
   text-align: center;
@@ -431,7 +418,7 @@ h1 {
   margin-bottom: 14px;
   border-radius: 22px;
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-text-accent);
 }
 
 .empty-illustration {
@@ -450,13 +437,13 @@ h1 {
 
 .empty-illustration .bubble {
   fill: rgba(29, 99, 96, 0.1);
-  stroke: #1d6360;
+  stroke: var(--color-icon-primary);
   stroke-width: 3;
 }
 
 .empty-illustration .paw,
 .empty-illustration .paw-pad {
-  fill: #ef6351;
+  fill: var(--color-text-urgent);
 }
 
 .inbox-state button {
@@ -465,7 +452,7 @@ h1 {
   padding: 0 22px;
   border-radius: 999px;
   background: #1d6360;
-  color: #fff;
+  color: var(--color-text-on-accent);
   font-weight: 800;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -476,7 +463,7 @@ h1 {
 
 .inbox-state.error .empty-icon {
   background: rgba(239, 99, 81, 0.11);
-  color: #ef6351;
+  color: var(--color-text-urgent);
 }
 
 .conversation-list {
@@ -504,7 +491,7 @@ h1 {
 .conversation-card:hover,
 .conversation-card:focus-visible {
   border-color: rgba(29, 99, 96, 0.08);
-  background: #fff;
+  background: var(--color-surface);
   box-shadow: 0 8px 24px rgba(29, 99, 96, 0.065);
 }
 
@@ -528,7 +515,7 @@ h1 {
   flex-shrink: 0;
   overflow: visible;
   border-radius: 50%;
-  background: #fcf9f2;
+  background: var(--color-surface-subtle);
 }
 
 .pet-photo img,
@@ -583,14 +570,14 @@ h1 {
 
 .conversation-card.unread .conversation-title strong,
 .conversation-card.unread .conversation-title time {
-  color: #1d6360;
+  color: var(--color-icon-primary);
   font-weight: 850;
 }
 
 .pet-context {
   display: block;
   margin-top: 2px;
-  color: #1d6360;
+  color: var(--color-text-accent);
   font-size: 11px;
   font-weight: 750;
 }
@@ -624,7 +611,7 @@ h1 {
   padding: 0 7px;
   border-radius: 999px;
   background: #ef6351;
-  color: #fff;
+  color: var(--color-text-on-coral);
   font-size: 9.5px;
   font-weight: 850;
 }

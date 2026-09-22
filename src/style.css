@@ -4,18 +4,53 @@
   --teal-soft: #ddecea;
   --coral: #ef6351;
   --page-bg: #fcf9f2;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --surface-soft: #f5f1e9;
-  --text-primary: #3d3835;
-  --text-secondary: #6f6862;
-  --text-muted: #8b827a;
-  --border: #ece7e1;
+  /* Canonical semantic tokens. Legacy aliases below keep existing component
+     structure intact while making every foreground theme-aware. */
+  --color-text-primary: #3d3835;
+  --color-text-secondary: #6f6862;
+  --color-text-muted: #6f6862;
+  --color-text-inverse: #ffffff;
+  --color-text-on-accent: #ffffff;
+  --color-text-on-coral: #2b1511;
+  --color-text-on-light: #3d3835;
+  --color-text-accent: #1d6360;
+  --color-text-urgent: #b83c30;
+  --color-icon-primary: #1d6360;
+  --color-icon-muted: #626b68;
+  --color-icon-on-light: #1d6360;
+  --color-nav-active: #1d6360;
+  --color-nav-inactive: #626b68;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-subtle: #f5f1e9;
+  --color-surface-selected: #e8f2f0;
+  --color-surface-light: #fcf9f2;
+  --color-border: #ded8d0;
+  --color-border-accent: #1d6360;
+  --color-focus: rgba(29, 99, 96, 0.52);
+  --color-disabled-surface: #ece8e0;
+  --color-disabled-text: #6e6761;
+  --color-disabled-border: #d5cfc7;
+  --surface: var(--color-surface);
+  --surface-elevated: var(--color-surface-elevated);
+  --surface-soft: var(--color-surface-subtle);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --border: var(--color-border);
   --divider: rgba(29, 99, 96, 0.09);
   --input-bg: #ffffff;
   --button-primary: #1d6360;
   --button-primary-text: #ffffff;
-  --focus-ring: rgba(29, 99, 96, 0.34);
+  --focus-ring: var(--color-focus);
+  --option-surface: #ffffff;
+  --option-selected-surface: #e8f2f0;
+  --option-text: #3d3835;
+  --option-secondary-text: #6f6862;
+  --option-border: #ded8d0;
+  --option-accent-border: #1d6360;
+  --radio-border: #8b827a;
+  --radio-indicator: #1d6360;
   --overlay: rgba(22, 31, 30, 0.52);
   --success: #297a56;
   --warning: #a66a14;
@@ -44,17 +79,50 @@
 
 :root[data-theme='dark'] {
   --page-bg: #101817;
-  --surface: #182321;
-  --surface-elevated: #202d2b;
-  --surface-soft: #14201e;
-  --text-primary: #f4f1ea;
-  --text-secondary: #cbc6bd;
-  --text-muted: #a9aaa4;
-  --border: #31413e;
+  --color-text-primary: #f4f1ea;
+  --color-text-secondary: #d2d5d1;
+  --color-text-muted: #b4bbb7;
+  --color-text-inverse: #101817;
+  --color-text-on-accent: #ffffff;
+  --color-text-on-coral: #2b1511;
+  --color-text-on-light: #3d3835;
+  --color-text-accent: #82d7ce;
+  --color-text-urgent: #ff998d;
+  --color-icon-primary: #82d7ce;
+  --color-icon-muted: #c2cbc7;
+  --color-icon-on-light: #1d6360;
+  --color-nav-active: #82d7ce;
+  --color-nav-inactive: #c2cbc7;
+  --color-surface: #182321;
+  --color-surface-elevated: #202d2b;
+  --color-surface-subtle: #14201e;
+  --color-surface-selected: #24413e;
+  --color-surface-light: #fcf9f2;
+  --color-border: #41534f;
+  --color-border-accent: #82d7ce;
+  --color-focus: rgba(130, 215, 206, 0.72);
+  --color-disabled-surface: #263330;
+  --color-disabled-text: #aeb5b1;
+  --color-disabled-border: #41504d;
+  --surface: var(--color-surface);
+  --surface-elevated: var(--color-surface-elevated);
+  --surface-soft: var(--color-surface-subtle);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --border: var(--color-border);
   --divider: rgba(208, 235, 231, 0.12);
   --input-bg: #111c1a;
   --teal-soft: #24413e;
-  --focus-ring: rgba(107, 199, 190, 0.52);
+  --focus-ring: var(--color-focus);
+  --option-surface: #202d2b;
+  --option-selected-surface: #24413e;
+  --option-text: #f4f1ea;
+  --option-secondary-text: #cbc6bd;
+  --option-border: #41534f;
+  --option-accent-border: #82d7ce;
+  --radio-border: #91a49f;
+  --radio-indicator: #82d7ce;
   --overlay: rgba(0, 0, 0, 0.72);
   --success: #75c99c;
   --warning: #e7b66d;
@@ -112,21 +180,108 @@ select {
   outline-offset: 2px;
 }
 
+/* Shared two-state control used by Radar and Stray views. Selected state has
+   surface, border, weight and colour cues; neither state depends on colour
+   alone. */
+.theme-segmented-control {
+  display: flex;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+}
+
+.theme-segmented-control .theme-segmented-option {
+  flex: 1;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-nav-inactive);
+  font-weight: 800;
+  transition: background-color .2s ease, border-color .2s ease,
+    color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.theme-segmented-control .theme-segmented-option.active,
+.theme-segmented-control .theme-segmented-option[aria-selected='true'] {
+  border-color: var(--color-border-accent);
+  background: var(--color-surface-selected);
+  color: var(--color-nav-active);
+  box-shadow: var(--shadow-card);
+  font-weight: 900;
+}
+
+.theme-segmented-control .theme-segmented-option svg {
+  color: inherit;
+  stroke: currentColor;
+}
+
+.theme-segmented-control .theme-segmented-option:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.theme-segmented-control .theme-segmented-option:disabled {
+  border-color: var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .theme-segmented-control .theme-segmented-option:not(:disabled):hover {
+    border-color: var(--color-border-accent);
+    background: color-mix(in srgb, var(--color-surface-selected) 68%, var(--color-surface));
+  }
+}
+
 /* Dark mode compatibility for established component surfaces. Component-level
    rules continue to own layout; these semantic overrides only replace colour. */
 [data-theme='dark'] :where(
   .settings-page, .profile-screen, .radar-screen, .saved-page, .detail,
   .inbox-screen, .chat-screen, .notifications, .stray-page, .rescue-screen,
-  .post-screen, .smart-match, .adoption-screen, .auth-screen
+  .post-screen, .smart-match, .adoption-screen, .auth-screen, .inbox, .chat,
+  .detail-page, .boost-screen
 ) {
   background-color: var(--page-bg) !important;
   color: var(--text-primary);
 }
 
 [data-theme='dark'] :where(
+  .profile-topbar, .inbox-header, .settings-header, .saved-header,
+  .tabbar, .notifications .top, .panel .top, .chat-header, .detail-header,
+  .smart-match > .top
+) {
+  border-color: var(--divider) !important;
+  background: color-mix(in srgb, var(--page-bg) 94%, transparent) !important;
+}
+
+[data-theme='dark'] :where(.scrim, .reunion-scrim, .modal-backdrop) {
+  background: var(--overlay) !important;
+}
+
+[data-theme='dark'] :where(.save-button, .back-button, .close-btn, .menu-button) {
+  border-color: var(--border) !important;
+  background-color: var(--surface-elevated) !important;
+  color: var(--color-icon-primary) !important;
+}
+
+[data-theme='dark'] :where(.photo-wrap, .photo-placeholder, .hero-placeholder) {
+  background-color: var(--surface-soft) !important;
+}
+
+[data-theme='dark'] :where(
   .settings-card, .auth-card, .pet-card, .stray-card, .conversation-card,
   .summary-card, .info-card, .modal, .sheet, .panel, .filter-panel,
-  .empty-state, .loading-card, .profile-card
+  .empty-state, .loading-card, .profile-card, .card, .criteria-card,
+  .location-context, .scanned-summary, .trajectory-card, .timeline-content,
+  .facts, .fact, .post-card, .map-card, .manage-card, .comments,
+  .share-sheet, .chat-footer, .inbox-state, .location-picker
 ) {
   background-color: var(--surface) !important;
   border-color: var(--border) !important;
@@ -142,6 +297,28 @@ select {
 
 [data-theme='dark'] :where(input, textarea)::placeholder {
   color: var(--text-muted);
+}
+
+[data-theme='dark'] :where(
+  .location-notice, .heatmap-notice, .trajectory-empty, .current-location,
+  .attachment-preview, .shared-post
+) {
+  border-color: var(--border) !important;
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] :where(.location-heading h3, .coordinate-fields label) {
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] :where(.location-guidance, .location-message, .location-summary) {
+  color: var(--text-secondary);
+}
+
+[data-theme='dark'] :where(.bubble.in, .day-divider, .skeleton-copy span, .skeleton-avatar) {
+  background-color: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Leaflet's free OSM raster tiles stay unchanged. Controls, popups, clusters,

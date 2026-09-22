@@ -23,7 +23,11 @@ const router = createRouter({
     { path: '/my-reports', name: 'my-reports', component: AdoptionHistoryScreen },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to, from, savedPosition) => {
+    if (savedPosition) return savedPosition
+    if (to.name === 'profile' && from.name === 'profile') return false
+    return { top: 0 }
+  },
 })
 
 export default router

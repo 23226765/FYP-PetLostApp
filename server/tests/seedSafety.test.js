@@ -40,6 +40,14 @@ test('demo users have explicit idempotent privacy choices', async () => {
   assert.match(source, /seedBatch: SEED_BATCH/)
 })
 
+test('demo users have explicit language and appearance preferences', async () => {
+  const source = await readFile(new URL('../scripts/seedTestData.js', import.meta.url), 'utf8')
+  assert.match(source, /preferences: \{ language: 'en', theme: 'light' \}/)
+  assert.match(source, /preferences: \{ language: 'zh-HK', theme: 'dark' \}/)
+  assert.match(source, /preferences: \{ language: 'en', theme: 'dark' \}/)
+  assert.match(source, /preferences: profile\.preferences/)
+})
+
 test('cleanup deletes only the named seed batch', async () => {
   const source = await readFile(new URL('cleanTestSeed.js', scriptsDirectory), 'utf8')
   const scopedDeletes = source.match(/deleteMany\(\{ seedBatch: SEED_BATCH \}\)/g) || []

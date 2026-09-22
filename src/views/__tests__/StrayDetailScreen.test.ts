@@ -12,7 +12,7 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('../../services/api', () => apiMocks)
 
 const post: StrayReport = {
-  id: 'stray-one', species: 'Dog', description: 'Friendly dog waiting by a bench',
+  id: 'stray-one', species: 'Dog', animalType: '', description: 'Friendly dog waiting by a bench',
   photo: '', photos: [], condition: 'healthy', district: 'Sha Tin', location: 'River promenade',
   coordinates: [114.19, 22.38], rescueStatus: 'reported', reporterName: 'Owner',
   author: { id: 'owner-id', name: 'Owner', avatar: '' }, canViewContact: false, reportedBy: 'owner-id',

@@ -5,8 +5,8 @@
       <button v-if="toastPet" class="toast" aria-live="polite" @click="openFromToast">
         <img :src="toastPet.photo" alt="" />
         <span class="toast-text">
-          <strong>{{ toastPet.name }} is {{ toastPet.distanceKm }} km away!</strong>
-          <span>Last seen {{ toastPet.location }} · Tap to view</span>
+          <strong>{{ toastPet.name }} · {{ t('common.kilometres', { count: toastPet.distanceKm }) }}</strong>
+          <span>{{ t('pets.lastSeenAt', { location: toastPet.location }) }}</span>
         </span>
         <AppIcon name="chevron" :size="18" />
       </button>
@@ -39,6 +39,7 @@
         :user="currentUser"
         :radius-km="radiusKm"
         :user-location="userLocation"
+        :report-request="rescueReportRequest"
         @auth-needed="authOpen = true"
       />
       <PostPetScreen v-if="tab === 'post'" :user="currentUser" @done="onPosted" />
@@ -54,6 +55,9 @@
         v-if="tab === 'profile'"
         :user="currentUser"
         @login="openLogin"
+        @add-pet="goTab('post')"
+        @create-rescue="openRescueReport"
+        @explore-rescue="goTab('strays')"
       />
     </main>
 
@@ -106,11 +110,11 @@
           <span class="deep-link-icon" aria-hidden="true">
             <AppIcon name="paw" :size="30" />
           </span>
-          <h1>Pet report unavailable</h1>
+          <h1>{{ t('pets.reportUnavailable') }}</h1>
           <p>{{ deepLinkError }}</p>
           <div class="deep-link-actions">
-            <button type="button" @click="retryDeepLinkedPet">Try again</button>
-            <button type="button" class="secondary" @click="closePetDetail">Explore Radar</button>
+            <button type="button" @click="retryDeepLinkedPet">{{ t('common.retry') }}</button>
+            <button type="button" class="secondary" @click="closePetDetail">{{ t('pets.exploreRadar') }}</button>
           </div>
         </template>
       </section>
@@ -181,23 +185,23 @@
           class="sheet"
           role="dialog"
           aria-modal="true"
-          :aria-label="`Report a sighting of ${sightingPet.name}`"
+          :aria-label="`${t('sightings.report')}: ${sightingPet.name}`"
         >
           <div class="grab" />
           <template v-if="!sightingSent">
             <div class="sheet-head">
               <img :src="sightingPet.photo" alt="" />
               <div>
-                <h2>You found {{ sightingPet.name }}?</h2>
-                <p>Your location will be shared with the owner.</p>
+                <h2>{{ t('sightings.foundQuestion', { name: sightingPet.name }) }}</h2>
+                <p>{{ t('sightings.locationShared') }}</p>
               </div>
             </div>
             <label class="sheet-field">
-              <span>What did you see?</span>
+              <span>{{ t('sightings.whatSeen') }}</span>
               <textarea
                 v-model="sightingNote"
                 rows="3"
-                :placeholder="`e.g. Spotted near the bakery on Elm Street, heading north\u2026`"
+                :placeholder="t('sightings.notePlaceholder')"
               />
             </label>
             <SightingLocationPicker
@@ -205,25 +209,25 @@
               :initial-center="sightingPet.coordinates ?? null"
             />
             <label class="sheet-field">
-              <span>Location name or nearby landmark</span>
+              <span>{{ t('sightings.locationName') }}</span>
               <input
                 v-model.trim="sightingLocationName"
                 type="text"
                 maxlength="200"
                 autocomplete="off"
-                placeholder="e.g. Mong Kok MTR Exit E2"
+                :placeholder="t('sightings.locationPlaceholder')"
               />
-              <small>This label describes the confirmed point; it does not move the marker.</small>
+              <small>{{ t('sightings.locationHelp') }}</small>
             </label>
             <button class="sheet-photo" type="button" @click="attachSightingPhoto">
               <AppIcon name="camera" :size="19" />
-              {{ sightingPhoto ? 'Change photo' : 'Attach a photo' }}
+              {{ sightingPhoto ? t('sightings.changePhoto') : t('sightings.attachPhoto') }}
             </button>
             <img
               v-if="sightingPhoto"
               class="sighting-photo-preview"
               :src="sightingPhoto"
-              alt="Sighting photo preview"
+              :alt="t('sightings.photoPreviewAlt')"
             />
             <p v-if="sightingError" class="sheet-error">{{ sightingError }}</p>
             <button
@@ -233,19 +237,16 @@
               @click="sendSighting"
             >
               <AppIcon name="pin" :size="19" />
-              {{ sightingSubmitting ? 'Sending sighting...' : 'Send confirmed sighting' }}
+              {{ sightingSubmitting ? t('sightings.sending') : t('sightings.send') }}
             </button>
           </template>
           <div v-else class="sheet-success" role="status">
             <span class="check">
               <AppIcon name="check" :size="26" />
             </span>
-            <h2>Sighting sent!</h2>
-            <p>
-              {{ sightingPet.owner }} has been notified with the selected sighting point. Thank you for
-              helping!
-            </p>
-            <button class="sheet-send" @click="closeSighting">Done</button>
+            <h2>{{ t('sightings.sent') }}</h2>
+            <p>{{ t('sightings.sentHelp', { owner: sightingPet.owner }) }}</p>
+            <button class="sheet-send" @click="closeSighting">{{ t('common.done') }}</button>
           </div>
         </div>
       </div>
@@ -281,7 +282,7 @@
     </Transition>
 
     <!-- Bottom tab bar -->
-    <nav class="tabbar" aria-label="Main navigation">
+    <nav class="tabbar" :aria-label="t('navigation.main')">
       <button
         type="button"
         class="nav-item"
@@ -290,7 +291,7 @@
         @click="goTab('radar')"
       >
         <AppIcon name="radar" :size="23" />
-        <span>Radar</span>
+        <span>{{ t('navigation.radar') }}</span>
       </button>
 
       <button
@@ -301,7 +302,7 @@
         @click="goTab('strays')"
       >
         <AppIcon name="paw" :size="23" />
-        <span>Rescue</span>
+        <span>{{ t('navigation.rescue') }}</span>
       </button>
 
       <button
@@ -309,13 +310,13 @@
         class="report-item"
         :class="{ active: tab === 'post' }"
         :aria-current="tab === 'post' ? 'page' : undefined"
-        aria-label="Report a lost pet"
+        :aria-label="t('pets.reportLostPet')"
         @click="goTab('post')"
       >
         <span class="report-icon">
           <AppIcon name="plus" :size="26" />
         </span>
-        <span class="report-label">Report</span>
+        <span class="report-label">{{ t('navigation.report') }}</span>
       </button>
 
       <button
@@ -323,7 +324,7 @@
         class="nav-item"
         :class="{ active: tab === 'messages' }"
         :aria-current="tab === 'messages' ? 'page' : undefined"
-        :aria-label="messageUnreadCount ? `Messages, ${messageUnreadCount} unread` : 'Messages'"
+        :aria-label="messageUnreadCount ? t('navigation.unreadMessages', { count: messageUnreadCount }) : t('navigation.messages')"
         @click="goTab('messages')"
       >
         <span class="nav-icon-wrap">
@@ -350,7 +351,7 @@
             {{ messageUnreadCount > 9 ? '9+' : messageUnreadCount }}
           </span>
         </span>
-        <span>Messages</span>
+        <span>{{ t('navigation.messages') }}</span>
       </button>
 
       <button
@@ -361,7 +362,7 @@
         @click="goTab('profile')"
       >
         <AppIcon name="user" :size="23" />
-        <span>Profile</span>
+        <span>{{ t('navigation.profile') }}</span>
       </button>
     </nav>
   </div>
@@ -402,11 +403,14 @@ import AdoptionHistoryScreen from './components/AdoptionHistoryScreen.vue'
 import BoostScreen from './components/BoostScreen.vue'
 import StrayRescueScreen from './components/StrayRescueScreen.vue'
 import SightingLocationPicker from './components/SightingLocationPicker.vue'
+import { applyAccountPreferences } from './composables/usePreferences'
+import { translateApiError, useAppI18n } from './i18n'
 
 type Tab = 'radar' | 'strays' | 'post' | 'messages' | 'profile'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useAppI18n()
 
 // Hong Kong centre — fallback when geolocation is unavailable/denied.
 const DEFAULT_CENTER = { lat: 22.2825, lng: 114.1897 }
@@ -438,6 +442,7 @@ const deepLinkError = ref('')
 const posterPet = ref<Pet | null>(null)
 const chatPet = ref<ChatPet | null>(null)
 const messageUnreadCount = ref(0)
+const rescueReportRequest = ref(0)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
 const sightingPhoto = ref('')
@@ -545,7 +550,7 @@ async function loadPets() {
     if (currentUser.value) void syncNotificationPreferences().catch(() => undefined)
   } catch (e) {
     if (requestSequence !== petsRequestSequence) return
-    error.value = e instanceof Error ? e.message : 'Failed to load nearby pets'
+    error.value = translateApiError(e, 'errors.loadPets')
   } finally {
     if (requestSequence === petsRequestSequence) {
       loading.value = false
@@ -600,6 +605,7 @@ async function restoreSession() {
   try {
     const user = await getProfile()
     currentUser.value = user
+    applyAccountPreferences(user.preferences)
     alertsEnabled.value = user.alertsEnabled !== false
     radiusKm.value = user.alertRadiusKm || radiusKm.value
   } catch {
@@ -610,6 +616,7 @@ async function restoreSession() {
 
 function handleAuth(user: User) {
   currentUser.value = user
+  applyAccountPreferences(user.preferences)
   alertsEnabled.value = user.alertsEnabled !== false
   radiusKm.value = user.alertRadiusKm || radiusKm.value
   authOpen.value = false
@@ -666,6 +673,12 @@ function goTab(t: Tab) {
   if (t === 'messages' && !currentUser.value) openLogin()
 }
 
+function openRescueReport() {
+  tab.value = 'strays'
+  rescueReportRequest.value += 1
+  if (route.name === 'profile') void router.push('/')
+}
+
 function openLogin() {
   if (route.name !== 'login') void router.push('/login')
   authOpen.value = true
@@ -697,8 +710,7 @@ async function openDeepLinkedPet(petId: string) {
     selectedPet.value = pet
   } catch (cause) {
     if (sequence !== deepLinkRequestSequence || route.name !== 'pet-detail') return
-    deepLinkError.value =
-      cause instanceof Error ? cause.message : 'This pet report could not be loaded.'
+    deepLinkError.value = translateApiError(cause, 'errors.petUnavailable')
   } finally {
     if (sequence === deepLinkRequestSequence) deepLinkLoading.value = false
   }
@@ -715,7 +727,14 @@ function closePetDetail() {
   selectedSightingId.value = undefined
   deepLinkLoading.value = false
   deepLinkError.value = ''
-  if (route.name === 'pet-detail') void router.push('/')
+  if (route.name === 'pet-detail') {
+    const returnTab = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
+    if (route.query.from === 'profile') {
+      void router.push({ name: 'profile', query: { tab: returnTab || 'pets' } })
+    } else {
+      void router.push('/')
+    }
+  }
 }
 
 function handlePetStatusUpdated(updatedPet: Pet) {
@@ -757,6 +776,7 @@ function openBoost() {
 
 function handleUserUpdated(user: User) {
   currentUser.value = user
+  applyAccountPreferences(user.preferences)
   chatPet.value = null
   posterPet.value = null
   void loadPets()
@@ -972,7 +992,7 @@ async function attachSightingPhoto() {
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
     if (!message.toLowerCase().includes('cancel')) {
-      sightingError.value = message || 'Unable to attach a photo.'
+      sightingError.value = t('errors.photoPicker')
     }
   }
 }
@@ -1004,7 +1024,7 @@ async function sendSighting() {
     const p = pets.value.find((x) => x.id === pet.id)
     if (p) p.status = 'sighted'
   } catch (e) {
-    sightingError.value = e instanceof Error ? e.message : 'Failed to send sighting'
+    sightingError.value = translateApiError(e, 'errors.sendSighting')
   } finally {
     sightingSubmitting.value = false
   }
@@ -1085,7 +1105,7 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #fcf9f2;
+  background: var(--page-bg);
   color: var(--ink-muted);
   text-align: center;
 }
@@ -1110,14 +1130,14 @@ main {
   place-items: center;
   border-radius: 50%;
   background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  color: var(--color-icon-primary);
 }
 
 .deep-link-spinner {
   width: 34px;
   height: 34px;
   border: 3px solid rgba(29, 99, 96, 0.14);
-  border-top-color: #1d6360;
+  border-top-color: var(--color-icon-primary);
   border-radius: 50%;
   animation: deep-link-spin 0.75s linear infinite;
 }
@@ -1138,8 +1158,8 @@ main {
 }
 
 .deep-link-actions button.secondary {
-  background: rgba(29, 99, 96, 0.1);
-  color: #1d6360;
+  background: var(--color-surface-selected);
+  color: var(--color-text-accent);
 }
 
 @keyframes deep-link-spin {
@@ -1313,7 +1333,7 @@ main {
 
 .sheet-field textarea:focus,
 .sheet-field input:focus {
-  border-color: var(--teal);
+  border-color: var(--color-border-accent);
 }
 
 .sheet-photo {
@@ -1325,7 +1345,7 @@ main {
   padding: 13px 0;
   border-radius: var(--radius-md);
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-text-accent);
   font-weight: 800;
   font-size: 14.5px;
   margin-bottom: 12px;
@@ -1349,7 +1369,7 @@ main {
 }
 
 .sheet-error {
-  color: var(--coral);
+  color: var(--color-text-urgent);
   font-size: 13px;
   font-weight: 700;
   margin: -4px 0 12px;
@@ -1372,7 +1392,9 @@ main {
 
 .sheet-send:disabled {
   cursor: wait;
-  opacity: 0.68;
+  border: 1px solid var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
   box-shadow: none;
 }
 
@@ -1392,7 +1414,7 @@ main {
   place-items: center;
   border-radius: 50%;
   background: var(--teal-soft);
-  color: var(--teal);
+  color: var(--color-icon-primary);
   margin-bottom: 4px;
 }
 
@@ -1411,10 +1433,10 @@ main {
 
 /* Bottom tab bar */
 .tabbar {
-  --nav-teal: #1d6360;
-  --nav-coral: #ef6351;
-  --nav-base: #fcf9f2;
-  --nav-muted: #626b68;
+  --nav-active: var(--color-nav-active);
+  --nav-inactive: var(--color-nav-inactive);
+  --nav-accent: var(--coral);
+  --nav-surface: var(--color-surface-elevated);
   --nav-ease: cubic-bezier(0.4, 0, 0.2, 1);
 
   position: fixed;
@@ -1434,10 +1456,10 @@ main {
   max-width: 480px;
   padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
 
-  border: 1px solid rgba(29, 99, 96, 0.09);
+  border: 1px solid var(--color-border);
   border-bottom: 0;
   border-radius: 24px 24px 0 0;
-  background: var(--nav-base);
+  background: var(--nav-surface);
   box-shadow:
     0 -2px 8px rgba(26, 47, 43, 0.025),
     0 -12px 36px rgba(26, 47, 43, 0.07);
@@ -1463,7 +1485,7 @@ main {
   border-radius: 16px;
   background: transparent;
 
-  color: var(--nav-muted);
+  color: var(--nav-inactive);
   font: inherit;
   font-size: 12px;
   font-weight: 650;
@@ -1480,9 +1502,10 @@ main {
 }
 
 .nav-item.active {
-  background: rgba(29, 99, 96, 0.09);
-  color: var(--nav-teal);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--color-border-accent);
+  background: var(--color-surface-selected);
+  color: var(--nav-active);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-text-inverse) 18%, transparent);
   font-weight: 750;
 }
 
@@ -1504,10 +1527,10 @@ main {
   display: grid;
   place-items: center;
   padding: 0 4px;
-  border: 2.5px solid var(--nav-base);
+  border: 2.5px solid var(--nav-surface);
   border-radius: 999px;
-  background: var(--nav-coral);
-  color: #fff;
+  background: var(--nav-accent);
+  color: var(--color-text-on-coral);
   box-shadow: 0 2px 7px rgba(239, 99, 81, 0.42);
   font-size: 9.5px;
   font-weight: 900;
@@ -1518,7 +1541,7 @@ main {
   gap: 6px;
   margin-top: -22px;
   padding: 0 8px 3px;
-  color: var(--nav-teal);
+  color: var(--nav-active);
   font-weight: 750;
 }
 
@@ -1528,7 +1551,7 @@ main {
   box-sizing: border-box;
   width: 58px;
   height: 58px;
-  border: 4px solid var(--nav-base);
+  border: 4px solid var(--nav-surface);
   border-radius: 20px;
 
   background:
@@ -1537,8 +1560,8 @@ main {
       rgba(255, 255, 255, 0.15),
       rgba(255, 255, 255, 0)
     ),
-    var(--nav-coral);
-  color: #fff;
+    var(--nav-accent);
+  color: var(--color-text-on-accent);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
     0 3px 7px rgba(93, 45, 35, 0.09),
@@ -1556,7 +1579,8 @@ main {
 }
 
 .report-item.active .report-label {
-  background: rgba(29, 99, 96, 0.09);
+  outline: 1px solid var(--color-border-accent);
+  background: var(--color-surface-selected);
 }
 
 .tabbar button:active {
@@ -1570,18 +1594,18 @@ main {
 }
 
 .tabbar button:focus-visible {
-  outline: 3px solid var(--nav-teal);
+  outline: 3px solid var(--color-focus);
   outline-offset: 3px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .nav-item:hover {
-    background: rgba(29, 99, 96, 0.07);
-    color: var(--nav-teal);
+    background: color-mix(in srgb, var(--color-surface-selected) 62%, var(--nav-surface));
+    color: var(--nav-active);
   }
 
   .nav-item.active:hover {
-    background: rgba(29, 99, 96, 0.13);
+    background: var(--color-surface-selected);
   }
 
   .report-item:hover .report-icon {

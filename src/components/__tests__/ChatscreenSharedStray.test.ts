@@ -25,7 +25,7 @@ describe('structured stray post messages', () => {
   afterEach(() => vi.useRealTimers())
 
   it('opens the canonical stray route from a message preview', async () => {
-    const { wrapper, router } = await render({ sharedStray: { id: 'stray-one', species: 'Cat', description: 'Ginger cat', photo: '', location: 'Market', district: 'Wan Chai', rescueStatus: 'reported' } })
+    const { wrapper, router } = await render({ sharedStray: { id: 'stray-one', species: 'Cat', animalType: '', description: 'Ginger cat', photo: '', location: 'Market', district: 'Wan Chai', rescueStatus: 'reported' } })
     await wrapper.get('.shared-post').trigger('click'); await flushPromises()
     expect(router.currentRoute.value.path).toBe('/strays/stray-one')
     wrapper.unmount()
