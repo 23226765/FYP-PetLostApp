@@ -1,33 +1,36 @@
 # PawRadar Backend Overview
 
-This document reflects the active Express/Mongoose backend under `server/`.
+## Runtime and database
 
-## 1. Database and Connection
+- Runtime: Node.js with ES modules.
+- HTTP API: Express 4 on `PORT` (default `5000`).
+- ODM: Mongoose 8.
+- Authentication: bearer JWT plus bcryptjs password hashing.
+- Database: MongoDB Atlas, always selected as lowercase `petlostapp` through `dbName` in `server/config/database.js`.
+- Secrets: `MONGODB_URI` and `JWT_SECRET` are loaded only from `server/.env`. That file is Git-ignored.
+- Startup safety: the server validates the JWT secret, connects, confirms the selected database name, pings Atlas, creates the known collections/indexes, and only then listens.
+- Images: MongoDB stores URL/data metadata strings; the server does not store binary image documents.
 
-### Database provider
+`JWT_SECRET` must contain at least 32 characters and cannot be a known development placeholder. Validation errors never echo the supplied value.
 
-- **Provider:** MongoDB Atlas.
-- **Database name:** `petlostapp` (selected explicitly through the Mongoose connection options).
-- **Connection:** `server/config/database.js` owns the reusable Mongoose connection, connection pool, startup ping, sanitized error messages, and shutdown behavior.
-- **Startup behavior:** Express listens only after Atlas confirms the active database is exactly `petlostapp`, a database ping succeeds, and the six PawRadar collections and indexes are initialized. `/api/health` performs a live ping and returns HTTP `503` with `status: "degraded"` if connectivity is lost or the database name differs.
+## Collections and schemas
 
-### Environment variables
+Every model uses Mongoose timestamps. Development fixtures can carry the hidden, immutable `seedBatch` marker.
 
-Local backend variables are defined in the gitignored file `server/.env` and loaded from that file's absolute path before route modules are evaluated.
+| Model / collection | Core fields | Important rules and indexes |
+|---|---|---|
+| `User` / `users` | `name`, private `realName`, `email`, hidden `password`, `phone`, `avatar`, `role`, alert settings, privacy, language/theme preferences | Unique email; `alertLocation` `2dsphere`; preferences allow `en`, `zh-HK`, `zh-CN` and `light`, `dark` |
+| `Pet` / `pets` | `name`, `species`, `breed`, `district`, `photo(s)`, details, reward, owner contact snapshot, status, location, last seen, `reportedBy` | `location` `2dsphere`; species/status, district/breed/status, owner/date indexes; status is `lost`, `sighted`, or `reunited` |
+| `Sighting` / `sightings` | `pet`, `reportedBy`, location/name, note, photo, reporter contact, confirmations, `sightedAt`, `submissionId` | `location` `2dsphere`; pet/time and reporter/date indexes; sparse unique submission ID prevents retry duplication |
+| `Stray` / `strays` | `species`, specific `animalType`, description, up to six photos, condition, district, location, rescue status, reporter, observed/status dates | `location` `2dsphere`; district/status/date and owner/date indexes; per-owner submission idempotency |
+| `Message` / `messages` | `pet`, owner/finder role, `sentBy`, participant, text/photo, shared stray, client request ID | Conversation/date indexes; per-sender request idempotency |
+| `Notification` / `notifications` | recipient, related pet/sighting/stray/comment/message, type, title/body/photo, read state | Recipient/date and related-entity indexes; types: proximity, sighting, message, reunited, comment |
+| `StrayComment` / `straycomments` | stray, author, text, submission ID | Stray/date index; per-author request idempotency |
+| `SavedStray` / `savedstrays` | user, stray | Unique user/stray pair and user/date index |
 
-| Variable | Purpose |
-|---|---|
-| `MONGODB_URI` | Private MongoDB Atlas driver connection string; the backend selects `petlostapp` |
-| `PORT` | Express port; defaults to `5000` |
-| `JWT_SECRET` | Signs and verifies seven-day login tokens |
-| `CORS_ORIGINS` | Optional comma-separated browser origins; defaults to `http://localhost:3000,http://127.0.0.1:3000` |
-| `ALLOW_DESTRUCTIVE_SEED` | Must be exactly `true` to permit the development-only Pet/Sighting reset; never enable in production |
+### GeoJSON invariant
 
-> Never commit `server/.env`. Production must define a strong `JWT_SECRET`; the source currently contains a development fallback.
-
-### GeoJSON convention and indexes
-
-All map points use GeoJSON in longitude-first order:
+Location-bearing documents use a GeoJSON point:
 
 ```json
 {
@@ -36,229 +39,114 @@ All map points use GeoJSON in longitude-first order:
 }
 ```
 
-`coordinates` is always **`[lng, lat]`**, with longitude from `-180` to `180` and latitude from `-90` to `90`.
+Coordinates are always `[longitude, latitude]`. Longitude is validated from -180 to 180 and latitude from -90 to 90.
 
-| Model | Defined indexes |
-|---|---|
-| `User` | `alertLocation: 2dsphere` |
-| `Pet` | `location: 2dsphere`; `{ species, status }`; `{ district, breed, status }`; `{ reportedBy, createdAt: -1 }` |
-| `Sighting` | `location: 2dsphere`; `{ pet, createdAt: -1 }`; `{ reportedBy, createdAt: -1 }` |
-| `Stray` | `location: 2dsphere`; `{ district, rescueStatus, createdAt: -1 }`; `{ reportedBy, createdAt: -1 }` |
-| `Message` | `{ pet, createdAt }`; `{ sentBy, createdAt: -1 }`; `{ pet, participant, createdAt }` |
-| `Notification` | `{ user, createdAt: -1 }`; `{ user, pet, type, sighting }` |
+## Authentication notation
 
-The `2dsphere` indexes support `$geoNear` radius queries for pets, strays, and alert recipients in MongoDB Atlas.
+- **Public**: no token required.
+- **Optional**: public access works; a valid bearer token activates ownership/privacy behavior and excludes the current user's own Radar posts where applicable.
+- **Required**: `Authorization: Bearer <token>` is mandatory.
 
-## 2. Data Models
+## API routes
 
-The schemas explicitly map to the collections `users`, `pets`, `sightings`, `strays`, `messages`, and `notifications`. `server/config/collections.js` initializes only this allow-listed set.
+### System and authentication
 
-### `User`
+| Method | Path | Auth | Main input | Result |
+|---|---|---:|---|---|
+| GET | `/api/health` | Public | — | API/database state, actual and expected database name |
+| POST | `/api/auth/register` | Public | name, email, password; optional phone | User and JWT |
+| POST | `/api/auth/login` | Public | email, password | User and JWT; rate-limited by email and IP |
+| GET | `/api/auth/me` | Required | — | Current safe user profile, privacy, preferences |
+| PATCH | `/api/auth/me` | Required | name/displayName, realName, email, phone, avatar | Updated safe current-user profile |
+| GET | `/api/auth/me/privacy` | Required | — | Contact visibility preference |
+| PATCH | `/api/auth/me/privacy` | Required | `contactVisibility` | Updated privacy preference |
+| GET | `/api/auth/me/preferences` | Required | — | Language and theme |
+| PATCH | `/api/auth/me/preferences` | Required | allowed `language` and/or `theme` only | Updated preferences |
 
-| Field | Type and rules |
-|---|---|
-| `name` | String, required, trimmed |
-| `email` | String, required, unique, lowercase, trimmed |
-| `password` | String, required; bcrypt hash is stored |
-| `phone` | String, default empty |
-| `avatar` | String, default profile-image URL |
-| `role` | `user \| shelter_admin`, default `user` |
-| `alertsEnabled` | Boolean, default `true` |
-| `alertRadiusKm` | Number from 1–50, default `3` |
-| `alertLocation` | Optional GeoJSON Point with `[lng, lat]` |
-| `createdAt`, `updatedAt` | Automatic timestamps |
+### Pets and sightings
 
-### `Pet`
+| Method | Path | Auth | Main input | Result |
+|---|---|---:|---|---|
+| GET | `/api/pets` | Optional | species, status, breed, district, page, limit | Paginated listings; authenticated users' own posts excluded |
+| GET | `/api/pets/mine` | Required | page, limit | Current user's pet reports |
+| GET | `/api/pets/nearby` | Optional | `lat`, `lng`, radiusKm; optional filters/page/limit | Distance-sorted, paginated nearby listings with the same ownership exclusion |
+| POST | `/api/pets/smart-match` | Optional | species, breed, coordinates `[lng,lat]`, limit | Ranked candidates and explainable score breakdown |
+| POST | `/api/pets/report` | Optional | pet fields plus location/coordinates | Created pet report; attaches authenticated reporter when present |
+| GET | `/api/pets/sightings/mine` | Required | — | Sightings submitted by the current user |
+| GET | `/api/pets/:id/sightings` | Optional | pet ID | Privacy-filtered, chronological sighting history |
+| POST | `/api/pets/:id/sightings/:sightingId/confirm` | Required | pet and sighting IDs | Confirmation state for the sighting |
+| GET | `/api/pets/:id` | Optional | pet ID | Public pet details with privacy-aware contact fields |
+| POST | `/api/pets/:id/sighting` | Optional | location/name, note/photo, reporter details, sightedAt, submissionId | One idempotent sighting and owner notification when supported |
+| PATCH | `/api/pets/:id/status` | Required owner | `{ "status": "lost|sighted|reunited" }` | Updated pet status |
 
-| Field | Type and rules |
-|---|---|
-| `name` | String, required, trimmed |
-| `species` | `Dog \| Cat \| Other`, required |
-| `breed`, `district` | Strings |
-| `photo`, `photos` | Primary image String and additional String array |
-| `description`, `details`, `reward` | Strings |
-| `ownerName`, `ownerPhone` | Contact Strings |
-| `status` | `lost \| sighted \| reunited`, default `lost` |
-| `locationName` | Human-readable location String |
-| `location` | Required GeoJSON Point with `[lng, lat]` |
-| `lastSeen` | Date |
-| `mapX`, `mapY` | Numbers, each defaulting to `50` |
-| `reportedBy` | Optional ObjectId reference to `User` |
-| `createdAt`, `updatedAt` | Automatic timestamps |
+### Rescue community
 
-### `Sighting`
+| Method | Path | Auth | Main input | Result |
+|---|---|---:|---|---|
+| GET | `/api/strays` | Optional | species, condition, rescueStatus, district, page, limit | Paginated active rescue posts |
+| GET | `/api/strays/mine` | Required | page, limit | Current user's rescue posts |
+| GET | `/api/strays/nearby` | Optional | `lat`, `lng`, radiusKm, limit and filters | Nearby rescue posts with distances |
+| GET | `/api/strays/saved` | Required | page, limit | Current user's saved rescue posts |
+| POST | `/api/strays/report` | Required | species/animalType, description, photos, condition, district, location, observedAt, submissionId | Idempotently created rescue post |
+| GET | `/api/strays/:id/comments` | Optional | page, limit | Paginated comments |
+| POST | `/api/strays/:id/comments` | Required | text, optional submissionId | Created comment and relevant notification |
+| PATCH | `/api/strays/:id/comments/:commentId` | Required author | text | Updated own comment |
+| DELETE | `/api/strays/:id/comments/:commentId` | Required author | — | Deletes own comment |
+| PUT | `/api/strays/:id/saved` | Required | — | Idempotently saves a post |
+| DELETE | `/api/strays/:id/saved` | Required | — | Removes current user's saved link |
+| GET | `/api/strays/:id` | Optional | stray ID | Rescue post with privacy-aware author/contact data |
+| PATCH | `/api/strays/:id` | Required owner | allowed editable post fields | Updated rescue post |
+| DELETE | `/api/strays/:id` | Required owner | — | Soft-removes the post from active queries |
+| PATCH | `/api/strays/:id/status` | Required owner/admin | rescue status | Updated rescue lifecycle state |
 
-| Field | Type and rules |
-|---|---|
-| `pet` | Required ObjectId reference to `Pet` |
-| `reportedBy` | Optional ObjectId reference to `User` |
-| `location` | Required GeoJSON Point with `[lng, lat]` |
-| `locationName`, `note`, `photo` | Strings |
-| `reporterName`, `reporterPhone` | Contact Strings |
-| `confirmedBy` | Array of `User` ObjectIds |
-| `resolved` | Boolean, default `false` |
-| `createdAt`, `updatedAt` | Automatic timestamps |
+### Messaging, notifications, analytics, and uploads
 
-### `Stray`
+| Method | Path | Auth | Main input | Result |
+|---|---|---:|---|---|
+| GET | `/api/chat/inbox` | Required | — | Conversations visible to the current user |
+| GET | `/api/chat/:petId` | Required participant | optional participant query for owners | Authorized message thread |
+| POST | `/api/chat/:petId` | Required participant | text/photo/sharedStrayId/clientRequestId; participant where required | Idempotently created message and notification |
+| GET | `/api/notifications` | Required | — | Current user's notifications |
+| PUT | `/api/notifications/preferences` | Required | enabled, radiusKm, coordinates `[lng,lat]` | Updated alert settings |
+| PATCH | `/api/notifications/read-all` | Required | — | Marks all current-user notifications read |
+| PATCH | `/api/notifications/:id/read` | Required | notification ID | Marks one owned notification read |
+| POST | `/api/matches/candidates` | Optional | species, breed, coordinates `[lng,lat]`, limit | Same explainable Smart Match engine as pet route |
+| GET | `/api/analytics/hotspots` | Public | lat, lng, radiusKm, days, source | Aggregated pet/sighting/stray heat points |
+| POST | `/api/uploads/image` | Required | image `dataUrl` | Validated application image URL/result |
 
-| Field | Type and rules |
-|---|---|
-| `species` | `Dog \| Cat \| Other`, required |
-| `description` | String, required, trimmed |
-| `photo` | String |
-| `condition` | `unknown \| healthy \| injured \| critical`, default `unknown` |
-| `district`, `locationName` | Required Strings |
-| `location` | Required GeoJSON Point with `[lng, lat]` |
-| `rescueStatus` | `reported \| rescue_dispatched \| rescued`, default `reported` |
-| `reporterName`, `reporterPhone` | Required contact Strings |
-| `reportedBy` | Optional ObjectId reference to `User` |
-| `statusUpdatedAt` | Date, defaults to now |
-| `createdAt`, `updatedAt` | Automatic timestamps |
+## Local startup
 
-### `Message`
-
-| Field | Type and rules |
-|---|---|
-| `pet` | Required ObjectId reference to `Pet` |
-| `sender` | `owner \| finder`, required |
-| `sentBy` | Optional ObjectId reference to `User` |
-| `participant` | Finder/conversation ObjectId reference to `User` |
-| `text`, `photo` | Strings; a request must supply at least one |
-| `createdAt`, `updatedAt` | Automatic timestamps |
-
-### `Notification`
-
-`Notification` is also an active Mongoose model and supports the radius-alert feature.
-
-| Field | Type and rules |
-|---|---|
-| `user` | Required ObjectId reference to the recipient `User` |
-| `pet` | Required ObjectId reference to `Pet` |
-| `sighting` | Optional ObjectId reference to `Sighting` |
-| `type` | `proximity \| sighting`, required |
-| `title`, `body` | Required Strings |
-| `photo` | String |
-| `read` | Boolean, default `false` |
-| `createdAt`, `updatedAt` | Automatic timestamps |
-
-## 3. Authentication
-
-- **Public:** no token is required.
-- **Optional JWT:** a valid `Authorization: Bearer <token>` attaches the current user; missing or invalid tokens continue as a guest.
-- **JWT required:** `requireAuth` rejects missing, invalid, or expired tokens with HTTP `401`.
-- JWTs contain the user ID and expire after seven days.
-- Login is rate-limited in memory over a 15-minute window: 10 failed attempts per IP and 5 per email.
-
-## 4. Active API Routes
-
-Unless noted otherwise, successful JSON responses use the wrapper shown in the **Returns** column. Validation errors use `{ "error": "..." }`.
-
-### Health
-
-| Method | Path | Auth | Required input | Returns |
-|---|---|---|---|---|
-| `GET` | `/api/health` | Public | None | HTTP `200` with `{ status: "ok", db: "connected", database: "petlostapp", readyState: 1 }`, or HTTP `503` when disconnected |
-
-### Authentication and profile
-
-| Method | Path | Auth | Required input | Returns |
-|---|---|---|---|---|
-| `POST` | `/api/auth/register` | Public | Body: `name`, valid `email`, `password` (min 6); optional `phone` | HTTP `201`: `{ token, user }` |
-| `POST` | `/api/auth/login` | Public | Body: `email`, `password` | `{ token, user }` |
-| `GET` | `/api/auth/me` | JWT | Bearer token | `{ user }` |
-| `PATCH` | `/api/auth/me` | JWT | Body: `name`, valid `email`, `phone` | `{ user }` |
-
-### Lost pets and sightings
-
-| Method | Path | Auth | Required input | Returns |
-|---|---|---|---|---|
-| `GET` | `/api/pets` | Public | Optional query: `species`, `status`, `breed`, `district` | `{ pets }`, newest first |
-| `GET` | `/api/pets/mine` | JWT | Bearer token | `{ pets }` reported by the current user |
-| `GET` | `/api/pets/nearby` | Public | Query: `lat`, `lng`; optional `radiusKm` (default 3, max 50), `species`, `status`, `breed`, `district` | `{ pets }` nearest first, including `distanceKm` |
-| `POST` | `/api/pets/report` | Optional JWT | Body: `name`, `species`, valid HK `district`, `locationName`, `coordinates`, and valid owner name/phone; optional `breed`, `photo`, `description`, `details`, `reward`, `lastSeen`, `mapX`, `mapY` | HTTP `201`: `{ pet }`; also creates nearby proximity notifications |
-| `GET` | `/api/pets/sightings/mine` | JWT | Bearer token | `{ sightings }` reported by the current user, with selected pet fields populated |
-| `GET` | `/api/pets/:id/sightings` | Optional JWT | Pet `id` | `{ sightings }`, newest first; includes confirmation count and current-user state |
-| `POST` | `/api/pets/:id/sightings/:sightingId/confirm` | JWT | Pet `id`, sighting `sightingId` | `{ confirmationCount, confirmedByMe: true }` |
-| `GET` | `/api/pets/:id` | Public | Pet `id` | `{ pet }` |
-| `POST` | `/api/pets/:id/sighting` | Optional JWT | Pet `id`; body requires `coordinates`; optional `locationName`, `note`, `photo`, `reporterName`, `reporterPhone` | HTTP `201`: `{ sighting, pet }`; pet becomes `sighted` and notifications are created |
-| `PATCH` | `/api/pets/:id/status` | JWT, owner only | Pet `id`; body `status` = `lost`, `sighted`, or `reunited` | `{ pet }` |
-
-Pet reports and stray reports prefer the authenticated user's saved contact details when a valid optional token is supplied.
-
-### Stray-animal rescue
-
-| Method | Path | Auth | Required input | Returns |
-|---|---|---|---|---|
-| `GET` | `/api/strays` | Public | Optional query: `species`, `condition`, `status`, `district` | `{ strays }`, newest first |
-| `GET` | `/api/strays/mine` | JWT | Bearer token | `{ strays }` reported by the current user |
-| `GET` | `/api/strays/nearby` | Public | Query: `lat`, `lng`; optional `radiusKm` (default 5, clamped 1–50), `species`, `condition`, `status`, `district` | `{ strays }` nearest first, including `distanceKm` |
-| `POST` | `/api/strays/report` | Optional JWT | Body: `species`, `description`, valid HK `district`, `locationName`, `coordinates`, valid reporter name/phone; optional `photo`, `condition` | HTTP `201`: `{ stray }` |
-| `GET` | `/api/strays/:id` | Public | Stray report `id` | `{ stray }` |
-| `PATCH` | `/api/strays/:id/status` | JWT, reporter or shelter admin | Stray report `id`; body `status` = `reported`, `rescue_dispatched`, or `rescued` | `{ stray }` |
-
-### Private chat
-
-All chat routes require JWT authentication. Conversations are scoped by pet and finder (`participant`).
-
-| Method | Path | Auth | Required input | Returns |
-|---|---|---|---|---|
-| `GET` | `/api/chat/inbox` | JWT | Bearer token | `{ conversations }` visible to the current owner/finder, newest activity first |
-| `GET` | `/api/chat/:petId` | JWT | Pet `petId`; pet owners must also supply query `participantId` | `{ messages, viewerRole }` in chronological order |
-| `POST` | `/api/chat/:petId` | JWT | Pet `petId`; body needs `text` or `photo`; owners also supply `participantId` for an existing conversation | HTTP `201`: `{ message }` |
-
-Text messages are limited to 2,000 characters. Encoded photo strings are limited to 1,500,000 characters.
-
-### Notifications and radius-alert preferences
-
-All notification routes require JWT authentication.
-
-| Method | Path | Auth | Required input | Returns |
-|---|---|---|---|---|
-| `GET` | `/api/notifications` | JWT | Bearer token | `{ notifications }`, up to 50 newest records |
-| `PUT` | `/api/notifications/preferences` | JWT | Body: `enabled` Boolean, `radiusKm` from 1–50; optional `coordinates: [lng, lat]` | `{ preferences }` |
-| `PATCH` | `/api/notifications/read-all` | JWT | Bearer token | `{ success: true }` |
-| `PATCH` | `/api/notifications/:id/read` | JWT | Notification `id` | `{ notification }` |
-
-The radius engine persists in-app notifications for users whose `alertLocation` falls within their individual radius. It does not currently send native push notifications.
-
-## 5. Health Check and Quick Verification
-
-Start the backend from the workspace root:
+1. Copy `server/.env.example` to `server/.env`.
+2. Set `MONGODB_URI` to the private Atlas URI and generate a non-placeholder JWT secret of at least 32 characters.
+3. Never place either secret in the root frontend environment or a `VITE_` variable.
 
 ```powershell
-cd server
-npm start
+npm.cmd install
+npm.cmd --prefix server install
+npm.cmd --prefix server start
+npm.cmd run dev
 ```
 
-In another terminal, verify Express and the database connection:
+Default API: `http://localhost:5000`. Vite commonly uses `http://localhost:5173` and proxies `/api` to the backend.
+
+## Safe checks
 
 ```powershell
-curl.exe -i http://localhost:5000/api/health
+curl.exe http://localhost:5000/api/health
+curl.exe "http://localhost:5000/api/pets?status=lost&limit=5"
+npm.cmd run smoke:api
 ```
 
-Expected: HTTP `200` and `{"status":"ok","db":"connected","readyState":1}`.
+`/api/health` should report `status: "ok"`, `db: "connected"`, and both database fields as `petlostapp`.
 
-Verify a normal database read:
+## Seed and verification commands
+
+The `fyp-demo-v1` seed is guarded and idempotent. It never targets `sample_mflix`. Set `ALLOW_TEST_SEED=true` and `SEED_USER_PASSWORD` only in local `server/.env` before using it.
 
 ```powershell
-curl.exe -i http://localhost:5000/api/pets
+npm.cmd --prefix server run seed:test
+npm.cmd --prefix server run seed:verify
+npm.cmd --prefix server run seed:clean
 ```
 
-Verify the geospatial index/query near central Hong Kong:
-
-```powershell
-curl.exe -i "http://localhost:5000/api/pets/nearby?lat=22.3193&lng=114.1694&radiusKm=10"
-```
-
-The health URL can also be opened directly in a browser: <http://localhost:5000/api/health>.
-
-## 6. Useful Backend Commands
-
-Run these from `server/`:
-
-```powershell
-npm run dev   # Nodemon development server
-npm test      # Node route tests
-npm run verify:db # Temporary insert/read/cleanup in petlostapp.pets
-npm run seed  # Guarded Pet/Sighting development reset; requires explicit opt-in
-```
+Cleanup removes only documents carrying the approved seed-batch marker and requires the same explicit safety flag. Do not run seed or cleanup commands against genuine data without reviewing the configured target first.

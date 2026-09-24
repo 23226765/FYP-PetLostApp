@@ -8,6 +8,7 @@ import {
   serializeContact,
 } from '../services/contactPrivacy.js'
 import { createRadiusNotifications } from './notificationController.js'
+import { logServerError } from '../middleware/errorHandler.js'
 
 /* ───────────────────────── Helpers ───────────────────────── */
 
@@ -656,7 +657,7 @@ export async function reportPet(req, res, next) {
         excludeUserId: req.user?._id,
       })
     } catch (notificationError) {
-      console.error('Could not create proximity notifications:', notificationError)
+      logServerError('Could not create proximity notifications', notificationError)
     }
 
     res.status(201).json({ pet: await serializeOnePet(pet, req.user) })
@@ -765,7 +766,7 @@ export async function submitSighting(req, res, next) {
           excludeUserId: req.user?._id,
         })
       } catch (notificationError) {
-        console.error('Could not create sighting notifications:', notificationError)
+        logServerError('Could not create sighting notifications', notificationError)
       }
     }
 

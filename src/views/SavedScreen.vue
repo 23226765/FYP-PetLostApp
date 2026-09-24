@@ -46,7 +46,7 @@
         <p v-if="savedStrays.length">{{ t('settings.strayPosts') }}</p>
         <button v-for="stray in savedStrays" :key="stray.id" class="saved-stray" type="button" @click="emit('open-stray', stray.id)">
           <img v-if="stray.photo" :src="imageUrl(stray.photo)" :alt="t('strays.reportedAlt', { species: strayAnimalLabel(stray.species, stray.animalType) })" />
-          <span class="saved-stray-copy"><strong>{{ strayAnimalLabel(stray.species, stray.animalType) }} · {{ districtLabel(stray.district) }}</strong><span>{{ stray.description }}</span><small>{{ stray.author.name }} · {{ stray.reportedAgo }}</small></span>
+          <span class="saved-stray-copy"><strong>{{ strayAnimalLabel(stray.species, stray.animalType) }} · {{ districtLabel(stray.district) }}</strong><span>{{ stray.description }}</span><small>{{ stray.author.name }} · {{ formatRelativeDate(stray.createdAt) }}</small></span>
         </button>
         <p v-if="unavailableCount" class="unavailable">{{ t('settings.unavailableSaved', { count: unavailableCount }, unavailableCount) }}</p>
       </section>
@@ -84,7 +84,7 @@ import type { Pet } from '../types/pet'
 import type { StrayReport } from '../types/stray'
 import type { User } from '../types/user'
 import { translateApiError, useAppI18n } from '../i18n'
-import { districtLabel, strayAnimalLabel } from '../i18n/formatters'
+import { districtLabel, formatRelativeDate, strayAnimalLabel } from '../i18n/formatters'
 
 const props = defineProps<{ user?: User | null }>()
 

@@ -18,7 +18,7 @@
       <section class="post-card">
         <div class="author-row">
           <span class="avatar"><img v-if="stray.author.avatar" :src="imageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="21" /></span>
-          <div><strong>{{ stray.author.name }}</strong><small>{{ stray.reportedAgo }} · {{ districtLabel(stray.district) }}</small></div>
+          <div><strong>{{ stray.author.name }}</strong><small>{{ relativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></div>
           <span class="status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
         <div class="hero">
@@ -137,9 +137,9 @@ async function removeComment(commentId: string) { if (!requireUser()) return; aw
 async function toggleSaved() { if (!stray.value || !requireUser()) return; const target = !stray.value.isSaved; try { stray.value.isSaved = await setStraySaved(stray.value.id, target) } catch { stray.value.isSaved = !target } }
 async function changeStatus(status: RescueStatus) { if (!stray.value || savingStatus.value) return; savingStatus.value = true; try { stray.value = await updateStrayStatus(stray.value.id, status) } finally { savingStatus.value = false } }
 async function saveEdit() { if (!stray.value || !editCaption.value.trim() || (stray.value.species === 'Other' && !editAnimalType.value.trim())) return; stray.value = await updateStray(stray.value.id, { description: editCaption.value, species: stray.value.species, animalType: editAnimalType.value.trim(), condition: stray.value.condition }) }
-async function removePost() { if (!stray.value || !window.confirm('Delete this stray post? Shared links will show that it is unavailable.')) return; await deleteStray(stray.value.id); await router.replace('/') }
+async function removePost() { if (!stray.value || !window.confirm(t('strays.deleteConfirmation'))) return; await deleteStray(stray.value.id); await router.replace('/') }
 async function openShare() { if (!requireUser()) return; shareOpen.value = true; shareLoading.value = true; shareError.value = ''; try { conversations.value = await getChatInbox() } catch (cause) { shareError.value = translateApiError(cause, 'errors.loadConversations') } finally { shareLoading.value = false } }
-async function shareTo(conversation: ChatConversation) { if (!stray.value || sharing.value) return; sharing.value = true; shareError.value = ''; try { await sendMessage(conversation.pet.id, { text: `Shared a ${strayAnimalLabel(stray.value.species, stray.value.animalType).toLowerCase()} rescue post.`, participantId: conversation.pet.participantId, sharedStrayId: stray.value.id, clientRequestId: uniqueId() }); shareOpen.value = false } catch (cause) { shareError.value = translateApiError(cause, 'errors.sharePost') } finally { sharing.value = false } }
+async function shareTo(conversation: ChatConversation) { if (!stray.value || sharing.value) return; sharing.value = true; shareError.value = ''; try { await sendMessage(conversation.pet.id, { text: t('messages.sharedRescueText', { species: strayAnimalLabel(stray.value.species, stray.value.animalType) }), participantId: conversation.pet.participantId, sharedStrayId: stray.value.id, clientRequestId: uniqueId() }); shareOpen.value = false } catch (cause) { shareError.value = translateApiError(cause, 'errors.sharePost') } finally { sharing.value = false } }
 onMounted(load)
 </script>
 

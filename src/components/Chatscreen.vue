@@ -198,7 +198,7 @@ function onEnter(e: KeyboardEvent) {
 
 function setPendingPhoto(dataUrl: string) {
   if (dataUrl.length > 1_500_000) {
-    error.value = 'Photo is too large. Choose a smaller image.'
+    error.value = t('validation.chatImageSize')
     return
   }
   pendingPhoto.value = dataUrl

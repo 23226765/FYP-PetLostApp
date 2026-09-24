@@ -7,6 +7,14 @@ export default defineConfig({
     host: true,
     port: 3000,
     strictPort: true,
+    watch: {
+      ignored: [
+        '**/android/.gradle/**',
+        '**/android/.gradle-user/**',
+        '**/android/**/build/**',
+        '**/android/app/src/main/assets/public/**',
+      ],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

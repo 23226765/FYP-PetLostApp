@@ -1,4 +1,5 @@
 import type { SightingPayload } from '../services/api'
+import { i18n } from '../i18n'
 
 export function isValidSightingCoordinates(
   coordinates: unknown,
@@ -25,10 +26,10 @@ export function buildSightingPayload(input: {
   submissionId: string
 }): SightingPayload {
   if (!isValidSightingCoordinates(input.coordinates)) {
-    throw new Error('Select and confirm where the pet was sighted.')
+    throw new Error(i18n.global.t('validation.sightingLocation'))
   }
   const locationName = input.locationName.trim()
-  if (!locationName) throw new Error('Add a location name or nearby landmark.')
+  if (!locationName) throw new Error(i18n.global.t('validation.locationName'))
 
   return {
     location: {

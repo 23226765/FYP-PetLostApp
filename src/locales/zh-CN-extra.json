@@ -1,4 +1,8 @@
 {
+  "pets": {
+    "species": "物种",
+    "breed": "品种"
+  },
   "settings": {
     "savedBack": "返回设置",
     "loadingSaved": "正在加载已收藏帖子…",
@@ -22,7 +26,9 @@
     "widerAlerts": "更广泛的网页提醒范围",
     "boostNote": "扩大半径可以显示更多报告，但也可能包含相关度较低的结果。",
     "radiusActive": "15 公里半径已启用",
-    "useRadius": "使用 15 公里半径"
+    "useRadius": "使用 15 公里半径",
+    "radiusComparison": "比较当前 {current} 公里与 {boosted} 公里的雷达范围",
+    "radiusCoverage": "{radius} 公里范围"
   },
   "profile": {
     "activityTitle": "我的活动",
@@ -34,7 +40,22 @@
     "activityType": "活动类型",
     "yourNote": "你的备注",
     "contactOwner": "联系宠物主人",
-    "contactOwnerHelp": "直接并安全地分享有用信息。"
+    "contactOwnerHelp": "直接并安全地分享有用信息。",
+    "filterActivity": "筛选活动",
+    "activityEntries": "{count} 项活动",
+    "activityDetails": "活动详情",
+    "messageOwnerAria": "向{name}的主人发送消息",
+    "callOwnerAria": "致电{name}的主人",
+    "whatsappOwnerAria": "通过 WhatsApp 联系{name}的主人",
+    "contactUnavailable": "此报告未提供主人的联系信息。",
+    "petSighting": "宠物目击报告",
+    "reportedSighting": "已提交目击报告",
+    "filterAll": "全部活动",
+    "filterSightings": "目击报告",
+    "filterPosts": "宠物帖子",
+    "reunionCelebration": "好消息——这只宠物已标记为团聚。",
+    "sightingReported": "已提交目击报告",
+    "petPosted": "已发布宠物帖子"
   },
   "strays": {
     "reportTitle": "流浪动物报告",
@@ -57,7 +78,8 @@
     "deleteComment": "删除你的评论",
     "sendPost": "发送帖子",
     "shareEmpty": "请先开始宠物对话，之后即可在对话中分享此报告。",
-    "conversationAbout": "关于{name}的对话"
+    "conversationAbout": "关于{name}的对话",
+    "deleteConfirmation": "要删除此救援帖子吗？此操作无法撤销。"
   },
   "errors": {
     "loadPets": "无法加载附近宠物。",
@@ -81,7 +103,8 @@
     "loadStrays": "无法加载救援报告。",
     "updateSaved": "无法更新已收藏帖子。",
     "submitStray": "无法提交救援报告。",
-    "loadHotspots": "无法加载热点分析。"
+    "loadHotspots": "无法加载热点分析。",
+    "invalidPetLink": "此宠物链接无效。"
   },
   "messages": {
     "backToPet": "返回宠物详情",
@@ -96,6 +119,15 @@
     "readyPhotoAlt": "准备发送的照片",
     "removePhoto": "移除附加照片",
     "attachPhoto": "附加照片",
-    "sendMessage": "发送消息"
+    "sendMessage": "发送消息",
+    "sharedRescueText": "分享了一篇{species}救援报告"
+  },
+  "validation": {
+    "sightingLocation": "提交前请选择目击位置。",
+    "locationName": "提交前请描述目击位置。",
+    "chatImageSize": "请选择小于 5 MB 的图片。",
+    "rescueImage": "请选择有效的图片文件。",
+    "rescuePhotoRequired": "发布救援报告前请添加清晰照片。",
+    "rescueLocationRequired": "发布前请选择动物的位置。"
   }
 }

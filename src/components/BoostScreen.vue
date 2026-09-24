@@ -12,10 +12,10 @@
 
     <div class="body">
       <!-- Radius comparison graphic -->
-      <div class="radius-visual" role="img" :aria-label="`Comparison of the current ${radiusKm} kilometer radius versus a 15 kilometer radius`">
+      <div class="radius-visual" role="img" :aria-label="t('settings.radiusComparison', { current: radiusKm, boosted: 15 })">
         <div class="circle-wrap">
           <span class="circle small"><AppIcon name="pin" :size="14" /></span>
-          <span class="circle-label">{{ radiusKm }} km</span>
+          <span class="circle-label">{{ t('common.kilometres', { count: radiusKm }) }}</span>
         </div>
         <AppIcon name="chevron" :size="20" />
         <div class="circle-wrap">
@@ -23,7 +23,7 @@
             <span class="ring" />
             <AppIcon name="pin" :size="18" />
           </span>
-          <span class="circle-label boosted">15 km</span>
+          <span class="circle-label boosted">{{ t('common.kilometres', { count: 15 }) }}</span>
         </div>
       </div>
 
@@ -31,7 +31,7 @@
       <div class="compare">
         <section class="plan">
           <h2>{{ t('settings.currentCoverage') }}</h2>
-          <span class="price">{{ radiusKm }} km</span>
+          <span class="price">{{ t('common.kilometres', { count: radiusKm }) }}</span>
           <ul>
             <li><AppIcon name="check" :size="15" /> {{ t('settings.nearbyFiltering') }}</li>
             <li><AppIcon name="check" :size="15" /> {{ t('settings.radarListing') }}</li>
@@ -43,7 +43,7 @@
           <h2>{{ t('settings.widerCoverage') }}</h2>
           <span class="price">{{ t('settings.free') }}</span>
           <ul>
-            <li><AppIcon name="check" :size="15" /> 15 km radius</li>
+            <li><AppIcon name="check" :size="15" /> {{ t('settings.radiusCoverage', { radius: 15 }) }}</li>
             <li><AppIcon name="check" :size="15" /> {{ t('settings.widerResults') }}</li>
             <li><AppIcon name="check" :size="15" /> {{ t('settings.widerAlerts') }}</li>
           </ul>

@@ -67,7 +67,7 @@
       <article v-for="stray in strays" :key="stray.id" class="stray-card" tabindex="0" role="link" :aria-label="t('strays.openPost', { species: animalLabel(stray), author: stray.author.name })" @click="openStray(stray)" @keydown.enter="openStray(stray)">
         <div class="post-author">
           <span class="author-avatar"><img v-if="stray.author.avatar" :src="normalizedImageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="17" /></span>
-          <span><strong>{{ stray.author.name }}</strong><small>{{ stray.reportedAgo }} · {{ districtLabel(stray.district) }}</small></span>
+          <span><strong>{{ stray.author.name }}</strong><small>{{ formatRelativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></span>
           <span class="rescue-status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
         <div class="photo-wrap">
@@ -144,7 +144,7 @@ import { HK_DISTRICTS } from '../types/pet'
 import type { User } from '../types/user'
 import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
 import { translateApiError, useAppI18n } from '../i18n'
-import { districtLabel, rescueStatusLabel, speciesLabel, strayAnimalLabel, strayConditionLabel } from '../i18n/formatters'
+import { districtLabel, formatRelativeDate, rescueStatusLabel, speciesLabel, strayAnimalLabel, strayConditionLabel } from '../i18n/formatters'
 
 const props = defineProps<{
   user: User | null
@@ -268,7 +268,7 @@ function onPhotoSelected(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-    reportError.value = 'Choose a JPEG, PNG, or WebP image smaller than 5 MB.'; input.value = ''; return
+    reportError.value = t('validation.rescueImage'); input.value = ''; return
   }
   const reader = new FileReader()
   reader.onload = () => { if (typeof reader.result === 'string') form.photo = reader.result; input.value = '' }
@@ -282,8 +282,8 @@ async function submitReport() {
   reportError.value = ''
   try {
     if (!props.user) { emit('auth-needed'); return }
-    if (!form.photo) throw new Error('Add a clear photo before publishing.')
-    if (!form.coordinates) throw new Error('Select and confirm the sighting location on the map.')
+    if (!form.photo) throw new Error(t('validation.rescuePhotoRequired'))
+    if (!form.coordinates) throw new Error(t('validation.rescueLocationRequired'))
     if (form.species === 'Other' && !form.animalType.trim()) throw new Error(t('strayAnimal.typeRequired'))
     uploadStage.value = 'uploading'
     const photoUrl = form.photo.startsWith('data:') ? await uploadImage(form.photo) : form.photo

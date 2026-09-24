@@ -1,14 +1,37 @@
+/** @param {unknown} err */
+export function safeErrorMetadata(err) {
+  const error = err && typeof err === 'object' ? err : {}
+  return {
+    name: typeof error.name === 'string' ? error.name : 'Error',
+    code:
+      typeof error.code === 'string' || typeof error.code === 'number'
+        ? error.code
+        : undefined,
+    status: Number.isInteger(error.status) ? error.status : undefined,
+  }
+}
+
+export function logServerError(context, err, req) {
+  const request = req
+    ? {
+        method: typeof req.method === 'string' ? req.method : undefined,
+        path: typeof req.path === 'string' ? req.path : undefined,
+      }
+    : undefined
+  console.error(context, { ...safeErrorMetadata(err), ...(request ? { request } : {}) })
+}
+
 /**
- * Central error boundary. Logs diagnostic details server-side while returning
- * stable messages that do not expose database or driver internals.
+ * Central error boundary. Logs bounded diagnostic metadata server-side while
+ * returning stable responses that do not expose request, database, or driver details.
  *
  * @param {unknown} err
- * @param {import('express').Request} _req
+ * @param {import('express').Request} req
  * @param {import('express').Response} res
  * @param {import('express').NextFunction} _next
  */
-export function errorHandler(err, _req, res, _next) {
-  console.error(err)
+export function errorHandler(err, req, res, _next) {
+  logServerError('Unhandled API error', err, req)
 
   const error = err && typeof err === 'object' ? err : {}
 

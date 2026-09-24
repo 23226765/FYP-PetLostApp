@@ -9,8 +9,15 @@ import {
   preferencesFor,
   validatePreferenceUpdate,
 } from '../services/userPreferences.js'
+import { requireJwtSecret } from '../config/security.js'
+import {
+  clearLoginFailures,
+  loginKeys,
+  loginRetryAfter,
+  pruneLoginAttempts,
+  recordLoginFailure,
+} from '../services/loginRateLimit.js'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'pawradar_dev_secret'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_EMAIL_LENGTH = 254
 const MIN_PASSWORD_LENGTH = 6
@@ -19,14 +26,6 @@ const MAX_REAL_NAME_LENGTH = 100
 const MAX_AVATAR_URL_LENGTH = 2048
 const MAX_AVATAR_DATA_URL_LENGTH = 1_400_000
 const MAX_AVATAR_BYTES = 1_000_000
-const LOGIN_WINDOW_MS = 15 * 60 * 1000
-const LOGIN_IP_LIMIT = 10
-const LOGIN_EMAIL_LIMIT = 5
-const MAX_LOGIN_BUCKETS = 10_000
-
-/** @typedef {{ count: number, resetAt: number }} LoginAttempt */
-/** @type {Map<string, LoginAttempt>} */
-const loginAttempts = new Map()
 
 /**
  * @param {unknown} value
@@ -91,69 +90,6 @@ function validateAvatar(value) {
 }
 
 /**
- * @param {import('express').Request} req
- * @param {string} email
- * @returns {string[]}
- */
-function loginKeys(req, email) {
-  const address = req.ip || req.socket?.remoteAddress || 'unknown'
-  const keys = [`ip:${address}`]
-  if (email) keys.push(`email:${email}`)
-  return keys
-}
-
-/**
- * Remove expired counters and cap attacker-controlled email buckets.
- * @param {number} now
- */
-function pruneLoginAttempts(now) {
-  for (const [key, attempt] of loginAttempts) {
-    if (attempt.resetAt <= now) loginAttempts.delete(key)
-  }
-
-  while (loginAttempts.size > MAX_LOGIN_BUCKETS) {
-    const oldestKey = loginAttempts.keys().next().value
-    if (typeof oldestKey !== 'string') break
-    loginAttempts.delete(oldestKey)
-  }
-}
-
-/**
- * @param {string[]} keys
- * @param {number} now
- * @returns {number} seconds until another attempt is allowed, or zero
- */
-function loginRetryAfter(keys, now) {
-  let retryAfter = 0
-
-  for (const key of keys) {
-    const attempt = loginAttempts.get(key)
-    if (!attempt) continue
-    const limit = key.startsWith('ip:') ? LOGIN_IP_LIMIT : LOGIN_EMAIL_LIMIT
-    if (attempt.count >= limit) {
-      retryAfter = Math.max(retryAfter, Math.ceil((attempt.resetAt - now) / 1000))
-    }
-  }
-
-  return retryAfter
-}
-
-/**
- * @param {string[]} keys
- * @param {number} now
- */
-function recordLoginFailure(keys, now) {
-  for (const key of keys) {
-    const current = loginAttempts.get(key)
-    if (!current || current.resetAt <= now) {
-      loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS })
-    } else {
-      current.count += 1
-    }
-  }
-}
-
-/**
  * @param {unknown} body
  * @returns {{ value?: { name: string, email: string, password: string, phone: string }, error?: string }}
  */
@@ -194,7 +130,7 @@ function validateRegistration(body) {
 
 /** @param {{ _id: unknown }} user */
 function signToken(user) {
-  return jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' })
+  return jwt.sign({ id: user._id }, requireJwtSecret(), { expiresIn: '7d' })
 }
 
 /** @param {{ _id: unknown, name?: string, realName?: string, email?: string, phone?: string, avatar?: string, role?: string, alertsEnabled?: boolean, alertRadiusKm?: number, privacy?: { contactVisibility?: string }, preferences?: { language?: string, theme?: string } }} user */
@@ -367,7 +303,7 @@ export async function login(req, res, next) {
       return res.status(401).json({ error: 'Invalid email or password.' })
     }
 
-    loginAttempts.delete(`email:${email}`)
+    clearLoginFailures(keys)
 
     res.json({ token: signToken(user), user: serializeUser(user) })
   } catch (err) {

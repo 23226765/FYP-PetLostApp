@@ -96,11 +96,6 @@ export async function getHotspots(
   return data
 }
 
-export async function getAllPets(): Promise<Pet[]> {
-  const { data } = await http.get<{ pets: Pet[] }>('/pets')
-  return data.pets
-}
-
 export interface SmartMatchCriteria {
   species: Pet['species']
   breed?: string
@@ -396,10 +391,6 @@ export async function getMyStraysPage(
   return data
 }
 
-export async function getMyStrays(): Promise<StrayReport[]> {
-  return (await getMyStraysPage({ limit: 50 })).strays
-}
-
 export interface ReportStrayPayload {
   species: StrayReport['species']
   animalType?: string
@@ -439,11 +430,6 @@ export async function getStrayComments(id: string): Promise<StrayComment[]> {
 
 export async function addStrayComment(id: string, text: string, submissionId: string): Promise<StrayComment> {
   const { data } = await http.post<{ comment: StrayComment }>(`/strays/${id}/comments`, { text, submissionId })
-  return data.comment
-}
-
-export async function editStrayComment(id: string, commentId: string, text: string): Promise<StrayComment> {
-  const { data } = await http.patch<{ comment: StrayComment }>(`/strays/${id}/comments/${commentId}`, { text })
   return data.comment
 }
 
@@ -549,11 +535,6 @@ export async function updateContactPrivacy(
     { contactVisibility },
   )
   return data.privacy
-}
-
-export async function getUserPreferences(): Promise<UserPreferences> {
-  const { data } = await http.get<{ preferences: UserPreferences }>('/auth/me/preferences')
-  return data.preferences
 }
 
 export async function updateUserPreferences(

@@ -11,6 +11,7 @@ import {
   disconnectDatabase,
 } from './config/database.js'
 import { initializeApplicationCollections } from './config/collections.js'
+import { requireJwtSecret, securityConfigurationMessage } from './config/security.js'
 
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.resolve(serverDirectory, '.env') })
@@ -95,6 +96,14 @@ app.use((_req, res) => res.status(404).json({ error: 'Not found' }))
 app.use(errorHandler)
 
 async function start() {
+  try {
+    requireJwtSecret()
+  } catch (error) {
+    console.error(`Security startup failed: ${securityConfigurationMessage(error)}`)
+    process.exitCode = 1
+    return
+  }
+
   try {
     const connection = await connectDatabase()
     const collections = await initializeApplicationCollections(connection)

@@ -16,7 +16,6 @@
     "verify:sightings": "node scripts/verifySightingWorkflow.js",
     "verify:strays": "node scripts/verifyStrayCommunity.js",
     "verify:preferences": "node scripts/verifyPreferences.js",
-    "fix:pet-photos": "node scripts/fixPetPhotos.js",
     "verify:db": "node scripts/verifyDatabase.js",
     "test": "node --test tests/*.test.js"
   },

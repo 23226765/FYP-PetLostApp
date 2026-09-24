@@ -196,7 +196,7 @@
 
             <span v-if="m.breakdown.distanceKm !== null" class="distance">
               <AppIcon name="pin" :size="14" />
-              {{ m.breakdown.distanceKm }} km
+              {{ t('common.kilometres', { count: m.breakdown.distanceKm }) }}
             </span>
           </div>
 

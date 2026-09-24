@@ -262,15 +262,6 @@
       />
     </Transition>
 
-    <!-- Activity history overlay -->
-    <Transition name="page">
-      <AdoptionHistoryScreen
-        v-if="showActivity"
-        @close="showActivity = false"
-        @message-pet="openChatByPetId"
-      />
-    </Transition>
-
     <!-- Alert boost overlay -->
     <Transition name="page">
       <BoostScreen
@@ -399,7 +390,6 @@ import PosterModal from './components/PosterModal.vue'
 import Chatscreen from './components/Chatscreen.vue'
 import ChatInboxScreen from './components/ChatInboxScreen.vue'
 import NotificationsPanel from './components/NotificationsPanel.vue'
-import AdoptionHistoryScreen from './components/AdoptionHistoryScreen.vue'
 import BoostScreen from './components/BoostScreen.vue'
 import StrayRescueScreen from './components/StrayRescueScreen.vue'
 import SightingLocationPicker from './components/SightingLocationPicker.vue'
@@ -432,7 +422,6 @@ const alertsEnabled = ref(true)
 const authOpen = ref(false)
 const showSmartMatch = ref(false)
 const showNotifications = ref(false)
-const showActivity = ref(false)
 const showBoost = ref(false)
 const notifications = ref<AppNotification[]>([])
 const selectedPet = ref<Pet | null>(null)
@@ -467,7 +456,7 @@ watch(
       authOpen.value = false
       const id = Array.isArray(petId) ? petId[0] : petId
       if (typeof id === 'string' && id.trim()) void openDeepLinkedPet(id)
-      else deepLinkError.value = 'This pet link is invalid.'
+      else deepLinkError.value = t('errors.invalidPetLink')
     } else {
       deepLinkRequestSequence += 1
       if (previousRoute?.name === 'pet-detail') selectedPet.value = null
@@ -547,7 +536,6 @@ async function loadPets() {
     if (requestSequence !== petsRequestSequence) return
 
     pets.value = nextPets
-    if (currentUser.value) void syncNotificationPreferences().catch(() => undefined)
   } catch (e) {
     if (requestSequence !== petsRequestSequence) return
     error.value = translateApiError(e, 'errors.loadPets')
@@ -621,8 +609,10 @@ function handleAuth(user: User) {
   radiusKm.value = user.alertRadiusKm || radiusKm.value
   authOpen.value = false
   if (route.name === 'login') void router.replace('/')
-  void activateNotifications()
-  void loadPets()
+  void (async () => {
+    await loadPets()
+    if (currentUser.value?.id === user.id) await activateNotifications()
+  })()
 }
 
 function logout() {
@@ -632,7 +622,6 @@ function logout() {
   stopNotificationPolling()
   chatPet.value = null
   messageUnreadCount.value = 0
-  showActivity.value = false
   showBoost.value = false
   tab.value = 'radar'
   authOpen.value = true
@@ -795,7 +784,6 @@ async function openChatByPetId(petId: string) {
   }
   try {
     const pet = await getPet(petId)
-    showActivity.value = false
     openChat(pet)
   } catch {
     // Keep the activity sheet open when the pet can no longer be loaded.
@@ -811,7 +799,7 @@ function openReporterChat(participantId: string, participantName?: string) {
   chatPet.value = {
     ...selectedPet.value,
     participantId,
-    participantName: participantName || 'Finder',
+    participantName: participantName || t('messages.finder'),
   }
 }
 
@@ -1001,11 +989,11 @@ async function sendSighting() {
   const pet = sightingPet.value
   if (!pet || sightingSubmitting.value) return
   if (!sightingCoordinates.value) {
-    sightingError.value = 'Select and confirm where the pet was sighted.'
+    sightingError.value = t('validation.sightingLocation')
     return
   }
   if (!sightingLocationName.value.trim()) {
-    sightingError.value = 'Add a location name or nearby landmark.'
+    sightingError.value = t('validation.locationName')
     return
   }
   sightingSubmitting.value = true
@@ -1050,7 +1038,6 @@ function handleUnauthorized() {
   stopNotificationPolling()
   chatPet.value = null
   messageUnreadCount.value = 0
-  showActivity.value = false
   showBoost.value = false
   tab.value = 'radar'
   authOpen.value = true

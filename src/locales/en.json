@@ -103,6 +103,8 @@
     "boostNote": "A wider radius can surface more reports, but may also include less relevant results.",
     "radiusActive": "15 km radius is active",
     "useRadius": "Use 15 km radius",
+    "radiusComparison": "Comparison of the current {current} kilometre radius and a {boosted} kilometre radius",
+    "radiusCoverage": "{radius} km radius",
     "preferences": "Preferences",
     "languageAppearance": "Language and appearance",
     "languageAppearanceHelp": "Choose how PawRadar looks and speaks on this device.",
@@ -164,6 +166,21 @@
     "yourNote": "Your note",
     "contactOwner": "Contact pet owner",
     "contactOwnerHelp": "Share useful details directly and safely.",
+    "filterActivity": "Filter activity",
+    "activityEntries": "{count} activity entry | {count} activity entries",
+    "activityDetails": "Activity details",
+    "messageOwnerAria": "Message the owner about {name}",
+    "callOwnerAria": "Call the owner about {name}",
+    "whatsappOwnerAria": "Message the owner about {name} on WhatsApp",
+    "contactUnavailable": "Owner contact details are not available for this report.",
+    "petSighting": "Pet sighting",
+    "reportedSighting": "Reported sighting",
+    "filterAll": "All activity",
+    "filterSightings": "Sightings",
+    "filterPosts": "Pet posts",
+    "reunionCelebration": "Great news — this pet has been marked as reunited.",
+    "sightingReported": "Sighting reported",
+    "petPosted": "Pet posted",
     "openSettings": "Open settings",
     "contentTabs": "Profile content",
     "rescuePosts": "Rescue posts",
@@ -187,6 +204,8 @@
     "postsUnavailable": "{count} saved post is no longer available. | {count} saved posts are no longer available."
   },
   "pets": {
+    "species": "Species",
+    "breed": "Breed",
     "lost": "Lost",
     "sighted": "Sighted",
     "reunited": "Reunited",
@@ -442,7 +461,8 @@
     "deleteComment": "Delete your comment",
     "sendPost": "Send post",
     "shareEmpty": "Start a pet conversation first, then you can share this report there.",
-    "conversationAbout": "Conversation about {name}"
+    "conversationAbout": "Conversation about {name}",
+    "deleteConfirmation": "Delete this rescue post? This action cannot be undone."
   },
   "messages": {
     "title": "Messages",
@@ -478,7 +498,8 @@
     "readyPhotoAlt": "Photo ready to send",
     "removePhoto": "Remove attached photo",
     "attachPhoto": "Attach a photo",
-    "sendMessage": "Send message"
+    "sendMessage": "Send message",
+    "sharedRescueText": "Shared a {species} rescue report"
   },
   "notifications": {
     "title": "Notifications",
@@ -578,7 +599,13 @@
     "required": "This field is required.",
     "email": "Enter a valid email address.",
     "imageType": "Choose a JPEG, PNG, or WebP image.",
-    "imageSize": "Choose an image smaller than 8 MB."
+    "imageSize": "Choose an image smaller than 8 MB.",
+    "sightingLocation": "Select and confirm a sighting location before submitting.",
+    "locationName": "Describe the sighting location before submitting.",
+    "chatImageSize": "Choose an image smaller than 5 MB.",
+    "rescueImage": "Choose a valid image file.",
+    "rescuePhotoRequired": "Add a clear photo before publishing this rescue report.",
+    "rescueLocationRequired": "Choose the animal's location before publishing."
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",
@@ -612,7 +639,8 @@
     "loadStrays": "Unable to load rescue reports.",
     "updateSaved": "Unable to update saved posts.",
     "submitStray": "Unable to submit the rescue report.",
-    "loadHotspots": "Unable to load hotspot analytics."
+    "loadHotspots": "Unable to load hotspot analytics.",
+    "invalidPetLink": "This pet link is invalid."
   },
   "districts": {
     "centralWestern": "Central and Western",

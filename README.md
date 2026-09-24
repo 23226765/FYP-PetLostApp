@@ -1,393 +1,200 @@
 # PawRadar — Hyperlocal Lost Pet Recovery & Sighting Platform
 
-## Milestone 1 Progress Report
+PawRadar is a mobile-first web application for reporting lost pets, recording community sightings, tracing movement, coordinating rescue work, and contacting owners quickly. It combines database-level geospatial search with a localized Vue interface so nearby reports can be ranked and displayed without exposing MongoDB credentials to the browser.
 
-**Project domain:** Community safety and animal welfare  
-**Platform:** Mobile-first web application  
-**Report status:** Milestone 1 implementation baseline  
-**Report date:** 15 September 2026
+## Technology stack
 
----
+| Layer | Current technology |
+|---|---|
+| Frontend | Vue 3.5, TypeScript 5.7, Composition API, Vue Router 4.6, Axios 1.19, Vite 8 |
+| Localization | Vue I18n 11; English, Traditional Chinese (Hong Kong), Simplified Chinese |
+| Maps | Leaflet 1.9, Leaflet marker clusters, `leaflet.heat` |
+| Backend | Node.js, Express 4.19, REST API, JWT 9, bcryptjs 3 |
+| Data | Mongoose 8.6 and MongoDB Atlas database `petlostapp` |
+| Device integration | Capacitor 8 core, camera, geolocation, Android and iOS packages |
+| Testing | Vitest, Vue Test Utils, Node's built-in test runner, `vue-tsc`, ESLint |
 
-## 1. Executive Summary
+The user interface is designed as a native-like mobile shell with a maximum width of 480 px. Its core brand tokens are deep teal `#1d6360`, coral `#ef6351`, and warm white `#fcf9f2`, implemented through semantic theme variables for light and dark modes.
 
-PawRadar is a hyperlocal lost-pet recovery and community sighting platform designed to reduce the time between an animal being reported missing, being observed by a nearby resident, and its owner receiving actionable information. Conventional social-media posts are distributed broadly but are difficult to search geographically and chronologically. PawRadar addresses this latency by storing reports as geospatial records, retrieving active cases within a configurable radius, and linking successive sightings into a time-ordered movement history.
-
-Milestone 1 delivers an end-to-end web application comprising a Vue 3 mobile interface, an Express REST API, and a MongoDB Atlas database accessed through Mongoose. The system supports authenticated reporting, nearby pet and stray discovery, interactive Leaflet maps, chronological sighting trajectories, community verification, owner/finder communication, and persisted radius alerts.
-
-The current milestone establishes the functional and architectural baseline. The next phase will strengthen test data, edge-case resilience, matching quality, and native packaging without changing the core client/server contract.
-
-## 2. Project Objectives
-
-The project has four primary objectives:
-
-1. Centralize lost-pet reports and community sightings in a searchable, structured repository.
-2. Prioritize locally relevant information through database-backed distance queries.
-3. Visualize location history so users can interpret the likely movement of an animal.
-4. Minimize communication delay through direct contact actions and focused owner/finder messaging.
-
-## 3. Core Technology Stack
-
-| Layer | Technologies | Purpose |
-|---|---|---|
-| Frontend | Vue 3 Composition API, `<script setup lang="ts">`, TypeScript, Vite, Axios | Reactive mobile-first interface and typed API access |
-| Mapping | Leaflet.js, OpenStreetMap tiles | Interactive markers, radius overlays, location history, and viewport fitting |
-| Backend | Node.js, Express.js, RESTful controllers, JWT, bcrypt | API orchestration, authentication, validation, and authorization |
-| Data | Mongoose, MongoDB Atlas | Document persistence and geospatial querying |
-| Geospatial standard | GeoJSON Point and `2dsphere` indexes | Longitude/latitude validation and spherical distance searches |
-| Mobile shell | Responsive CSS constrained to `max-width: 480px` | App-like behavior on mobile browsers and preparation for Capacitor |
-
-The principal interface uses the PawRadar design tokens: deep teal `#1d6360`, urgency coral `#ef6351`, and warm off-white `#fcf9f2`.
-
-## 4. System Architecture
-
-```mermaid
-flowchart LR
-    U[Mobile web user] --> V[Vue 3 application]
-    V -->|Axios /api requests| P[Vite development proxy]
-    P --> E[Express REST API]
-    V -->|Production API URL| E
-    E --> A[JWT authentication and validation]
-    A --> C[Route controllers]
-    C --> M[Mongoose models]
-    M --> D[(MongoDB Atlas\npetlostapp)]
-    V --> L[Leaflet + OpenStreetMap]
-    V --> T[Native tel: link]
-    V --> W[WhatsApp wa.me link]
-```
-
-### 4.1 Client/server separation
-
-The Vue client is responsible for presentation, user interaction, geolocation requests, map lifecycle management, and typed HTTP requests. Express owns validation, authorization, serialization, and application rules. Mongoose models define persistence constraints and database indexes. This separation keeps browser code independent from database credentials and permits the same REST API to support a later Capacitor application.
-
-During development, Vite serves the frontend on port `3000` and proxies `/api` to Express on port `5000`. The backend also permits credential-aware requests from localhost and `127.0.0.1` on ports `3000` and `5173`.
-
-### 4.2 Geospatial storage and coordinate integrity
-
-Pet locations, sightings, stray reports, and user alert locations follow the GeoJSON Point convention:
-
-```json
-{
-  "type": "Point",
-  "coordinates": [114.1694, 22.3193]
-}
-```
-
-The ordering is always **`[longitude, latitude]`**. Leaflet expects `[latitude, longitude]`, so conversion occurs only at the presentation boundary. Schema validation constrains longitude to `-180…180` and latitude to `-90…90`. Explicit `2dsphere` indexes are declared for every geospatial model.
-
-### 4.3 Why spatial indexing occurs in the database
-
-Calculating the distance from every report in application code would require transferring and scanning the complete candidate set for each request. That approach grows linearly with the number of records and prevents the database query planner from eliminating irrelevant locations early.
-
-PawRadar instead uses MongoDB `$geoNear` aggregation with `2dsphere` indexes. The database performs spherical distance filtering and returns ordered candidates with a calculated distance. Ordinary B-tree indexes remain appropriate for scalar fields such as status, species, breed, and district; a `2dsphere` index is purpose-built for GeoJSON geometry and should not be described as a conventional B-tree. Combining spatial and scalar filtering reduces data transfer and keeps geographic selection close to the persistence layer.
-
-The current retrieval model is a circular radius query rather than a rectangular bounding-box query, matching the user-facing “within X km” requirement. Leaflet dynamically fits the displayed bounds for chronological trajectories and renders the selected radius as a map overlay.
-
-### 4.4 Communication design rationale
-
-Recovery scenarios are time-sensitive. PawRadar therefore exposes validated native links for:
-
-- `tel:+<international-number>` to open the device dialler; and
-- `https://wa.me/<number>?text=<encoded-message>` to open a pre-addressed WhatsApp conversation.
-
-Local Hong Kong numbers are normalized to the `+852` country code, invalid numbers are rejected, and unavailable contact actions are hidden. These direct protocols provide a zero-setup, low-latency path to the owner or reporter. Authenticated in-app messaging remains available for private asynchronous communication, but it does not obstruct urgent one-tap contact.
-
-## 5. Data and API Design
-
-### 5.1 Principal data models
-
-| Model | Responsibility | Important relationships/indexes |
-|---|---|---|
-| `User` | Identity, role, contact details, and alert preferences | `alertLocation` uses `2dsphere` |
-| `Pet` | Lost-pet report and current recovery status | References reporting user; `location` uses `2dsphere` |
-| `Sighting` | Time-stamped observation and verification state | References pet and reporter; `location` uses `2dsphere` |
-| `Stray` | Stray-animal welfare report and rescue lifecycle | References reporter; `location` uses `2dsphere` |
-| `Message` | Owner/finder conversation record | Scoped by pet and participant |
-| `Notification` | Persisted proximity or sighting alert | References recipient, pet, and optional sighting |
-
-Further field-level documentation is available in [`BACKEND_OVERVIEW.md`](BACKEND_OVERVIEW.md).
-
-### 5.2 Implemented API domains
-
-The REST API currently contains 28 registered endpoints across these domains:
-
-- `/api/auth` — registration, login, profile retrieval, and profile update;
-- `/api/pets` — reporting, list and nearby retrieval, ownership views, status changes, and sightings;
-- `/api/strays` — reporting, list/detail/nearby retrieval, ownership views, and rescue status;
-- `/api/chat` — conversation inbox, chronological thread retrieval, and message creation;
-- `/api/notifications` — alert retrieval, preferences, and read state; and
-- `/api/health` — application and database readiness.
-
-Protected operations require a seven-day JWT in `Authorization: Bearer <token>`. Reporting routes support optional authentication so emergency reports can be submitted by guests while still associating records with a signed-in user when possible.
-
-## 6. Completed Milestones and Deliverables
-
-### 6.1 Centralized pet and sighting tracking — Completed for Milestone 1
-
-- Lost-pet reports can be created, listed, retrieved individually, filtered, and transitioned through `lost`, `sighted`, and `reunited` states.
-- Sightings store an independent location, timestamp, note, photograph, reporter reference, and confirmation set.
-- A pet’s sightings are retrieved chronologically and rendered as a Leaflet polyline with numbered markers.
-- Authenticated users can review their own reports and submitted sightings.
-- Community confirmation uses an idempotent `$addToSet` update, preventing duplicate confirmation by one user.
-
-This is a complete operational recovery pipeline rather than unrestricted administrative CRUD. Hard deletion and general record editing are intentionally not exposed in Milestone 1, preserving the recovery history while moderation requirements are defined.
-
-### 6.2 Geospatial radar and interactive mapping — Completed
-
-- Pet, sighting, stray, and alert-location schemas use GeoJSON and explicit `2dsphere` indexes.
-- Nearby pet and stray endpoints use `$geoNear`, configurable radius limits, and nearest-first ordering.
-- Leaflet renders pet markers, stray-rescue markers, the user’s location, and a radius circle.
-- Chronological sightings are connected into a movement trajectory, and the viewport is fitted to the resulting bounds.
-- Map initialization handles unavailable location data by presenting a clear fallback and a default Hong Kong center.
-- Component teardown disconnects its `ResizeObserver`, cancels pending animation frames, removes event-bound Leaflet layers, and calls `map.remove()`.
-
-### 6.3 Multi-factor filtering — Completed
-
-- Pet search combines radius with species, status, breed, and Hong Kong district.
-- Breed matching is case-insensitive and escapes regular-expression metacharacters before querying.
-- District values are restricted to the recognized 18 Hong Kong districts.
-- Stray discovery supports species, condition, rescue status, district, and radius filters.
-- Numeric coordinates and radius inputs are normalized and range-checked by the API.
-
-### 6.4 Stray animal extension — Completed for the rescue workflow
-
-A dedicated `Stray` model separates animal-welfare reports from owned lost-pet cases. The implemented lifecycle is:
+## Architecture
 
 ```text
-Spotted / Needs Rescue (reported)
-        → Help Dispatched (rescue_dispatched)
-        → In Care / Rescued (rescued)
+Vue client
+  ├─ Vue Router screens and mobile navigation
+  ├─ central authentication/preferences state
+  ├─ typed Axios service (/api)
+  └─ Leaflet maps, trajectory, clusters and heatmap
+            │ HTTP + bearer JWT
+            ▼
+Express API
+  ├─ validation, authorization and privacy projection
+  ├─ pet/sighting/rescue/message/notification controllers
+  ├─ Smart Match and hotspot services
+  └─ Mongoose models and indexes
+            │ TLS MongoDB protocol
+            ▼
+MongoDB Atlas: petlostapp
 ```
 
-Users can create reports, discover nearby cases, open report details, contact the reporter, and filter by rescue state. Status changes are restricted to the original reporter or a `shelter_admin` user.
+The frontend never connects directly to MongoDB. `MONGODB_URI` and `JWT_SECRET` are backend-only values loaded from `server/.env`.
 
-### 6.5 Radius alerts and communication — Completed as a web baseline
+### Geospatial design
 
-- Users can store an alert center, enable or disable alerts, and select a radius from 1–50 km.
-- New pet reports and sightings generate persisted notifications for eligible nearby users.
-- A sighting also alerts the reporting owner where appropriate.
-- The web client retrieves notifications and manages individual/all-read state.
-- Direct phone, WhatsApp, and authenticated owner/finder chat flows are implemented.
+`Pet`, `Sighting`, `Stray`, and the user's optional alert location store GeoJSON points with coordinates in `[longitude, latitude]` order. Explicit `2dsphere` indexes support `$geoNear` queries and spherical distance ordering. Scalar indexes cover common status, district, species, ownership, and chronology filters.
 
-Milestone 1 uses persisted in-app alerts and polling. Native push delivery is deferred until platform packaging and notification permission flows are introduced.
+Database-level spatial filtering avoids loading a large unbounded result set into the application for distance calculations. The API returns the limited, ordered records needed by the client while keeping the same ownership rule across list, map, status, nearby, and pagination results.
 
-### 6.6 Backend hardening and defensive engineering — Completed
+## Implemented features
 
-- Centralized error middleware maps validation, identifier, conflict, authorization, and unexpected failures to stable responses.
-- Controllers reject missing, empty, primitive, or array request bodies before destructuring.
-- Authentication middleware distinguishes required authentication from optional guest access.
-- Login attempts are limited by IP address and email over a fixed time window.
-- GeoJSON arrays are required when a point is present and are validated for order and range.
-- CORS uses an explicit origin allow-list with credentials enabled.
-- `server/.env` is resolved relative to the backend source file, making launch behavior independent of the terminal’s current directory.
-- Photo payload size, text length, phone format, enum, district, and ObjectId checks are enforced before persistence.
+- Registration, login, JWT session restoration, profile/avatar editing, private real-name storage, and contact privacy.
+- Persistent account language/theme preferences with anonymous local fallback and cross-tab synchronization.
+- Radar list and map with species, breed, district, status, radius, pagination, marker clustering, and owner-post exclusion.
+- Lost-pet reporting, public `/pets/:id` deep links, owner-only status changes, and reunited state.
+- Idempotent sighting submissions, owner-authorized detail history, chronological map trajectory, and community confirmation.
+- Explainable Smart Match scoring by species, breed-token similarity, spatial distance decay, and temporal recency.
+- Real QR lost-pet flyers, printable layout, Web Share, one-tap phone, and WhatsApp actions.
+- Authenticated direct-message inbox and threads with text, photos, shared rescue posts, and participant authorization.
+- Rescue community reports with specific animal type, multiple photos, location, conditions, comments, saves, sharing, and rescue lifecycle.
+- Proximity preferences, in-app notifications, notification deep links, read state, and unread navigation badges.
+- Spatial hotspot aggregation covering pets, sightings, and rescue reports, rendered as a Leaflet heatmap.
+- Saved content and profile activity screens.
 
-## 7. Quality Assurance Status
+## Data model
 
-| Check | Current status |
-|---|---|
-| Vue/TypeScript type checking | Available through `npm run typecheck` |
-| Production frontend build | Passing |
-| Backend route/authentication tests | 6/6 passing |
-| API smoke test | Covers health, pet listing, and stray listing against a running database |
-| Map lifecycle cleanup | Implemented with `onBeforeUnmount` |
-| Defensive location fallback | Implemented |
+The active collections are:
 
-Current automated backend tests primarily verify route registration and authentication middleware placement. Controller validation, geospatial boundary cases, CORS behavior, and database integration require broader automated coverage during the hardening phase.
+- `users`
+- `pets`
+- `sightings`
+- `strays`
+- `messages`
+- `notifications`
+- `straycomments`
+- `savedstrays`
 
-## 8. Current Limitations
+All use timestamps. Ownership checks are enforced in controllers. Idempotency fields prevent duplicate sightings, messages, rescue posts, and comments caused by retried submissions. Image fields contain URLs or validated data references, not MongoDB binary files.
 
-The following boundaries are recorded to distinguish implemented evidence from future work:
+See [BACKEND_OVERVIEW.md](BACKEND_OVERVIEW.md) for the model/index summary and all 45 registered API endpoints.
 
-- Smart Match currently calculates a review-priority score using distance and sighting activity; it is not an image-recognition model.
-- Server-side nearby retrieval uses circular `$geoNear` queries, not rectangular bounding-box queries.
-- Alert records are persisted, but native push notifications are not yet delivered.
-- The seed script currently resets and populates pet/sighting demonstration data only; it does not yet create complete users, notifications, chats, and stray-rescue scenarios.
-- General edit/delete operations and formal moderation workflows remain outside the Milestone 1 operational lifecycle.
-- Native Android/iOS packaging is not part of the verified web milestone.
+## Security and runtime hardening
 
-## 9. Two-Week Development Roadmap
+- Backend startup requires a non-placeholder `JWT_SECRET` of at least 32 characters.
+- The secret is never logged on configuration failure.
+- Login throttling uses normalized email and IP counters and clears both after successful authentication.
+- CORS permits configured origins and local Vite origins with credentials.
+- Express body limits support profile and messaging images while preserving explicit validation.
+- Central error logging records bounded diagnostic metadata, not complete request, driver, URI, or configuration objects.
+- Startup refuses an unexpected database and always selects lowercase `petlostapp`.
+- `sample_mflix` is not referenced, queried, seeded, or modified.
 
-### Week 1 — System hardening and representative data
+## Local setup
 
-**Goal:** produce a deterministic, demonstrable web build under normal and adverse conditions.
+### Requirements
 
-1. Extend the seed utility with localized Hong Kong clusters containing districts, multiple chronological sightings, strays in each rescue state, alert-enabled users, and owner/finder conversations.
-2. Make seeding repeatable and clearly separate destructive development resets from non-destructive demonstration setup.
-3. Add controller-level tests for malformed bodies, coordinate order/ranges, radius boundaries, authorization, and expected response shapes.
-4. Validate geolocation permission denial, timeout, unavailable-position behavior, and empty filtered results across the main screens.
-5. Re-audit Leaflet initialization, watcher invalidation, popup listeners, `ResizeObserver`, animation-frame cancellation, and `map.remove()` behavior.
-6. Run type checking, production build verification, route tests, and API smoke checks as one documented pre-demonstration checklist.
+- Node.js 20 or newer
+- npm
+- A MongoDB Atlas URI whose user can access `petlostapp`
 
-**Week 1 acceptance criteria:** repeatable demo data, no unhandled promise rejection in primary flows, stable empty/error states, and clean automated verification.
-
-### Week 2 — Algorithmic enhancement and packaging
-
-**Goal:** improve candidate prioritization and transition the verified web build into native shells.
-
-1. Implement a documented Smart Match heuristic combining:
-   - exact species compatibility;
-   - normalized breed-token similarity;
-   - geospatial distance decay;
-   - report/sighting timestamp recency; and
-   - supporting sighting activity.
-2. Define weights, normalize component scores to a transparent 0–100 range, and retain manual visual confirmation to avoid presenting a heuristic as biometric certainty.
-3. Add unit tests using known candidate sets and explain the scoring method in the final report.
-4. Freeze the verified production web build and synchronize it with Capacitor.
-5. Configure Android and iOS application identifiers, permissions, icons, splash assets, geolocation, camera access, and platform-specific network settings.
-6. Conduct physical-device smoke tests for location permission, camera upload, deep links, map interaction, authentication persistence, and API connectivity.
-
-**Week 2 acceptance criteria:** reproducible scoring, explainable ranking results, successful native builds, and documented device-level smoke tests.
-
-## 10. Local Installation and Demonstration
-
-### 10.1 Prerequisites
-
-- A current Node.js LTS release and npm
-- Access to the MongoDB Atlas cluster and its database user credentials
-- A modern browser with location support
-
-### 10.2 Install dependencies
-
-From the project root:
+### Install
 
 ```powershell
-npm install
-npm --prefix server install
+npm.cmd install
+npm.cmd --prefix server install
 ```
 
-### 10.3 Configure the backend
+### Configure the backend
 
-Copy `server/.env.example` to `server/.env`, then edit only the local `server/.env` file. It is ignored by Git and must never be exposed through a `VITE_` variable or frontend source code.
+Copy `server/.env.example` to `server/.env`, then set values locally:
 
 ```dotenv
-MONGODB_URI=mongodb+srv://<database-user>:<url-encoded-password>@<cluster-host>/?retryWrites=true&w=majority
-JWT_SECRET=<a-long-random-secret>
+MONGODB_URI=your_mongodb_atlas_connection_string
 PORT=5000
+JWT_SECRET=replace_with_a_random_secret_of_at_least_32_characters
 ```
 
-Obtain the URI from Atlas under **Connect > Drivers**. Keep the URI and password local. The backend selects the `petlostapp` database explicitly, regardless of whether the URI includes a path. Atlas Network Access must allow the development machine's current IP address. The API fails safely before listening if Atlas authentication or connectivity fails, and it never logs the full URI.
+The example JWT text is not a valid runtime secret. Known placeholders are deliberately rejected. Never commit `server/.env`, put its values in frontend source, or expose them through a `VITE_` variable.
 
-An optional `CORS_ORIGINS` value may contain a comma-separated deployment allow-list. The development defaults permit localhost and `127.0.0.1` on ports `3000` and `5173`.
-
-### 10.4 Seed demonstration data
-
-For the idempotent FYP demo dataset, add these local-only values to `server/.env`:
+Optional CORS configuration:
 
 ```dotenv
-ALLOW_TEST_SEED=true
-SEED_USER_PASSWORD=<a-local-test-password-of-at-least-6-characters>
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
 ```
 
-Then run from the project root:
+### Start the application
+
+Terminal 1:
 
 ```powershell
-npm run seed:test
+npm.cmd --prefix server start
 ```
 
-The script inserts only missing records from batch `fyp-demo-v1`; it never overwrites or deletes existing records. It refuses production execution and verifies that the active database is exactly `petlostapp`. To remove only this batch:
+Terminal 2:
 
 ```powershell
-npm run seed:clean
+npm.cmd run dev
 ```
 
-With the backend running, verify login, filters, location search, sightings, messages, notifications, and stray status retrieval:
+Open the exact local URL printed by Vite, normally `http://localhost:5173`. The API defaults to `http://localhost:5000`.
 
-```powershell
-npm run seed:verify
-```
-
-#### Legacy development reset
-
-> **Warning:** the development seed deletes existing `Pet` and `Sighting` records before inserting PawRadar demonstration data. It refuses to run when `NODE_ENV=production` or unless destructive development seeding is explicitly enabled.
-
-From the project root:
-
-```powershell
-$env:ALLOW_DESTRUCTIVE_SEED='true'
-npm --prefix server run seed
-Remove-Item Env:ALLOW_DESTRUCTIVE_SEED
-```
-
-Never enable this flag against a production database.
-
-### 10.5 Start the Express backend
-
-Development mode with automatic restart:
-
-```powershell
-npm --prefix server run dev
-```
-
-Or production-style local execution:
-
-```powershell
-npm --prefix server start
-```
-
-The API is available at <http://localhost:5000>, and its health endpoint is <http://localhost:5000/api/health>.
-
-### 10.6 Start the Vue frontend
-
-In a second terminal at the project root:
-
-```powershell
-npm run dev
-```
-
-The configured development URL is <http://localhost:3000>.
-
-To demonstrate on Vite port `5173` instead:
-
-```powershell
-npm run dev -- --port 5173
-```
-
-Then open <http://localhost:5173>.
-
-## 11. Verification Commands
-
-Run static and route-level verification:
-
-```powershell
-npm test
-npm run build
-```
-
-With both servers running, validate the API and database:
-
-```powershell
-npm run smoke:api
-```
-
-To perform a safe Atlas round-trip, insert and read one temporary record in `petlostapp.pets`, then remove only that record:
-
-```powershell
-npm --prefix server run verify:db
-```
-
-Individual checks can also be performed with:
+### Verify connectivity
 
 ```powershell
 curl.exe http://localhost:5000/api/health
-curl.exe http://localhost:5000/api/pets
-curl.exe "http://localhost:5000/api/pets/nearby?lat=22.3193&lng=114.1694&radiusKm=10"
+npm.cmd run smoke:api
 ```
 
-Expected health output includes:
+A healthy response reports `status: "ok"`, `db: "connected"`, and database `petlostapp`.
 
-```json
-{
-  "status": "ok",
-  "db": "connected",
-  "database": "petlostapp",
-  "expectedDatabase": "petlostapp",
-  "readyState": 1
-}
+## Safe demonstration data
+
+The idempotent `fyp-demo-v1` seed creates only fictional PawRadar data. It requires both `ALLOW_TEST_SEED=true` and a local `SEED_USER_PASSWORD` in `server/.env`.
+
+```powershell
+npm.cmd --prefix server run seed:test
+npm.cmd --prefix server run seed:verify
 ```
 
-## 12. Milestone 1 Conclusion
+Cleanup removes only records carrying that seed batch marker:
 
-Milestone 1 demonstrates that PawRadar’s central proposition is technically viable: structured reports can be located efficiently by radius, enriched through chronological community sightings, visualized on an interactive mobile map, and converted into immediate recovery actions. The architecture separates presentation, API rules, and persistence; adopts the correct geospatial data conventions; and provides a clear path from a verified web application to explainable matching and native delivery.
+```powershell
+npm.cmd --prefix server run seed:clean
+```
 
-The next milestone is therefore focused on evidence and robustness rather than architectural replacement: representative datasets, deeper automated tests, a transparent multi-factor ranking algorithm, and controlled Capacitor packaging.
+The separate legacy `npm.cmd --prefix server run seed` command is destructive and additionally guarded. Do not use either cleanup/reset command against genuine data without reviewing the target and authorization flags.
+
+## Quality checks
+
+```powershell
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run test:frontend
+npm.cmd --prefix server test
+npm.cmd run build
+```
+
+Backend JavaScript syntax can be checked without connecting to Atlas:
+
+```powershell
+Get-ChildItem server -Recurse -Filter *.js | ForEach-Object { node --check $_.FullName }
+```
+
+Safe live-verification scripts are available after Atlas access is restored:
+
+```powershell
+npm.cmd --prefix server run verify:bugfixes
+npm.cmd --prefix server run verify:privacy
+npm.cmd --prefix server run verify:sightings
+npm.cmd --prefix server run verify:strays
+npm.cmd --prefix server run verify:preferences
+```
+
+## Current milestone status
+
+The web implementation covers the core pet, sighting, rescue, mapping, matching, communication, localization, theme, and notification workflows. Current follow-up work is:
+
+1. Restore local Atlas access and repeat smoke/live cross-account verification.
+2. Evaluate Smart Match with a labelled dataset and report ranking precision/recall.
+3. Add shelter-facing aggregate reports/exports after the main regression suite remains stable.
+4. Resume controlled Capacitor packaging only after the web build is frozen.
+
+No process in this project should load or alter MongoDB's `sample_mflix` database.

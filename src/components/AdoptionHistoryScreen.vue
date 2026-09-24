@@ -6,9 +6,7 @@
     pets they posted, and any reunited outcomes.
 
     Navigation model:
-      • Accessed from ProfileScreen via an "Activity" row (see integration notes).
-      • Slides in as a full-screen overlay using App.vue's existing
-        <Transition name="page"> pattern — identical to PetDetail.vue.
+      • Registered at /my-reports and opened from Profile/Settings activity links.
 
     Data is loaded from the authenticated activity APIs.
 
@@ -19,7 +17,7 @@
 
     <!-- ── Sticky header ── -->
     <header class="top">
-      <button class="back-btn" aria-label="Go back" @click="emit('close')">
+      <button class="back-btn" :aria-label="t('common.back')" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
       <h1>{{ t('profile.activityTitle') }}</h1>
@@ -51,20 +49,20 @@
     </div>
 
     <!-- ── Filter chips ── -->
-    <div class="chips" role="group" aria-label="Filter activity">
+    <div class="chips" role="group" :aria-label="t('profile.filterActivity')">
       <button
         v-for="chip in chips"
-        :key="chip"
+        :key="chip.value"
         class="chip"
-        :class="{ active: activeFilter === chip }"
-        @click="activeFilter = chip"
+        :class="{ active: activeFilter === chip.value }"
+        @click="activeFilter = chip.value"
       >
-        {{ chip }}
+        {{ chip.label }}
       </button>
     </div>
 
     <!-- ── Result count ── -->
-    <p v-if="!loading && !loadError" class="count">{{ filtered.length }} {{ filtered.length === 1 ? 'entry' : 'entries' }}</p>
+    <p v-if="!loading && !loadError" class="count">{{ t('profile.activityEntries', { count: filtered.length }, filtered.length) }}</p>
     <div v-if="loading" class="load-state" role="status">{{ t('profile.loadingActivity') }}</div>
     <div v-else-if="loadError" class="load-state error" role="alert">
       <span>{{ loadError }}</span><button type="button" @click="loadEntries">{{ t('common.retry') }}</button>
@@ -80,7 +78,7 @@
       >
         <!-- Pet thumbnail -->
         <div class="thumb-wrap">
-          <img :src="entry.petPhoto" :alt="`Photo of ${entry.petName}`" loading="lazy" />
+          <img :src="entry.petPhoto" :alt="t('pets.photoAlt', { name: entry.petName })" loading="lazy" />
           <!-- Outcome badge overlaid on thumbnail -->
           <span class="outcome-badge" :class="entry.outcome">
             {{ outcomeLabel(entry.outcome) }}
@@ -119,12 +117,12 @@
     <!-- ── Entry detail bottom sheet ── -->
     <Transition name="fade">
       <div v-if="selectedEntry" class="scrim" @click.self="selectedEntry = null">
-        <div class="sheet" role="dialog" aria-modal="true" :aria-label="`Details for ${selectedEntry.petName}`">
+        <div class="sheet" role="dialog" aria-modal="true" :aria-label="t('profile.activityDetails', { name: selectedEntry.petName })">
           <div class="grab" />
 
           <!-- Sheet header -->
           <div class="sheet-head">
-            <img :src="selectedEntry.petPhoto" :alt="`Photo of ${selectedEntry.petName}`" />
+            <img :src="selectedEntry.petPhoto" :alt="t('pets.photoAlt', { name: selectedEntry.petName })" />
             <div>
               <h2>{{ selectedEntry.petName }}</h2>
               <p>{{ selectedEntry.breed }} · {{ selectedEntry.location }}</p>
@@ -176,20 +174,20 @@
                 v-if="selectedEntry.petId"
                 class="contact-action message"
                 type="button"
-                aria-label="Message the pet owner in PawRadar"
+                :aria-label="t('profile.messageOwnerAria', { name: selectedEntry.petName })"
                 @click="messagePetOwner(selectedEntry)"
               >
                 <AppIcon name="message" :size="18" />
-                Message
+                {{ t('messages.message') }}
               </button>
               <a
                 v-if="selectedContactActions"
                 class="contact-action call"
                 :href="selectedContactActions.callHref"
-                aria-label="Call the pet owner"
+                :aria-label="t('profile.callOwnerAria', { name: selectedEntry.petName })"
               >
                 <AppIcon name="phone" :size="18" />
-                Call
+                {{ t('sightings.callReporter') }}
               </a>
               <a
                 v-if="selectedContactActions"
@@ -197,13 +195,13 @@
                 :href="selectedContactActions.whatsappHref"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Message the pet owner on WhatsApp"
+                :aria-label="t('profile.whatsappOwnerAria', { name: selectedEntry.petName })"
               >
                 WhatsApp
               </a>
             </div>
             <span v-if="!selectedContactActions" class="contact-unavailable">
-              This owner accepts contact through PawRadar messages.
+              {{ t('profile.contactUnavailable') }}
             </span>
           </section>
 
@@ -214,7 +212,7 @@
             @click="requestReunion(selectedEntry)"
           >
             <span aria-hidden="true">🎉</span>
-            Mark as Reunited
+            {{ t('pets.markReunited') }}
           </button>
           <p v-if="reunionError" class="reunion-error" role="alert">{{ reunionError }}</p>
 
@@ -234,8 +232,7 @@
           <span class="reunion-dialog-icon" aria-hidden="true">🎉</span>
           <h2 id="history-reunion-title">{{ t('pets.reunionQuestion') }}</h2>
           <p>
-            Marking {{ reunionTarget.petName }} as reunited will close this report and stop
-            new sighting submissions.
+            {{ t('pets.reunionHelp', { name: reunionTarget.petName }) }}
           </p>
           <p v-if="reunionError" class="reunion-dialog-error" role="alert">
             {{ reunionError }}
@@ -247,7 +244,7 @@
               :disabled="reunionSaving"
               @click="closeReunionConfirmation"
             >
-              Not yet
+              {{ t('pets.notYet') }}
             </button>
             <button
               class="confirm-reunion"
@@ -255,7 +252,7 @@
               :disabled="reunionSaving"
               @click="confirmReunion"
             >
-              {{ reunionSaving ? 'Updating…' : 'Yes, safely home' }}
+              {{ reunionSaving ? t('pets.updating') : t('pets.yesHome') }}
             </button>
           </div>
         </section>
@@ -273,6 +270,7 @@ import type { MySighting } from '../services/api'
 import type { Pet } from '../types/pet'
 import { createContactActions } from '../utils/contact'
 import { translateApiError, useAppI18n } from '../i18n'
+import { formatRelativeDate, petStatusLabel } from '../i18n/formatters'
 
 /* ── Emits ── */
 const emit = defineEmits<{
@@ -301,7 +299,7 @@ interface HistoryEntry {
   canViewContact?: boolean
 }
 
-/* ── Mock data — replace with API/store calls in production ── */
+/* Activity data loaded from the authenticated pet and sighting APIs. */
 const entries = ref<HistoryEntry[]>([])
 const loading = ref(true)
 const loadError = ref('')
@@ -314,7 +312,7 @@ function toHistoryEntry(pet: Pet): HistoryEntry {
     breed: pet.breed || pet.species,
     petPhoto: pet.photo,
     location: pet.location,
-    dateAgo: pet.postedAgo,
+    dateAgo: pet.createdAt ? formatRelativeDate(pet.createdAt) : pet.postedAgo,
     type: 'post',
     outcome: pet.status,
     note: pet.description,
@@ -322,29 +320,15 @@ function toHistoryEntry(pet: Pet): HistoryEntry {
   }
 }
 
-function relativeTime(value: string): string {
-  const timestamp = new Date(value).getTime()
-  if (!Number.isFinite(timestamp)) return 'Recently'
-
-  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000))
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}d ago`
-  return new Date(timestamp).toLocaleDateString()
-}
-
 function sightingToHistoryEntry(sighting: MySighting): HistoryEntry {
   return {
     id: `sighting:${sighting._id}`,
     petId: sighting.pet?._id,
-    petName: sighting.pet?.name || 'Pet sighting',
-    breed: 'Reported sighting',
+    petName: sighting.pet?.name || t('profile.petSighting'),
+    breed: t('profile.reportedSighting'),
     petPhoto: sighting.pet?.photo || sighting.photo || '',
-    location: sighting.locationName || 'Location not provided',
-    dateAgo: relativeTime(sighting.sightedAt || sighting.createdAt),
+    location: sighting.locationName || t('sightings.locationNotProvided'),
+    dateAgo: formatRelativeDate(sighting.sightedAt || sighting.createdAt),
     type: 'sighting',
     outcome: sighting.pet?.status || 'sighted',
     note: sighting.note || undefined,
@@ -373,16 +357,20 @@ async function loadEntries() {
 onMounted(loadEntries)
 
 /* ── Filter chips ── */
-const chips = ['All', 'Sightings', 'My Posts'] as const
-type ChipValue = (typeof chips)[number]
-const activeFilter = ref<ChipValue>('All')
+type ChipValue = 'all' | 'sightings' | 'posts'
+const chips = computed(() => [
+  { value: 'all' as const, label: t('profile.filterAll') },
+  { value: 'sightings' as const, label: t('profile.filterSightings') },
+  { value: 'posts' as const, label: t('profile.filterPosts') },
+])
+const activeFilter = ref<ChipValue>('all')
 
 const filtered = computed<HistoryEntry[]>(() => {
-  if (activeFilter.value === 'All') return entries.value
+  if (activeFilter.value === 'all') return entries.value
   const map: Record<ChipValue, ActivityType | null> = {
-    All: null,
-    Sightings: 'sighting',
-    'My Posts': 'post',
+    all: null,
+    sightings: 'sighting',
+    posts: 'post',
   }
   const t = map[activeFilter.value]
   return t ? entries.value.filter((entry) => entry.type === t) : entries.value
@@ -396,7 +384,10 @@ const reunionError = ref('')
 const celebrationMessage = ref('')
 const selectedContactActions = computed(() => {
   if (!selectedEntry.value?.canViewContact) return null
-  const message = `Hi, I'm contacting you through PawRadar about ${selectedEntry.value.petName}, near ${selectedEntry.value.location}.`
+  const message = t('pets.contactMessage', {
+    name: selectedEntry.value.petName,
+    location: `, ${selectedEntry.value.location}`,
+  })
   return createContactActions(selectedEntry.value.ownerPhone, message)
 })
 
@@ -436,7 +427,7 @@ async function confirmReunion() {
       selectedEntry.value =
         entries.value.find((entry) => entry.id === selectedEntry.value?.id) || selectedEntry.value
     }
-    celebrationMessage.value = `${updatedPet.name} is safely home. The report is now closed.`
+    celebrationMessage.value = t('profile.reunionCelebration', { name: updatedPet.name })
     reunionTarget.value = null
   } catch (error) {
     reunionError.value = translateApiError(error, 'errors.markReunited')
@@ -454,12 +445,7 @@ const stats = computed(() => ({
 
 /* ── Helper: human-readable outcome label ── */
 function outcomeLabel(outcome: Outcome): string {
-  const map: Record<Outcome, string> = {
-    reunited: 'REUNITED',
-    sighted: 'SIGHTED',
-    lost: 'LOST',
-  }
-  return map[outcome]
+  return petStatusLabel(outcome).toLocaleUpperCase()
 }
 
 /* ── Helper: icon name for activity type pill ── */
@@ -473,11 +459,7 @@ function typePillIcon(type: ActivityType): string {
 
 /* ── Helper: label for activity type pill ── */
 function typePillLabel(type: ActivityType): string {
-  const map: Record<ActivityType, string> = {
-    sighting: 'Sighting reported',
-    post: 'Pet posted',
-  }
-  return map[type]
+  return t(type === 'sighting' ? 'profile.sightingReported' : 'profile.petPosted')
 }
 </script>
 

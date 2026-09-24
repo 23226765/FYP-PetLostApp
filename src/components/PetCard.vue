@@ -64,7 +64,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { Pet } from '../data/pets'
+import type { Pet } from '../types/pet'
 import { useSavedPets } from '../composables/useSavedPets'
 import AppIcon from './AppIcon.vue'
 import { useAppI18n } from '../i18n'
