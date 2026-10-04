@@ -1,4 +1,4 @@
-import test from 'node:test'
+import test, { after, before } from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
 import Message from '../models/Message.js'
@@ -6,7 +6,12 @@ import SavedStray from '../models/SavedStray.js'
 import Stray from '../models/Stray.js'
 import StrayComment from '../models/StrayComment.js'
 import User from '../models/User.js'
-import { createComment, listMyStrays, listSavedStrays, reportStray } from '../controllers/strayController.js'
+import UserBlock from '../models/UserBlock.js'
+import { createComment, getStray, listMyStrays, listSavedStrays, reportStray } from '../controllers/strayController.js'
+
+const originalUserBlockFind = UserBlock.find
+before(() => { UserBlock.find = () => ({ select: async () => [] }) })
+after(() => { UserBlock.find = originalUserBlockFind })
 
 function responseRecorder() {
   return { statusCode: 200, payload: null, status(code) { this.statusCode = code; return this }, json(payload) { this.payload = payload; return this } }
@@ -30,13 +35,21 @@ test('authored rescue posts are ownership-scoped, paginated, and contact-free', 
   const originals = { find: Stray.find, count: Stray.countDocuments, userFind: User.find, aggregate: StrayComment.aggregate, saveFind: SavedStray.find }
   const userId = new mongoose.Types.ObjectId(); const record = strayRecord({ reportedBy: userId }); let authorSelection = ''
   try {
-    Stray.countDocuments = async (filter) => { assert.equal(String(filter.reportedBy), String(userId)); return 1 }
+    Stray.countDocuments = async (filter) => {
+      assert.equal(String(filter.reportedBy), String(userId))
+      assert.deepEqual(filter.moderationStatus, { $ne: 'hidden' })
+      return 1
+    }
     Stray.find = (filter) => {
       assert.equal(String(filter.reportedBy), String(userId))
+      assert.deepEqual(filter.moderationStatus, { $ne: 'hidden' })
       return { sort() { return this }, skip(value) { assert.equal(value, 0); return this }, limit(value) { assert.equal(value, 10); return Promise.resolve([record]) } }
     }
     User.find = () => ({ select: async (selection) => { authorSelection = selection; return [{ _id: userId, name: 'FYP Finder', avatar: '', phone: '+852 5555 0102' }] } })
-    StrayComment.aggregate = async () => []
+    StrayComment.aggregate = async (pipeline) => {
+      assert.deepEqual(pipeline[0].$match.moderationStatus, { $ne: 'hidden' })
+      return []
+    }
     SavedStray.find = () => ({ select: async () => [] })
     const response = responseRecorder()
     await listMyStrays({ user: { _id: userId }, query: { page: '1', limit: '10', userId: new mongoose.Types.ObjectId().toString() } }, response, (error) => { throw error })
@@ -51,6 +64,81 @@ test('authored rescue posts are ownership-scoped, paginated, and contact-free', 
   }
 })
 
+test('rescue location is exact only for its author and forced-public output stays approximate', async () => {
+  const originals = {
+    strayFindOne: Stray.findOne,
+    userFind: User.find,
+    commentAggregate: StrayComment.aggregate,
+    savedFind: SavedStray.find,
+  }
+  const authorId = new mongoose.Types.ObjectId()
+  const record = strayRecord({ reportedBy: authorId })
+
+  try {
+    Stray.findOne = async () => record
+    User.find = () => ({
+      select: async () => [{
+        _id: authorId,
+        name: 'FYP Finder',
+        avatar: '',
+        phone: '+852 5555 0102',
+        privacy: { contactVisibility: 'authenticated' },
+      }],
+    })
+    StrayComment.aggregate = async () => []
+    SavedStray.find = () => ({ select: async () => [] })
+
+    const scenarios = [
+      { label: 'guest', user: undefined, precision: 'approximate' },
+      { label: 'unrelated', user: { _id: new mongoose.Types.ObjectId() }, precision: 'approximate' },
+      {
+        label: 'shelter admin',
+        user: { _id: new mongoose.Types.ObjectId(), role: 'shelter_admin' },
+        precision: 'approximate',
+      },
+      { label: 'author', user: { _id: authorId }, precision: 'exact' },
+    ]
+
+    for (const scenario of scenarios) {
+      const response = responseRecorder()
+      await getStray(
+        { params: { id: String(record._id) }, query: {}, user: scenario.user },
+        response,
+        (error) => { throw error },
+      )
+      const serialized = response.payload.stray
+      assert.equal(serialized.locationPrecision, scenario.precision, scenario.label)
+      if (scenario.precision === 'exact') {
+        assert.equal(serialized.location, 'Sha Tin Park')
+        assert.deepEqual(serialized.coordinates, [114.18, 22.38])
+      } else {
+        assert.equal(serialized.location, 'Sha Tin')
+        assert.notDeepEqual(serialized.coordinates, [114.18, 22.38])
+      }
+    }
+
+    const publicResponse = responseRecorder()
+    await getStray(
+      {
+        params: { id: String(record._id) },
+        query: { view: 'public' },
+        user: { _id: authorId },
+      },
+      publicResponse,
+      (error) => { throw error },
+    )
+    assert.equal(publicResponse.payload.stray.locationPrecision, 'approximate')
+    assert.equal(publicResponse.payload.stray.location, 'Sha Tin')
+    assert.equal(publicResponse.payload.stray.canViewContact, false)
+    assert.equal('reporterPhone' in publicResponse.payload.stray, false)
+  } finally {
+    Stray.findOne = originals.strayFindOne
+    User.find = originals.userFind
+    StrayComment.aggregate = originals.commentAggregate
+    SavedStray.find = originals.savedFind
+  }
+})
+
 test('saved rescue posts use only the authenticated user and skip unavailable posts safely', async () => {
   const originals = { strayFind: Stray.find, saveFind: SavedStray.find, saveCount: SavedStray.countDocuments, userFind: User.find, aggregate: StrayComment.aggregate }
   const userId = new mongoose.Types.ObjectId(); const available = strayRecord(); const missingId = new mongoose.Types.ObjectId()
@@ -62,7 +150,10 @@ test('saved rescue posts use only the authenticated user and skip unavailable po
       assert.equal(String(filter.user), String(userId))
       return { sort() { return this }, skip() { return this }, limit() { return Promise.resolve(saves) } }
     }
-    Stray.find = async () => [available]
+    Stray.find = async (filter) => {
+      assert.deepEqual(filter.moderationStatus, { $ne: 'hidden' })
+      return [available]
+    }
     User.find = () => ({ select: async (selection) => { assert.equal(selection.includes('phone'), false); return [{ _id: available.reportedBy, name: 'Reporter', avatar: '' }] } })
     StrayComment.aggregate = async () => []
     const response = responseRecorder()

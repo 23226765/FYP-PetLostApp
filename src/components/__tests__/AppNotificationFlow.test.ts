@@ -22,4 +22,35 @@ describe('notification preference synchronization', () => {
       source.indexOf('await loadPets()'),
     )
   })
+
+  it('clears every authorization-scoped location cache during account transitions', () => {
+    const source = functionSource('clearAuthorizationScopedState', 'clearToastTimers')
+    for (const reset of [
+      'pets.value = []',
+      'selectedPet.value = null',
+      'posterPet.value = null',
+      'toastPet.value = null',
+      'sightingPet.value = null',
+      'sightingCoordinates.value = null',
+      'userLocation.value = null',
+      'hasPreciseLocation.value = false',
+    ]) {
+      expect(source).toContain(reset)
+    }
+    expect(source).toContain('petsAbortController?.abort()')
+  })
+
+  it('uses the same authorization cache reset for login, logout, and forced logout', () => {
+    expect(functionSource('handleAuth', 'logout')).toContain('clearAuthorizationScopedState()')
+    expect(functionSource('logout', 'clearAuthorizationScopedState')).toContain(
+      'clearAuthorizationScopedState()',
+    )
+    const unauthorizedStart = appSource.indexOf('function handleUnauthorized')
+    const unauthorizedEnd = appSource.indexOf('onMounted(() =>', unauthorizedStart)
+    expect(unauthorizedStart).toBeGreaterThanOrEqual(0)
+    expect(unauthorizedEnd).toBeGreaterThan(unauthorizedStart)
+    expect(appSource.slice(unauthorizedStart, unauthorizedEnd)).toContain(
+      'clearAuthorizationScopedState()',
+    )
+  })
 })

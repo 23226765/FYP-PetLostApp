@@ -74,7 +74,12 @@ import { login, register } from '../services/api'
 import type { User } from '../types/user'
 import { translateApiError, useAppI18n } from '../i18n'
 
-const emit = defineEmits<{ close: []; guest: []; authenticated: [user: User] }>()
+const emit = defineEmits<{
+  close: []
+  guest: []
+  failed: []
+  authenticated: [user: User]
+}>()
 const { t } = useAppI18n()
 
 const mode = ref<'login' | 'register'>('login')
@@ -110,8 +115,9 @@ async function submit() {
       emit('authenticated', res.user)
     }
   } catch (e) {
-    const err = e as { response?: { data?: { error?: string } }; message?: string }
-    error.value = err?.response?.data?.error || err?.message || translateApiError(e)
+    emit('failed')
+    const err = e as Error & { apiCode?: string }
+    error.value = err.apiCode ? translateApiError(e) : err.message || translateApiError(e)
   } finally {
     loading.value = false
   }

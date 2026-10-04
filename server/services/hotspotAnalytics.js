@@ -1,3 +1,5 @@
+import { approximateCoordinates, PUBLIC_GRID_SIZE_METERS } from './locationPrivacy.js'
+
 const DAY_MS = 24 * 60 * 60 * 1000
 
 function clamp(value, minimum = 0.1, maximum = 1) {
@@ -6,6 +8,13 @@ function clamp(value, minimum = 0.1, maximum = 1) {
 
 function rounded(value) {
   return Math.round(value * 100) / 100
+}
+
+function coordinatesOf(document) {
+  const coordinates = document?.location?.coordinates
+  return Array.isArray(coordinates) && coordinates.length === 2
+    ? coordinates.map(Number)
+    : null
 }
 
 export function recencyFactor(createdAt, windowDays, now = new Date()) {
@@ -41,3 +50,58 @@ export function strayIntensity(stray, windowDays, now = new Date()) {
   const recency = 0.65 + recencyFactor(stray.createdAt, windowDays, now) * 0.35
   return rounded(clamp(urgency * statusFactor * recency))
 }
+
+function cellIntensity(weight) {
+  if (!Number.isFinite(weight) || weight <= 0) return 0.1
+  return rounded(clamp(1 - Math.exp(-weight / 2)))
+}
+
+/**
+ * Groups exact internal records into deterministic public 750 metre cells.
+ * Only cell centres and aggregate counts leave this service; source IDs,
+ * timestamps, and exact coordinates are intentionally not copied.
+ */
+export function aggregateHotspotCells(
+  { sightings = [], strays = [] },
+  windowDays,
+  now = new Date(),
+) {
+  const cells = new Map()
+
+  function add(document, source, weight) {
+    const coordinates = approximateCoordinates(coordinatesOf(document))
+    if (!coordinates) return
+    const key = coordinates.join(',')
+    const cell = cells.get(key) || {
+      coordinates,
+      locationPrecision: 'approximate',
+      count: 0,
+      sightingCount: 0,
+      strayCount: 0,
+      weight: 0,
+    }
+    cell.count += 1
+    cell.weight += weight
+    if (source === 'sighting') cell.sightingCount += 1
+    if (source === 'stray') cell.strayCount += 1
+    cells.set(key, cell)
+  }
+
+  sightings.forEach((sighting) => {
+    add(sighting, 'sighting', sightingIntensity(sighting, windowDays, now))
+  })
+  strays.forEach((stray) => {
+    add(stray, 'stray', strayIntensity(stray, windowDays, now))
+  })
+
+  return [...cells.values()]
+    .map(({ weight, ...cell }) => ({ ...cell, intensity: cellIntensity(weight) }))
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        left.coordinates[0] - right.coordinates[0] ||
+        left.coordinates[1] - right.coordinates[1],
+    )
+}
+
+export { PUBLIC_GRID_SIZE_METERS }

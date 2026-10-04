@@ -15,6 +15,8 @@ import Stray from '../models/Stray.js'
 import User from '../models/User.js'
 import StrayComment from '../models/StrayComment.js'
 import SavedStray from '../models/SavedStray.js'
+import ContentReport from '../models/ContentReport.js'
+import UserBlock from '../models/UserBlock.js'
 
 const SEED_BATCH = 'fyp-demo-v1'
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url))
@@ -43,6 +45,8 @@ async function run() {
   }
 
   const models = [
+    ['contentreports', ContentReport],
+    ['userblocks', UserBlock],
     ['notifications', Notification],
     ['messages', Message],
     ['savedstrays', SavedStray],

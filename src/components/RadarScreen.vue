@@ -167,7 +167,7 @@
         :pets="pets"
         :center="userLocation"
         :radius-km="radiusKm"
-        :heat-points="hotspotPoints"
+        :heat-cells="hotspotCells"
         :show-heatmap="mapLayer === 'heatmap' && !hotspotLoading && !hotspotError"
         @open="(p) => emit('open', p)"
       />
@@ -183,7 +183,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import type { Pet } from '../types/pet'
-import type { HotspotPoint, HotspotSummary } from '../types/analytics'
+import type { HotspotCell, HotspotSummary } from '../types/analytics'
 import { HK_DISTRICTS } from '../types/pet'
 import { getHotspots } from '../services/api'
 import AppIcon from './AppIcon.vue'
@@ -220,7 +220,7 @@ const { t } = useAppI18n()
 
 const view = ref<'list' | 'map'>('list')
 const mapLayer = ref<'pins' | 'heatmap'>('pins')
-const hotspotPoints = ref<HotspotPoint[]>([])
+const hotspotCells = ref<HotspotCell[]>([])
 const hotspotSummary = ref<HotspotSummary | null>(null)
 const hotspotLoading = ref(false)
 const hotspotError = ref('')
@@ -258,11 +258,11 @@ async function loadHotspots() {
       controller.signal,
     )
     if (sequence !== hotspotRequestSequence) return
-    hotspotPoints.value = result.points
+    hotspotCells.value = result.cells
     hotspotSummary.value = result.summary
   } catch (error) {
     if (sequence !== hotspotRequestSequence) return
-    hotspotPoints.value = []
+    hotspotCells.value = []
     hotspotSummary.value = null
     hotspotError.value = translateApiError(error, 'errors.loadHotspots')
   } finally {

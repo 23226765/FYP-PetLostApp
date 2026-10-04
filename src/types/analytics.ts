@@ -1,24 +1,25 @@
-export type HotspotSource = 'sighting' | 'stray'
-
-export interface HotspotPoint {
-  id: string
-  source: HotspotSource
+export interface HotspotCell {
   /** GeoJSON coordinate order: [longitude, latitude]. */
   coordinates: [number, number]
-  /** Normalized heat intensity from 0.1 to 1. */
+  locationPrecision: 'approximate'
+  count: number
+  sightingCount: number
+  strayCount: number
+  /** Saturating aggregate heat intensity from 0.1 to 1. */
   intensity: number
-  occurredAt: string
 }
 
 export interface HotspotSummary {
   total: number
+  cellCount: number
   sightings: number
   strays: number
+  gridSizeMeters: number
   radiusKm: number
   windowDays: number
 }
 
 export interface HotspotResponse {
-  points: HotspotPoint[]
+  cells: HotspotCell[]
   summary: HotspotSummary
 }

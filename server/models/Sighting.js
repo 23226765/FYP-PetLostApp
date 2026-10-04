@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { moderationFields } from './moderationFields.js'
 
 const pointSchema = new mongoose.Schema(
   {
@@ -43,6 +44,7 @@ const sightingSchema = new mongoose.Schema(
       select: false,
       immutable: true,
     },
+    ...moderationFields,
     seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },
   { timestamps: true, collection: 'sightings' },

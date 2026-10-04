@@ -70,6 +70,20 @@ export function translateApiError(error: unknown, fallbackKey = 'errors.generic'
     UNSUPPORTED_LANGUAGE: 'errors.savePreferences',
     UNSUPPORTED_THEME: 'errors.savePreferences',
     USER_NOT_FOUND: 'errors.generic',
+    RATE_LIMITED: 'errors.rateLimited',
+    USER_BLOCKED: 'safety.blockedInteraction',
+    SELF_REPORT: 'safety.submitError',
+    SELF_BLOCK: 'safety.blockError',
+    SHELTER_ADMIN_REQUIRED: 'moderation.deniedHelp',
+    INVALID_REPORT_STATUS: 'moderation.updateError',
+    INVALID_MODERATION_BODY: 'moderation.updateError',
+    INVALID_MODERATOR_NOTE: 'moderation.updateError',
+    INVALID_VISIBILITY_BODY: 'moderation.visibilityError',
+    UNSUPPORTED_VISIBILITY_TARGET: 'moderation.visibilityError',
+    INVALID_VISIBILITY_STATUS: 'moderation.visibilityError',
+    MODERATION_REASON_REQUIRED: 'moderation.visibilityReasonRequired',
+    CONTENT_NOT_FOUND: 'moderation.visibilityError',
+    REPORT_NOT_FOUND: 'moderation.updateError',
   }
   return i18n.global.t(code && keyByCode[code] ? keyByCode[code] : fallbackKey)
 }

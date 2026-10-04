@@ -201,6 +201,15 @@
               >
                 {{ confirmationErrors[sighting.id] }}
               </p>
+              <SafetyActions
+                v-if="sighting.id"
+                compact
+                report-only
+                target-type="sighting"
+                :target-id="sighting.id"
+                :user="user"
+                @auth-needed="emit('auth-needed')"
+              />
             </div>
           </li>
         </ol>
@@ -255,6 +264,18 @@
           {{ t('pets.messagesOnly') }}
         </span>
       </div>
+
+      <SafetyActions
+        v-if="!isOwner && pet.reportedBy"
+        target-type="pet"
+        :target-id="pet.id"
+        :subject-user-id="pet.reportedBy"
+        :subject-label="pet.owner"
+        :user="user"
+        :blocked="blockedOwner"
+        @auth-needed="emit('auth-needed')"
+        @blocked="blockedOwner = true"
+      />
 
       <button
         v-if="isOwner && currentStatus === 'lost'"
@@ -331,6 +352,7 @@ import { createContactActions } from '../utils/contact'
 import { normalizeSightingHistory } from '../utils/sightings'
 import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
+import SafetyActions from './SafetyActions.vue'
 import { translateApiError, useAppI18n } from '../i18n'
 import { districtLabel, formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
 
@@ -364,6 +386,7 @@ const showReunionConfirm = ref(false)
 const reunionSaving = ref(false)
 const reunionError = ref('')
 const showCelebration = ref(false)
+const blockedOwner = ref(Boolean(props.pet.interactionBlocked))
 const activeSightingId = ref<string | undefined>(props.focusSightingId)
 const heroPhotoUrl = computed(() => normalizedImageUrl(props.pet.photo))
 const isOwner = computed(() => {
@@ -382,12 +405,13 @@ const trajectoryCenter = computed(() => {
   return null
 })
 const contactActions = computed(() => {
+  if (blockedOwner.value) return null
   if (!props.pet.canViewContact) return null
   const location = props.pet.location ? `, ${t('pets.lastSeenAt', { location: props.pet.location })}` : ''
   const message = t('pets.contactMessage', { name: props.pet.name, location })
   return createContactActions(props.pet.ownerPhone, message)
 })
-const canMessageOwner = computed(() => !isOwner.value)
+const canMessageOwner = computed(() => !isOwner.value && !blockedOwner.value)
 
 watch(heroPhotoUrl, () => {
   heroPhotoFailed.value = false
@@ -403,6 +427,7 @@ watch(
 watch(
   () => props.pet.id,
   () => {
+    blockedOwner.value = Boolean(props.pet.interactionBlocked)
     showReunionConfirm.value = false
     reunionSaving.value = false
     reunionError.value = ''
@@ -549,7 +574,15 @@ async function focusTimelineSighting(sightingId: string) {
 
 const relativeTime = formatRelativeDate
 
-watch(() => props.pet.id, loadSightings, { immediate: true })
+watch(
+  [() => props.pet.id, () => props.user?.id],
+  () => {
+    sightingsRequestSequence += 1
+    sightings.value = []
+    void loadSightings()
+  },
+  { immediate: true },
+)
 watch(() => props.focusSightingId, () => void focusRequestedSighting())
 
 onBeforeUnmount(() => {

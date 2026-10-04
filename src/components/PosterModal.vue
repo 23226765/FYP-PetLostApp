@@ -3,7 +3,7 @@
     class="poster-overlay"
     role="dialog"
     aria-modal="true"
-    :aria-label="t('poster.flyerAria', { name: pet.name })"
+    :aria-label="t('poster.flyerAria', { name: posterPet.name })"
   >
     <header class="poster-toolbar no-print">
       <button class="tool-button" type="button" :aria-label="t('poster.close')" @click="emit('close')">
@@ -24,7 +24,7 @@
 
         <section class="identity-block">
           <p>{{ t('poster.pleaseHelp') }}</p>
-          <h1>{{ pet.name }}</h1>
+          <h1>{{ posterPet.name }}</h1>
           <span class="species-tag">{{ speciesBreed }}</span>
         </section>
 
@@ -32,7 +32,7 @@
           <img
             v-if="petPhoto && !photoFailed"
             :src="petPhoto"
-            :alt="t('poster.photoAlt', { name: pet.name, animal: pet.breed || speciesLabel(pet.species) })"
+            :alt="t('poster.photoAlt', { name: posterPet.name, animal: posterPet.breed || speciesLabel(posterPet.species) })"
             class="poster-photo"
             crossorigin="anonymous"
             referrerpolicy="no-referrer"
@@ -42,7 +42,7 @@
             v-else
             class="photo-placeholder"
             role="img"
-            :aria-label="t('poster.photoUnavailable', { name: pet.name })"
+            :aria-label="t('poster.photoUnavailable', { name: posterPet.name })"
           >
             <AppIcon name="paw" :size="64" />
           </div>
@@ -53,7 +53,7 @@
         <dl class="detail-grid">
           <div>
             <dt>{{ t('pets.lastSeenLabel') }}</dt>
-            <dd>{{ pet.lastSeenAt ? formatDateTime(pet.lastSeenAt) : pet.lastSeen || t('poster.notProvided') }}</dd>
+            <dd>{{ posterPet.lastSeenAt ? formatDateTime(posterPet.lastSeenAt) : posterPet.lastSeen || t('poster.notProvided') }}</dd>
           </div>
           <div>
             <dt>{{ t('poster.districtLocation') }}</dt>
@@ -63,14 +63,14 @@
 
         <section class="description-block">
           <h2>{{ t('poster.identifyingDetails') }}</h2>
-          <p>{{ pet.details || pet.description || t('poster.noDetails') }}</p>
+          <p>{{ posterPet.details || posterPet.description || t('poster.noDetails') }}</p>
         </section>
 
         <section class="recovery-block">
           <div class="contact-block">
-            <p class="contact-heading">{{ t('poster.ifSeen', { name: pet.name }) }}</p>
-            <strong>{{ pet.canViewContact && pet.ownerPhone ? pet.ownerPhone : t('poster.reportThrough') }}</strong>
-            <span>{{ pet.owner ? t('poster.contactOwner', { owner: pet.owner }) : t('poster.submitImmediately') }}</span>
+            <p class="contact-heading">{{ t('poster.ifSeen', { name: posterPet.name }) }}</p>
+            <strong>{{ t('poster.reportThrough') }}</strong>
+            <span>{{ t('poster.submitImmediately') }}</span>
             <small>{{ t('poster.doNotChase') }}</small>
           </div>
 
@@ -117,6 +117,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import AppIcon from './AppIcon.vue'
 import type { Pet } from '../types/pet'
+import { getPublicPet } from '../services/api'
 import { useAppI18n } from '../i18n'
 import { districtLabel, formatDateTime, speciesLabel } from '../i18n/formatters'
 
@@ -129,12 +130,23 @@ const qrSvg = ref('')
 const qrError = ref('')
 const photoFailed = ref(false)
 const feedback = ref('')
+const publicPet = ref<Pet | null>(null)
 let qrRequestSequence = 0
+let publicPetRequestSequence = 0
 let feedbackTimer: ReturnType<typeof setTimeout> | null = null
 
 const petIdentifier = computed(() => {
   const legacyId = (props.pet as Pet & { _id?: unknown })._id
   return String(props.pet.id || legacyId || '').trim()
+})
+
+const posterPet = computed<Pet>(() => publicPet.value || {
+  ...props.pet,
+  ownerPhone: undefined,
+  canViewContact: false,
+  location: props.pet.district || '',
+  locationPrecision: 'approximate',
+  coordinates: null,
 })
 
 const deepLink = computed(() => {
@@ -152,22 +164,22 @@ const shortDeepLink = computed(() => {
 })
 
 const petPhoto = computed(() =>
-  normalizeImageUrl(props.pet.photo || props.pet.photos?.[0] || ''),
+  normalizeImageUrl(posterPet.value.photo || posterPet.value.photos?.[0] || ''),
 )
 
 const speciesBreed = computed(() =>
-  [speciesLabel(props.pet.species), props.pet.breed].filter((value) => value?.trim()).join(' · '),
+  [speciesLabel(posterPet.value.species), posterPet.value.breed].filter((value) => value?.trim()).join(' · '),
 )
 
 const districtLocation = computed(() => {
-  const parts = [props.pet.district ? districtLabel(props.pet.district) : '', props.pet.location].filter(
+  const parts = [posterPet.value.district ? districtLabel(posterPet.value.district) : '', posterPet.value.location].filter(
     (value): value is string => Boolean(value?.trim()),
   )
   return [...new Set(parts)].join(' · ') || t('sightings.locationNotProvided')
 })
 
 const rewardLabel = computed(() => {
-  const reward = props.pet.reward?.trim()
+  const reward = posterPet.value.reward?.trim()
   if (!reward) return ''
   return /reward/i.test(reward) ? reward : t('poster.reward', { value: reward })
 })
@@ -175,6 +187,22 @@ const rewardLabel = computed(() => {
 watch(petPhoto, () => {
   photoFailed.value = false
 })
+
+watch(
+  petIdentifier,
+  async (id) => {
+    const sequence = ++publicPetRequestSequence
+    publicPet.value = null
+    if (!id) return
+    try {
+      const pet = await getPublicPet(id)
+      if (sequence === publicPetRequestSequence) publicPet.value = pet
+    } catch {
+      // The deliberately coarse local shell remains safe if the public DTO cannot load.
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   deepLink,
@@ -227,8 +255,8 @@ function printPoster() {
 
 async function sharePoster() {
   const shareData = {
-    title: t('poster.shareTitle', { name: props.pet.name }),
-    text: t('poster.shareText', { name: props.pet.name }),
+    title: t('poster.shareTitle', { name: posterPet.value.name }),
+    text: t('poster.shareText', { name: posterPet.value.name }),
     url: deepLink.value,
   }
 
@@ -257,6 +285,7 @@ function showFeedback(message: string) {
 
 onBeforeUnmount(() => {
   qrRequestSequence += 1
+  publicPetRequestSequence += 1
   if (feedbackTimer) clearTimeout(feedbackTimer)
 })
 </script>

@@ -27,7 +27,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import type { Pet, Sighting } from '../types/pet'
 import type { StrayReport } from '../types/stray'
-import type { HotspotPoint } from '../types/analytics'
+import type { HotspotCell } from '../types/analytics'
 import { getCurrentLocation } from '../services/geolocation'
 import { translateApiError, useAppI18n } from '../i18n'
 import { formatDateTime, petStatusLabel, rescueStatusLabel, strayAnimalLabel, strayConditionLabel } from '../i18n/formatters'
@@ -38,7 +38,7 @@ const props = defineProps<{
   radiusKm?: number
   sightings?: Sighting[]
   strays?: StrayReport[]
-  heatPoints?: HotspotPoint[]
+  heatCells?: HotspotCell[]
   showHeatmap?: boolean
   focusedSightingId?: string
 }>()
@@ -293,10 +293,10 @@ function sightingLatLng(sighting: Sighting): [number, number] | null {
   return validLatLng(sighting.coordinates?.[1], sighting.coordinates?.[0])
 }
 
-function hotspotLatLng(point: HotspotPoint): [number, number, number] | null {
-  const coordinates = validLatLng(point.coordinates?.[1], point.coordinates?.[0])
+function hotspotLatLng(cell: HotspotCell): [number, number, number] | null {
+  const coordinates = validLatLng(cell.coordinates?.[1], cell.coordinates?.[0])
   if (!coordinates) return null
-  const intensity = Number(point.intensity)
+  const intensity = Number(cell.intensity)
   return [coordinates[0], coordinates[1], Number.isFinite(intensity) ? Math.min(1, Math.max(0.1, intensity)) : 0.5]
 }
 
@@ -328,7 +328,7 @@ async function renderHeatmap() {
   }
   if (!map || !props.showHeatmap) return
 
-  const points = (props.heatPoints ?? [])
+  const points = (props.heatCells ?? [])
     .map(hotspotLatLng)
     .filter((point): point is [number, number, number] => Boolean(point))
   if (points.length === 0) return
@@ -571,7 +571,7 @@ watch(locale, () => {
   renderTrajectory()
   renderStrays()
 })
-watch([() => props.heatPoints, () => props.showHeatmap], () => void renderHeatmap(), { deep: true })
+watch([() => props.heatCells, () => props.showHeatmap], () => void renderHeatmap(), { deep: true })
 watch(() => props.radiusKm, () => renderRadius())
 watch(
   () => props.center,

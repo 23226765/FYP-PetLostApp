@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { moderationFields } from './moderationFields.js'
 
 const pointSchema = new mongoose.Schema(
   {
@@ -36,6 +37,7 @@ const petSchema = new mongoose.Schema(
     mapX: { type: Number, default: 50 },
     mapY: { type: Number, default: 50 },
     reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    ...moderationFields,
     seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },
   { timestamps: true, collection: 'pets' },

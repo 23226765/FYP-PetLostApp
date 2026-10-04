@@ -20,6 +20,7 @@ export const HK_DISTRICTS = [
 ] as const
 
 export type HongKongDistrict = (typeof HK_DISTRICTS)[number]
+export type LocationPrecision = 'exact' | 'approximate'
 
 export interface Pet {
   id: string
@@ -36,8 +37,10 @@ export interface Pet {
   ownerPhone?: string
   canViewContact: boolean
   reportedBy?: string
+  interactionBlocked?: boolean
   status: 'lost' | 'sighted' | 'reunited'
   location: string
+  locationPrecision: LocationPrecision
   distanceKm?: number
   lastSeen: string
   postedAgo: string
@@ -53,6 +56,7 @@ export interface Sighting {
   petId: string
   coordinates: [number, number]
   locationName?: string
+  locationPrecision: LocationPrecision
   note?: string
   photo?: string
   sightedAt?: string

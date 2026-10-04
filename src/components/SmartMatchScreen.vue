@@ -104,6 +104,8 @@
         </span>
       </button>
 
+      <p class="photo-privacy-note">{{ t('smartMatch.photoNotAnalyzed') }}</p>
+
       <!-- Hidden native file input -->
       <input
         ref="fileInput"
@@ -121,7 +123,7 @@
 
       <button
         class="btn-primary"
-        :disabled="isLoading || !uploadedPhoto"
+        :disabled="isLoading"
         @click="handleFindMatches"
       >
         <span v-if="isLoading" class="button-spinner" aria-hidden="true" />
@@ -136,7 +138,7 @@
     <template v-else>
 
       <!-- Thumbnail of what was scanned -->
-      <div class="scanned-summary">
+      <div v-if="uploadedPhoto" class="scanned-summary">
         <div class="scanned-thumb" role="img" :aria-label="t('smartMatch.uploadedPhotoAria')">
           <img
             v-if="normalizedImageUrl(uploadedPhoto) && !uploadedPhotoFailed"
@@ -194,9 +196,9 @@
               <span class="conf-label">{{ t('smartMatch.match') }}</span>
             </span>
 
-            <span v-if="m.breakdown.distanceKm !== null" class="distance">
+            <span class="distance">
               <AppIcon name="pin" :size="14" />
-              {{ t('common.kilometres', { count: m.breakdown.distanceKm }) }}
+              {{ distanceBandLabel(m.breakdown.distanceBand) }}
             </span>
           </div>
 
@@ -421,7 +423,7 @@ function selectPhoto(photoSrc: string) {
 }
 
 async function handleFindMatches() {
-  if (isLoading.value || !uploadedPhoto.value) return
+  if (isLoading.value) return
 
   cancelMatchRequest()
   const sequence = ++requestSequence
@@ -510,6 +512,10 @@ function matchReason(match: MatchResult): string {
     distance: match.breakdown.distance,
     age: ageText,
   })
+}
+
+function distanceBandLabel(band: SmartMatchCandidate['breakdown']['distanceBand']): string {
+  return t(`smartMatch.distanceBands.${band}`)
 }
 
 /* ── Confidence tiering (drives badge + meter colour) ── */
@@ -713,6 +719,7 @@ h1 { font-size: 17px; font-weight: 800; }
 
 .upload-zone.has-photo { border-style: solid; border-color: rgba(29, 99, 96, 0.2); }
 .upload-zone:disabled { cursor: wait; }
+.photo-privacy-note { margin-top: -5px; color: var(--color-text-muted); font-size: 11.5px; line-height: 1.45; text-align: center; }
 
 .selected-upload-photo {
   width: 100%;

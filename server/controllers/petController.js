@@ -9,6 +9,18 @@ import {
 } from '../services/contactPrivacy.js'
 import { createRadiusNotifications } from './notificationController.js'
 import { logServerError } from '../middleware/errorHandler.js'
+import {
+  anonymousSearchCoordinates,
+  distanceBand,
+  exactDistanceKm,
+  MIN_ANONYMOUS_RADIUS_KM,
+  projectPetLocation,
+  projectedDistanceKm,
+  projectSightingLocation,
+  setLocationPrivacyHeaders,
+} from '../services/locationPrivacy.js'
+import { blockedUserIdsFor } from '../services/trustSafety.js'
+import { visibleContentFilter } from '../services/moderationVisibility.js'
 
 /* ───────────────────────── Helpers ───────────────────────── */
 
@@ -162,11 +174,14 @@ function relativeTime(date) {
 }
 
 // Maps the DB document to the shape the Vue frontend already consumes.
-function serializePet(pet, { distanceMeters, requester, contactOwner } = {}) {
-  const distanceKm =
-    typeof distanceMeters === 'number'
-      ? Math.max(0.1, Math.round((distanceMeters / 1000) * 10) / 10)
-      : undefined
+function serializePet(
+  pet,
+  { distanceMeters, distanceOrigin, requester, contactOwner, forcePublic = false, blockedUserIds = new Set() } = {},
+) {
+  const location = projectPetLocation(pet, requester, { forcePublic })
+  const distanceKm = location.locationPrecision === 'exact'
+    ? exactDistanceKm(distanceMeters)
+    : projectedDistanceKm(distanceOrigin, location.coordinates)
   const listedPhotos = Array.isArray(pet.photos)
     ? pet.photos.filter((photo) => typeof photo === 'string' && photo.trim())
     : []
@@ -185,10 +200,17 @@ function serializePet(pet, { distanceMeters, requester, contactOwner } = {}) {
     details: pet.details || '',
     reward: pet.reward || undefined,
     owner: pet.ownerName,
-    ...serializeContact({ requester, contactOwner, phoneField: 'ownerPhone' }),
+    ...serializeContact({
+      requester: forcePublic ? null : requester,
+      contactOwner,
+      phoneField: 'ownerPhone',
+      contextAllowed: !blockedUserIds.has(String(pet.reportedBy || '')),
+    }),
     reportedBy: pet.reportedBy ? String(pet.reportedBy) : undefined,
+    interactionBlocked: blockedUserIds.has(String(pet.reportedBy || '')),
     status: pet.status,
-    location: pet.locationName,
+    location: location.location,
+    locationPrecision: location.locationPrecision,
     distanceKm,
     lastSeen: pet.lastSeen ? relativeDay(pet.lastSeen) : '',
     postedAgo: pet.createdAt ? relativeTime(pet.createdAt) : '',
@@ -196,7 +218,7 @@ function serializePet(pet, { distanceMeters, requester, contactOwner } = {}) {
     createdAt: pet.createdAt ? new Date(pet.createdAt).toISOString() : null,
     mapX: pet.mapX,
     mapY: pet.mapY,
-    coordinates: isPoint(pet.location) ? pet.location.coordinates : null,
+    coordinates: location.coordinates,
   }
 }
 
@@ -204,25 +226,36 @@ async function serializePetDocuments(
   pets,
   requester,
   distanceForPet,
-  { includeContact = true } = {},
+  { includeContact = true, distanceOrigin, forcePublic = false } = {},
 ) {
   const owners = includeContact ? await loadContactOwners(pets) : new Map()
+  const blockedUserIds = requester ? await blockedUserIdsFor(requester._id) : new Set()
   return pets.map((pet) =>
     serializePet(pet, {
       requester,
       contactOwner: includeContact ? contactOwnerFrom(owners, pet.reportedBy) : undefined,
       distanceMeters: distanceForPet?.(pet),
+      distanceOrigin,
+      forcePublic,
+      blockedUserIds,
     }),
   )
 }
 
-async function serializeOnePet(pet, requester, distanceMeters) {
+async function serializeOnePet(pet, requester, distanceMeters, options = {}) {
   const owners = await loadContactOwners([pet])
+  const blockedUserIds = requester ? await blockedUserIdsFor(requester._id) : new Set()
   return serializePet(pet, {
     requester,
     contactOwner: contactOwnerFrom(owners, pet.reportedBy),
     distanceMeters,
+    blockedUserIds,
+    ...options,
   })
+}
+
+function forcePublicProjection(req) {
+  return req.query?.view === 'public'
 }
 
 /* ───────────────────────── Routes ───────────────────────── */
@@ -230,11 +263,12 @@ async function serializeOnePet(pet, requester, distanceMeters) {
 // GET /api/pets
 export async function listPets(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     const { species, status, breed, district } = req.query
     if (district && !HK_DISTRICTS.has(normalizedText(district, 80))) {
       return res.status(400).json({ error: 'Invalid Hong Kong district.' })
     }
-    const filter = excludeOwnedPets({}, req)
+    const filter = excludeOwnedPets(visibleContentFilter(), req)
     if (species) filter.species = species
     if (status) filter.status = status
     if (breed) {
@@ -266,8 +300,9 @@ export async function listPets(req, res, next) {
 // GET /api/pets/mine
 export async function listMyPets(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     const { page, limit, skip } = paginationFor(req.query)
-    const filter = { reportedBy: req.user._id }
+    const filter = visibleContentFilter({ reportedBy: req.user._id })
     const [total, reunited] = await Promise.all([
       Pet.countDocuments(filter),
       Pet.countDocuments({ ...filter, status: 'reunited' }),
@@ -296,10 +331,15 @@ export async function listMyPets(req, res, next) {
 // GET /api/pets/sightings/mine
 export async function listMySightings(req, res, next) {
   try {
-    const sightings = await Sighting.find({ reportedBy: req.user._id }).populate(
-      'pet',
-      'name photo status ownerName reportedBy',
-    )
+    setLocationPrivacyHeaders(res)
+    const queriedSightings = await Sighting.find(
+      visibleContentFilter({ reportedBy: req.user._id }),
+    ).populate({
+      path: 'pet',
+      match: visibleContentFilter(),
+      select: 'name photo status ownerName reportedBy district',
+    })
+    const sightings = queriedSightings.filter((sighting) => Boolean(sighting.pet))
     sightings.sort(
       (left, right) =>
         sightingTime(right) - sightingTime(left) ||
@@ -307,9 +347,15 @@ export async function listMySightings(req, res, next) {
     )
     const petDocuments = sightings.map((sighting) => sighting.pet).filter(Boolean)
     const owners = await loadContactOwners(petDocuments)
+    const blockedUserIds = await blockedUserIdsFor(req.user._id)
     res.json({
       sightings: sightings.map((sighting) => {
         const pet = sighting.pet
+        const projectedLocation = projectSightingLocation(
+          sighting,
+          pet || {},
+          req.user,
+        )
         return {
           _id: String(sighting._id),
           pet: pet
@@ -324,10 +370,13 @@ export async function listMySightings(req, res, next) {
                   requester: req.user,
                   contactOwner: contactOwnerFrom(owners, pet.reportedBy),
                   phoneField: 'ownerPhone',
+                  contextAllowed: !blockedUserIds.has(String(pet.reportedBy || '')),
                 }),
               }
             : null,
-          locationName: sighting.locationName,
+          coordinates: projectedLocation.coordinates,
+          locationName: projectedLocation.location,
+          locationPrecision: projectedLocation.locationPrecision,
           note: sighting.note,
           photo: sighting.photo || undefined,
           sightedAt: sighting.sightedAt || sighting.createdAt,
@@ -343,6 +392,7 @@ export async function listMySightings(req, res, next) {
 // GET /api/pets/nearby?lat=&lng=&radiusKm=&species=&status=
 export async function getNearbyPets(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     const { lat, lng, radiusKm, species, status, breed, district } = req.query
     if (district && !HK_DISTRICTS.has(normalizedText(district, 80))) {
       return res.status(400).json({ error: 'Invalid Hong Kong district.' })
@@ -356,23 +406,27 @@ export async function getNearbyPets(req, res, next) {
       return res.status(400).json({ error: 'Invalid coordinates.' })
     }
     const requestedRadius = Number(radiusKm)
+    const minimumRadius = req.user ? 0 : MIN_ANONYMOUS_RADIUS_KM
     const normalizedRadius =
       Number.isFinite(requestedRadius) && requestedRadius > 0
-        ? Math.min(requestedRadius, 50)
+        ? Math.min(50, Math.max(minimumRadius, requestedRadius))
         : 3
     const radiusMeters = normalizedRadius * 1000
+    const searchCoordinates = anonymousSearchCoordinates(req.user, [longitude, latitude])
 
     const { page, limit, skip } = paginationFor(req.query)
     const ownerId = authenticatedUserObjectId(req)
     const pipeline = [
       {
         $geoNear: {
-          near: { type: 'Point', coordinates: [longitude, latitude] },
+          near: { type: 'Point', coordinates: searchCoordinates },
           distanceField: 'distanceMeters',
           maxDistance: radiusMeters,
           spherical: true,
           key: 'location',
-          ...(ownerId ? { query: { reportedBy: { $ne: ownerId } } } : {}),
+          query: visibleContentFilter(
+            ownerId ? { reportedBy: { $ne: ownerId } } : {},
+          ),
         },
       },
     ]
@@ -399,7 +453,9 @@ export async function getNearbyPets(req, res, next) {
     const docs = result?.items || []
     const total = result?.totals?.[0]?.count || 0
     res.json({
-      pets: await serializePetDocuments(docs, req.user, (pet) => pet.distanceMeters),
+      pets: await serializePetDocuments(docs, req.user, (pet) => pet.distanceMeters, {
+        distanceOrigin: searchCoordinates,
+      }),
       pagination: paginationPayload(page, limit, total),
     })
   } catch (err) {
@@ -410,6 +466,7 @@ export async function getNearbyPets(req, res, next) {
 // POST /api/pets/smart-match
 export async function smartMatch(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!hasRequestBody(req)) return invalidRequestBody(res)
 
     const { species, breed, coordinates, limit } = req.body
@@ -434,21 +491,26 @@ export async function smartMatch(req, res, next) {
 
     // One pet query plus one grouped sighting query replaces the previous
     // client-side request-per-pet loop.
-    const pets = await Pet.find({ species, status: { $in: ['lost', 'sighted'] } })
+    const pets = await Pet.find(visibleContentFilter({
+      species,
+      status: { $in: ['lost', 'sighted'] },
+    }))
     const petIds = pets.map((pet) => pet._id)
     const sightingCounts = new Map()
 
     if (petIds.length > 0) {
       try {
         const groups = await Sighting.aggregate([
-          { $match: { pet: { $in: petIds } } },
+          { $match: visibleContentFilter({ pet: { $in: petIds } }) },
           { $group: { _id: '$pet', count: { $sum: 1 } } },
         ])
         groups.forEach((group) => sightingCounts.set(String(group._id), group.count))
       } catch (error) {
         // Keep a single-query fallback for providers that reject grouping.
         // Counting still happens in memory without a client-side N+1 loop.
-        const sightings = await Sighting.find({ pet: { $in: petIds } }).select('pet')
+        const sightings = await Sighting.find(
+          visibleContentFilter({ pet: { $in: petIds } }),
+        ).select('pet')
         sightings.forEach((sighting) => {
           const petId = String(sighting.pet)
           sightingCounts.set(petId, (sightingCounts.get(petId) || 0) + 1)
@@ -462,31 +524,38 @@ export async function smartMatch(req, res, next) {
       coordinates: coordinates.map(Number),
     }
     const contactOwners = await loadContactOwners(pets)
+    const blockedUserIds = req.user ? await blockedUserIdsFor(req.user._id) : new Set()
     const matches = pets
       .map((pet) => {
         const score = scoreCandidate(observation, pet)
-        const distanceMeters =
-          typeof score.breakdown.distanceKm === 'number'
-            ? score.breakdown.distanceKm * 1000
-            : undefined
+        const internalDistanceKm = score.breakdown.distanceKm
+        const { distanceKm: _privateDistanceKm, ...publicBreakdown } = score.breakdown
         return {
-          ...serializePet(pet, {
-            distanceMeters,
-            requester: req.user,
-            contactOwner: contactOwnerFrom(contactOwners, pet.reportedBy),
-          }),
-          ...score,
-          confidence: score.totalScore,
-          sightingCount: sightingCounts.get(String(pet._id)) || 0,
+          internalDistanceKm,
+          result: {
+            ...serializePet(pet, {
+              requester: req.user,
+              contactOwner: contactOwnerFrom(contactOwners, pet.reportedBy),
+              blockedUserIds,
+            }),
+            totalScore: score.totalScore,
+            breakdown: {
+              ...publicBreakdown,
+              distanceBand: distanceBand(internalDistanceKm),
+            },
+            confidence: score.totalScore,
+            sightingCount: sightingCounts.get(String(pet._id)) || 0,
+          },
         }
       })
       .sort(
         (left, right) =>
-          right.totalScore - left.totalScore ||
-          (left.breakdown.distanceKm ?? Number.POSITIVE_INFINITY) -
-            (right.breakdown.distanceKm ?? Number.POSITIVE_INFINITY),
+          right.result.totalScore - left.result.totalScore ||
+          (left.internalDistanceKm ?? Number.POSITIVE_INFINITY) -
+            (right.internalDistanceKm ?? Number.POSITIVE_INFINITY),
       )
       .slice(0, resultLimit)
+      .map(({ result }) => result)
 
     res.json({ matches })
   } catch (err) {
@@ -497,12 +566,17 @@ export async function smartMatch(req, res, next) {
 // GET /api/pets/:id
 export async function getPet(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
-    const pet = await Pet.findById(req.params.id)
+    const pet = await Pet.findOne(visibleContentFilter({ _id: req.params.id }))
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
-    res.json({ pet: await serializeOnePet(pet, req.user) })
+    res.json({
+      pet: await serializeOnePet(pet, req.user, undefined, {
+        forcePublic: forcePublicProjection(req),
+      }),
+    })
   } catch (err) {
     next(err)
   }
@@ -511,14 +585,19 @@ export async function getPet(req, res, next) {
 // GET /api/pets/:id/sightings
 export async function listSightings(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
 
-    const pet = await Pet.findById(req.params.id).select('reportedBy')
+    const pet = await Pet.findOne(
+      visibleContentFilter({ _id: req.params.id }),
+    ).select('reportedBy district')
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
 
-    const docs = await Sighting.find({ pet: req.params.id }).sort({ createdAt: 1, _id: 1 })
+    const docs = await Sighting.find(
+      visibleContentFilter({ pet: req.params.id }),
+    ).sort({ createdAt: 1, _id: 1 })
     const currentUserId = req.user?._id ? String(req.user._id) : null
     const ownerId = pet.reportedBy ? String(pet.reportedBy) : null
     const uniqueDocs = [
@@ -529,20 +608,22 @@ export async function listSightings(req, res, next) {
         String(left._id).localeCompare(String(right._id)),
     )
     const reporters = await loadContactOwners(uniqueDocs)
+    const blockedUserIds = req.user ? await blockedUserIdsFor(req.user._id) : new Set()
     const sightings = uniqueDocs.map((sighting) => {
       const confirmedBy = Array.isArray(sighting.confirmedBy) ? sighting.confirmedBy : []
       const reporterId = sighting.reportedBy ? String(sighting.reportedBy) : null
       const canViewReporter = Boolean(
         currentUserId && (currentUserId === ownerId || currentUserId === reporterId),
       )
+      const projectedLocation = projectSightingLocation(sighting, pet, req.user)
+      const canViewContent = Boolean(currentUserId)
       const contactOwner = contactOwnerFrom(reporters, sighting.reportedBy)
       const serialized = {
         id: String(sighting._id),
         petId: String(sighting.pet),
-        coordinates: sighting.location?.coordinates,
-        locationName: sighting.locationName,
-        note: sighting.note,
-        photo: sighting.photo,
+        coordinates: projectedLocation.coordinates,
+        locationName: projectedLocation.location,
+        locationPrecision: projectedLocation.locationPrecision,
         sightedAt: sighting.sightedAt || sighting.createdAt,
         createdAt: sighting.createdAt,
         confirmationCount: confirmedBy.length,
@@ -552,8 +633,12 @@ export async function listSightings(req, res, next) {
           requester: req.user,
           contactOwner,
           phoneField: 'reporterPhone',
-          contextAllowed: canViewReporter,
+          contextAllowed: canViewReporter && !blockedUserIds.has(String(sighting.reportedBy || '')),
         }),
+      }
+      if (canViewContent) {
+        serialized.note = normalizedText(sighting.note, 2000)
+        serialized.photo = typeof sighting.photo === 'string' ? sighting.photo : ''
       }
       if (canViewReporter) {
         serialized.reportedBy = reporterId || undefined
@@ -562,7 +647,7 @@ export async function listSightings(req, res, next) {
       return serialized
     })
 
-    res.json({ sightings })
+    res.json({ sightings, sightingCount: sightings.length })
   } catch (err) {
     next(err)
   }
@@ -571,13 +656,18 @@ export async function listSightings(req, res, next) {
 // POST /api/pets/:id/sightings/:sightingId/confirm
 export async function confirmSighting(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     const { id, sightingId } = req.params
     if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(sightingId)) {
       return res.status(400).json({ error: 'Invalid pet or sighting id' })
     }
 
+    if (!await Pet.exists(visibleContentFilter({ _id: id }))) {
+      return res.status(404).json({ error: 'Pet not found' })
+    }
+
     const sighting = await Sighting.findOneAndUpdate(
-      { _id: sightingId, pet: id },
+      visibleContentFilter({ _id: sightingId, pet: id }),
       { $addToSet: { confirmedBy: req.user._id } },
       { new: true },
     )
@@ -595,6 +685,7 @@ export async function confirmSighting(req, res, next) {
 // POST /api/pets/report
 export async function reportPet(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!hasRequestBody(req)) return invalidRequestBody(res)
 
     const {
@@ -669,12 +760,13 @@ export async function reportPet(req, res, next) {
 // POST /api/pets/:id/sighting
 export async function submitSighting(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
     if (!hasRequestBody(req)) return invalidRequestBody(res)
 
-    const pet = await Pet.findById(req.params.id)
+    const pet = await Pet.findOne(visibleContentFilter({ _id: req.params.id }))
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
     if (pet.status === 'reunited') {
       return res.status(409).json({
@@ -726,9 +818,9 @@ export async function submitSighting(req, res, next) {
     let sighting = null
     let created = true
     if (normalizedSubmissionId) {
-      sighting = await Sighting.findOne({ submissionId: normalizedSubmissionId }).select(
-        '+submissionId',
-      )
+      sighting = await Sighting.findOne(
+        visibleContentFilter({ submissionId: normalizedSubmissionId }),
+      ).select('+submissionId')
       if (sighting) {
         if (!isSameSightingSubmission(sighting, pet, req.user)) {
           return res.status(409).json({ error: 'This sighting submission identifier is in use.' })
@@ -742,10 +834,12 @@ export async function submitSighting(req, res, next) {
         sighting = await Sighting.create(sightingData)
       } catch (error) {
         if (error?.code !== 11000 || !normalizedSubmissionId) throw error
-        sighting = await Sighting.findOne({ submissionId: normalizedSubmissionId }).select(
-          '+submissionId',
-        )
-        if (!sighting) throw error
+        sighting = await Sighting.findOne(
+          visibleContentFilter({ submissionId: normalizedSubmissionId }),
+        ).select('+submissionId')
+        if (!sighting) {
+          return res.status(409).json({ error: 'This sighting submission is unavailable.' })
+        }
         if (!isSameSightingSubmission(sighting, pet, req.user)) {
           return res.status(409).json({ error: 'This sighting submission identifier is in use.' })
         }
@@ -770,12 +864,14 @@ export async function submitSighting(req, res, next) {
       }
     }
 
+    const projectedLocation = projectSightingLocation(sighting, pet, req.user)
     res.status(created ? 201 : 200).json({
       sighting: {
         id: String(sighting._id),
         petId: String(pet._id),
-        coordinates: sighting.location.coordinates,
-        locationName: sighting.locationName,
+        coordinates: projectedLocation.coordinates,
+        locationName: projectedLocation.location,
+        locationPrecision: projectedLocation.locationPrecision,
         note: sighting.note,
         photo: sighting.photo || undefined,
         sightedAt: sighting.sightedAt || sighting.createdAt,
@@ -794,6 +890,7 @@ export async function submitSighting(req, res, next) {
 // PATCH /api/pets/:id/status
 export async function updateStatus(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
@@ -803,13 +900,19 @@ export async function updateStatus(req, res, next) {
     if (!['lost', 'sighted', 'reunited'].includes(status)) {
       return res.status(400).json({ error: '`status` must be lost | sighted | reunited.' })
     }
-    const existingPet = await Pet.findById(req.params.id).select('reportedBy')
+    const existingPet = await Pet.findOne(
+      visibleContentFilter({ _id: req.params.id }),
+    ).select('reportedBy')
     if (!existingPet) return res.status(404).json({ error: 'Pet not found' })
     if (!existingPet.reportedBy || String(existingPet.reportedBy) !== String(req.user._id)) {
       return res.status(403).json({ error: 'Only the reporting owner can update this pet.' })
     }
 
-    const pet = await Pet.findByIdAndUpdate(req.params.id, { status }, { new: true })
+    const pet = await Pet.findOneAndUpdate(
+      visibleContentFilter({ _id: req.params.id }),
+      { status },
+      { new: true },
+    )
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
     res.json({ pet: await serializeOnePet(pet, req.user) })
   } catch (err) {

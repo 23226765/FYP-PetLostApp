@@ -42,6 +42,16 @@
         {{ t('messages.messageOnly') }}
       </span>
     </header>
+    <SafetyActions
+      v-if="counterpartId"
+      class="chat-safety"
+      target-type="user"
+      :target-id="counterpartId"
+      :subject-user-id="counterpartId"
+      :subject-label="counterpartName"
+      :user="user"
+      @blocked="emit('close')"
+    />
 
     <!-- Chat feed -->
     <main ref="feedEl" class="chat-feed" :aria-label="t('messages.chatMessages')">
@@ -73,6 +83,14 @@
             />
             <p v-if="msg.text">{{ msg.text }}</p>
             <span class="time">{{ formatTime(msg.createdAt) }}</span>
+            <SafetyActions
+              v-if="msg.sender !== currentSender"
+              compact
+              report-only
+              target-type="message"
+              :target-id="msg.id"
+              :user="user"
+            />
           </div>
         </div>
       </template>
@@ -121,6 +139,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
+import SafetyActions from './SafetyActions.vue'
 import {
   getMessages,
   sendMessage,
@@ -146,6 +165,8 @@ const loading = ref(true)
 const sending = ref(false)
 const error = ref('')
 const currentSender = ref<ChatMessage['sender'] | null>(null)
+const counterpartId = computed(() => currentSender.value === 'owner' ? props.pet.participantId : props.pet.reportedBy)
+const counterpartName = computed(() => currentSender.value === 'owner' ? props.pet.participantName : props.pet.owner)
 const ownerContactActions = computed(() => {
   if (currentSender.value !== 'finder') return null
   if (!props.pet.canViewContact) return null
@@ -339,6 +360,8 @@ onBeforeUnmount(() => {
   flex: 1;
   min-width: 0;
 }
+
+.chat-safety { padding: 2px 14px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
 
 .chat-title h1 {
   color: #ffffff;

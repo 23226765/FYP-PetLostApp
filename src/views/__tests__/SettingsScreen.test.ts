@@ -22,7 +22,7 @@ const user: User = {
   privacy: { contactVisibility: 'private' },
 }
 
-async function mountSettings() {
+async function mountSettings(currentUser: User = user) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -30,12 +30,14 @@ async function mountSettings() {
       { path: '/settings', component: { template: '<div />' } },
       { path: '/saved', component: { template: '<div />' } },
       { path: '/my-reports', component: { template: '<div />' } },
+      { path: '/settings/blocked', component: { template: '<div />' } },
+      { path: '/moderation', component: { template: '<div />' } },
     ],
   })
   await router.push('/settings')
   await router.isReady()
   const wrapper = mount(SettingsScreen, {
-    props: { user, alertsEnabled: true, radiusKm: 5 },
+    props: { user: currentUser, alertsEnabled: true, radiusKm: 5 },
     global: {
       plugins: [router],
       stubs: { AppIcon: { template: '<span />' } },
@@ -138,5 +140,14 @@ describe('SettingsScreen contact privacy', () => {
 
     expect(document.documentElement.dataset.theme).toBe('light')
     expect(wrapper.get('.preference-message.error').text()).toContain('previous selection has been restored')
+  })
+
+  it('shows the safety review route only to shelter administrators', async () => {
+    const ordinary = await mountSettings()
+    expect(ordinary.text()).not.toContain('Safety review')
+
+    const admin = await mountSettings({ ...user, role: 'shelter_admin' })
+    expect(admin.text()).toContain('Safety review')
+    expect(admin.text()).toContain('Review community reports and record decisions')
   })
 })

@@ -129,6 +129,35 @@
           </div>
         </section>
 
+        <section class="settings-group" aria-labelledby="safety-heading">
+          <h2 id="safety-heading">{{ t('safety.safetyPrivacy') }}</h2>
+          <div class="settings-card">
+            <button class="setting-row" type="button" @click="router.push('/settings/blocked')">
+              <span class="setting-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 3 5 6v5c0 4.7 2.9 8 7 10 4.1-2 7-5.3 7-10V6l-7-3Z" /><path d="m8 8 8 8" />
+                </svg>
+              </span>
+              <span class="setting-copy"><strong>{{ t('safety.blockedAccounts') }}</strong><span>{{ t('safety.blockedAccountsHelp') }}</span></span>
+              <AppIcon class="chevron" name="chevron" :size="16" />
+            </button>
+            <button
+              v-if="user.role === 'shelter_admin'"
+              class="setting-row"
+              type="button"
+              @click="router.push('/moderation')"
+            >
+              <span class="setting-icon coral">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" />
+                </svg>
+              </span>
+              <span class="setting-copy"><strong>{{ t('moderation.settingsLabel') }}</strong><span>{{ t('moderation.settingsHelp') }}</span></span>
+              <AppIcon class="chevron" name="chevron" :size="16" />
+            </button>
+          </div>
+        </section>
+
         <section class="settings-group" aria-labelledby="activity-heading">
           <h2 id="activity-heading">{{ t('settings.yourActivity') }}</h2>
           <div class="settings-card">

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { moderationFields } from './moderationFields.js'
 
 const pointSchema = new mongoose.Schema(
   {
@@ -55,6 +56,7 @@ const straySchema = new mongoose.Schema(
     observedAt: { type: Date, default: Date.now },
     statusUpdatedAt: { type: Date, default: Date.now },
     active: { type: Boolean, default: true },
+    ...moderationFields,
     submissionId: { type: String, trim: true, maxlength: 100, default: undefined },
     seedBatch: { type: String, default: undefined, select: false, immutable: true },
   },

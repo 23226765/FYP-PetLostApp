@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Sighting } from '../../types/pet'
+import type { HotspotCell } from '../../types/analytics'
 import MapView from '../MapView.vue'
 
 const leafletState = vi.hoisted(() => ({
@@ -15,6 +16,8 @@ const leafletState = vi.hoisted(() => ({
   zoomToShowLayer: vi.fn(),
   fitBounds: vi.fn(),
   setView: vi.fn(),
+  heatPoints: [] as Array<[number, number, number]>,
+  heatOptions: null as Record<string, unknown> | null,
 }))
 
 vi.mock('leaflet.markercluster', () => ({}))
@@ -90,6 +93,12 @@ vi.mock('leaflet', () => {
       }),
       divIcon: vi.fn((options: any) => options),
       polyline: vi.fn(() => ({ addTo: vi.fn() })),
+      heatLayer: vi.fn((points: Array<[number, number, number]>, options: Record<string, unknown>) => {
+        leafletState.heatPoints = points
+        leafletState.heatOptions = options
+        const instance = { addTo: vi.fn(() => instance), remove: vi.fn() }
+        return instance
+      }),
       circle: vi.fn(() => ({
         addTo: vi.fn(),
         setRadius: vi.fn(),
@@ -105,6 +114,7 @@ function report(id: string, coordinates: [number, number], sightedAt: string): S
     id,
     petId: 'maple-id',
     coordinates,
+    locationPrecision: 'exact',
     locationName: id,
     sightedAt,
     createdAt: sightedAt,
@@ -133,6 +143,8 @@ describe('MapView sighting trajectory', () => {
     leafletState.zoomToShowLayer.mockClear()
     leafletState.fitBounds.mockClear()
     leafletState.setView.mockClear()
+    leafletState.heatPoints = []
+    leafletState.heatOptions = null
   })
 
   it('creates three separate marker positions for three distinct locations', async () => {
@@ -192,5 +204,29 @@ describe('MapView sighting trajectory', () => {
     await flushPromises()
     expect(leafletState.clearLayers).toHaveBeenCalled()
     expect(leafletState.clusterLayers).toHaveLength(3)
+  })
+
+  it('renders one Leaflet heat point for each aggregate hotspot cell', async () => {
+    const cell: HotspotCell = {
+      coordinates: [114.187, 22.379],
+      locationPrecision: 'approximate',
+      count: 4,
+      sightingCount: 3,
+      strayCount: 1,
+      intensity: 0.82,
+    }
+    mount(MapView, {
+      props: {
+        pets: [],
+        heatCells: [cell],
+        showHeatmap: true,
+        center: { lat: 22.3, lng: 114.17 },
+        radiusKm: 5,
+      },
+    })
+    await flushPromises()
+
+    expect(leafletState.heatPoints).toEqual([[22.379, 114.187, 0.82]])
+    expect(leafletState.heatOptions).toEqual(expect.objectContaining({ max: 1, radius: 28 }))
   })
 })

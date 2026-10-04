@@ -9,7 +9,7 @@ PawRadar is a mobile-first web application for reporting lost pets, recording co
 | Frontend | Vue 3.5, TypeScript 5.7, Composition API, Vue Router 4.6, Axios 1.19, Vite 8 |
 | Localization | Vue I18n 11; English, Traditional Chinese (Hong Kong), Simplified Chinese |
 | Maps | Leaflet 1.9, Leaflet marker clusters, `leaflet.heat` |
-| Backend | Node.js, Express 4.19, REST API, JWT 9, bcryptjs 3 |
+| Backend | Node.js, Express 4.19, REST API, Helmet 8.1, JWT 9, bcryptjs 3 |
 | Data | Mongoose 8.6 and MongoDB Atlas database `petlostapp` |
 | Device integration | Capacitor 8 core, camera, geolocation, Android and iOS packages |
 | Testing | Vitest, Vue Test Utils, Node's built-in test runner, `vue-tsc`, ESLint |
@@ -58,6 +58,7 @@ Database-level spatial filtering avoids loading a large unbounded result set int
 - Proximity preferences, in-app notifications, notification deep links, read state, and unread navigation badges.
 - Spatial hotspot aggregation covering pets, sightings, and rescue reports, rendered as a Leaflet heatmap.
 - Saved content and profile activity screens.
+- Private content reporting, reversible account blocking, and a role-restricted shelter-admin review queue with audited, non-destructive decisions.
 
 ## Data model
 
@@ -71,18 +72,26 @@ The active collections are:
 - `notifications`
 - `straycomments`
 - `savedstrays`
+- `contentreports`
+- `userblocks`
 
 All use timestamps. Ownership checks are enforced in controllers. Idempotency fields prevent duplicate sightings, messages, rescue posts, and comments caused by retried submissions. Image fields contain URLs or validated data references, not MongoDB binary files.
 
-See [BACKEND_OVERVIEW.md](BACKEND_OVERVIEW.md) for the model/index summary and all 45 registered API endpoints.
+See [BACKEND_OVERVIEW.md](BACKEND_OVERVIEW.md) for the model/index summary and all 51 registered API endpoints.
 
 ## Security and runtime hardening
 
 - Backend startup requires a non-placeholder `JWT_SECRET` of at least 32 characters.
 - The secret is never logged on configuration failure.
 - Login throttling uses normalized email and IP counters and clears both after successful authentication.
-- CORS permits configured origins and local Vite origins with credentials.
+- Registration, authenticated mutations, and uploads have bounded user/IP rate limits with standard response headers.
+- Helmet applies CSP, clickjacking, MIME-sniffing, referrer and cross-origin resource protections; HSTS is enabled only in production.
+- API responses use `Cache-Control: no-store`; uploaded images retain an explicit cross-origin resource policy for the frontend.
+- CORS uses an exact origin allowlist with credentials. Production startup requires `CORS_ORIGINS` explicitly.
+- Proxy trust defaults to disabled and rejects blanket `true`/wildcard trust. Production deployments must identify their proxy by subnet/address or a controlled hop count.
 - Express body limits support profile and messaging images while preserving explicit validation.
+- Trust-and-safety reports are private and idempotent. User blocks are account-scoped, reversible, rate-limited, and suppress direct social interaction without hiding emergency discovery posts.
+- Moderation queue reads and updates require `shelter_admin`; projections exclude contact and precise-location fields, and review decisions never delete target content automatically.
 - Central error logging records bounded diagnostic metadata, not complete request, driver, URI, or configuration objects.
 - Startup refuses an unexpected database and always selects lowercase `petlostapp`.
 - `sample_mflix` is not referenced, queried, seeded, or modified.
@@ -114,11 +123,18 @@ JWT_SECRET=replace_with_a_random_secret_of_at_least_32_characters
 
 The example JWT text is not a valid runtime secret. Known placeholders are deliberately rejected. Never commit `server/.env`, put its values in frontend source, or expose them through a `VITE_` variable.
 
-Optional CORS configuration:
+Development CORS and proxy configuration:
 
 ```dotenv
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
+TRUST_PROXY=false
 ```
+
+For production, set `NODE_ENV=production`, list the deployed frontend origin in
+`CORS_ORIGINS`, and configure `TRUST_PROXY` for the actual reverse proxy. Prefer
+an explicit IP/CIDR such as `10.0.0.0/8`; a hop count such as `1` is accepted
+only when the backend cannot be reached through a shorter, untrusted network
+path. Never set `TRUST_PROXY=true` or `TRUST_PROXY=*`.
 
 ### Start the application
 

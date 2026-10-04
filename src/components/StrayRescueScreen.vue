@@ -217,6 +217,7 @@ async function loadStrays() {
   abortController = controller
   loading.value = true
   error.value = ''
+  strays.value = []
   const center = props.userLocation || HK_CENTER
   try {
     const result = await getNearbyStrays({
@@ -318,7 +319,7 @@ async function submitReport() {
 }
 
 watch(
-  [() => props.radiusKm, () => props.userLocation, speciesFilter, statusFilter, districtFilter],
+  [() => props.radiusKm, () => props.userLocation, () => props.user?.id, speciesFilter, statusFilter, districtFilter],
   loadStrays,
   { immediate: true, deep: true },
 )

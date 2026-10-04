@@ -1,18 +1,26 @@
-import test from 'node:test'
+import test, { after, before } from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import User from '../models/User.js'
 import Notification from '../models/Notification.js'
+import UserBlock from '../models/UserBlock.js'
 import {
+  getPet,
   getNearbyPets,
   listMyPets,
   listPets,
   listSightings,
+  reportPet,
+  smartMatch,
   submitSighting,
   validateSightingLocation,
 } from '../controllers/petController.js'
+
+const originalUserBlockFind = UserBlock.find
+before(() => { UserBlock.find = () => ({ select: async () => [] }) })
+after(() => { UserBlock.find = originalUserBlockFind })
 
 function responseRecorder() {
   return {
@@ -201,7 +209,7 @@ test('authenticated nearby radar applies the same owner and status exclusion', a
 })
 
 test('pet owner and reporter can see reporter contact while unrelated users cannot', async () => {
-  const originalFindById = Pet.findById
+  const originalFindOne = Pet.findOne
   const originalFind = Sighting.find
   const originalUserFind = User.find
   const ownerId = new mongoose.Types.ObjectId()
@@ -224,7 +232,9 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
   }
 
   try {
-    Pet.findById = () => ({ select: async () => ({ _id: petId, reportedBy: ownerId }) })
+    Pet.findOne = () => ({
+      select: async () => ({ _id: petId, reportedBy: ownerId, district: 'Sha Tin' }),
+    })
     Sighting.find = () => ({ sort: async () => [sighting, { ...sighting }] })
     User.find = () => ({
       select: async () => [
@@ -243,6 +253,8 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
       assert.equal(response.payload.sightings[0].id, String(sightingId))
       assert.equal(response.payload.sightings[0].reporterName, 'FYP Finder')
       assert.equal(response.payload.sightings[0].reporterPhone, '+852 5555 0102')
+      assert.equal(response.payload.sightings[0].locationPrecision, 'exact')
+      assert.deepEqual(response.payload.sightings[0].coordinates, [114.19, 22.38])
       assert.equal(response.payload.sightings.length, 1)
     }
 
@@ -255,9 +267,114 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
     assert.equal(unrelatedResponse.payload.sightings[0].id, String(sightingId))
     assert.equal('reporterName' in unrelatedResponse.payload.sightings[0], false)
     assert.equal('reporterPhone' in unrelatedResponse.payload.sightings[0], false)
+    assert.equal(unrelatedResponse.payload.sightings[0].locationPrecision, 'approximate')
+    assert.equal(unrelatedResponse.payload.sightings[0].locationName, 'Sha Tin')
+    assert.notDeepEqual(unrelatedResponse.payload.sightings[0].coordinates, [114.19, 22.38])
+    assert.equal(unrelatedResponse.payload.sightings[0].note, 'Near the fountain')
+
+    const adminResponse = responseRecorder()
+    await listSightings(
+      {
+        params: { id: String(petId) },
+        user: { _id: new mongoose.Types.ObjectId(), role: 'shelter_admin' },
+      },
+      adminResponse,
+      failOnNext,
+    )
+    assert.equal(adminResponse.payload.sightings[0].locationPrecision, 'approximate')
+    assert.equal('reporterName' in adminResponse.payload.sightings[0], false)
+
+    const guestResponse = responseRecorder()
+    await listSightings({ params: { id: String(petId) } }, guestResponse, failOnNext)
+    const guestSighting = guestResponse.payload.sightings[0]
+    assert.equal(guestSighting.locationPrecision, 'approximate')
+    assert.equal(guestSighting.locationName, 'Sha Tin')
+    for (const forbidden of ['note', 'photo', 'reportedBy', 'reporterName', 'reporterPhone']) {
+      assert.equal(forbidden in guestSighting, false)
+    }
   } finally {
-    Pet.findById = originalFindById
+    Pet.findOne = originalFindOne
     Sighting.find = originalFind
+    User.find = originalUserFind
+  }
+})
+
+test('forced-public pet detail remains approximate and contact-free for its owner', async () => {
+  const originalFindOne = Pet.findOne
+  const originalUserFind = User.find
+  const ownerId = new mongoose.Types.ObjectId()
+  const record = petRecord({ reportedBy: ownerId })
+
+  try {
+    Pet.findOne = async () => record
+    User.find = () => ({
+      select: async () => [{
+        _id: ownerId,
+        name: 'FYP Owner',
+        phone: '+852 5555 0101',
+        privacy: { contactVisibility: 'authenticated' },
+      }],
+    })
+
+    const exactResponse = responseRecorder()
+    await getPet(
+      { params: { id: String(record._id) }, query: {}, user: { _id: ownerId } },
+      exactResponse,
+      failOnNext,
+    )
+    assert.equal(exactResponse.payload.pet.locationPrecision, 'exact')
+    assert.equal(exactResponse.payload.pet.location, 'Sha Tin Park')
+    assert.deepEqual(exactResponse.payload.pet.coordinates, [114.188, 22.381])
+
+    const publicResponse = responseRecorder()
+    await getPet(
+      { params: { id: String(record._id) }, query: { view: 'public' }, user: { _id: ownerId } },
+      publicResponse,
+      failOnNext,
+    )
+    assert.equal(publicResponse.payload.pet.locationPrecision, 'approximate')
+    assert.equal(publicResponse.payload.pet.location, 'Sha Tin')
+    assert.notDeepEqual(publicResponse.payload.pet.coordinates, [114.188, 22.381])
+    assert.equal(publicResponse.payload.pet.canViewContact, false)
+    assert.equal('ownerPhone' in publicResponse.payload.pet, false)
+  } finally {
+    Pet.findOne = originalFindOne
+    User.find = originalUserFind
+  }
+})
+
+test('Smart Match keeps exact scoring internal and returns only a distance band', async () => {
+  const originalPetFind = Pet.find
+  const originalSightingAggregate = Sighting.aggregate
+  const originalUserFind = User.find
+  const record = petRecord({ reportedBy: new mongoose.Types.ObjectId() })
+
+  try {
+    Pet.find = async () => [record]
+    Sighting.aggregate = async () => []
+    User.find = () => ({ select: async () => [] })
+    const response = responseRecorder()
+    await smartMatch(
+      {
+        body: {
+          species: 'Dog',
+          breed: 'Golden Retriever',
+          coordinates: [114.19, 22.382],
+        },
+      },
+      response,
+      failOnNext,
+    )
+
+    const payload = JSON.parse(JSON.stringify(response.payload))
+    assert.equal(payload.matches.length, 1)
+    assert.equal('distanceKm' in payload.matches[0].breakdown, false)
+    assert.match(payload.matches[0].breakdown.distanceBand, /^(within_1_km|1_to_3_km|3_to_5_km|over_5_km)$/)
+    assert.equal(payload.matches[0].locationPrecision, 'approximate')
+    assert.notDeepEqual(payload.matches[0].coordinates, record.location.coordinates)
+  } finally {
+    Pet.find = originalPetFind
+    Sighting.aggregate = originalSightingAggregate
     User.find = originalUserFind
   }
 })
@@ -275,10 +392,69 @@ test('sighting GeoJSON validation rejects missing, malformed, reversed, and stri
   )
 })
 
+test('pet reports are owned by the authenticated user and ignore spoofed ownership fields', async () => {
+  const originalCreate = Pet.create
+  const originalUserFind = User.find
+  const originalUserAggregate = User.aggregate
+  const originalBulkWrite = Notification.bulkWrite
+  const ownerId = new mongoose.Types.ObjectId()
+  let createdData
+
+  try {
+    Pet.create = async (data) => {
+      createdData = data
+      return petRecord({
+        _id: new mongoose.Types.ObjectId(),
+        ...data,
+        createdAt: new Date('2026-09-20T08:00:00.000Z'),
+      })
+    }
+    User.aggregate = async () => []
+    User.find = () => ({
+      select: async () => [{
+        _id: ownerId,
+        name: 'Authenticated Owner',
+        phone: '+852 5555 0111',
+        privacy: { contactVisibility: 'private' },
+      }],
+    })
+    Notification.bulkWrite = async () => undefined
+
+    const response = responseRecorder()
+    await reportPet({
+      user: {
+        _id: ownerId,
+        name: 'Authenticated Owner',
+        phone: '+852 5555 0111',
+      },
+      body: {
+        name: 'Maple',
+        species: 'Dog',
+        district: 'Sha Tin',
+        locationName: 'Sha Tin Park',
+        coordinates: [114.188, 22.381],
+        ownerName: 'Spoofed Owner',
+        ownerPhone: '+852 5555 0999',
+        reportedBy: new mongoose.Types.ObjectId().toString(),
+      },
+    }, response, failOnNext)
+
+    assert.equal(response.statusCode, 201)
+    assert.equal(String(createdData.reportedBy), String(ownerId))
+    assert.equal(createdData.ownerName, 'Authenticated Owner')
+    assert.equal(createdData.ownerPhone, '+852 5555 0111')
+  } finally {
+    Pet.create = originalCreate
+    User.find = originalUserFind
+    User.aggregate = originalUserAggregate
+    Notification.bulkWrite = originalBulkWrite
+  }
+})
+
 test('valid selected coordinates preserve lng/lat order and retries create one sighting', async () => {
-  const originalFindById = Pet.findById
+  const originalFindOne = Pet.findOne
   const originalCreate = Sighting.create
-  const originalFindOne = Sighting.findOne
+  const originalSightingFindOne = Sighting.findOne
   const originalUserFind = User.find
   const originalUserAggregate = User.aggregate
   const originalBulkWrite = Notification.bulkWrite
@@ -296,7 +472,7 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
   })
 
   try {
-    Pet.findById = async () => pet
+    Pet.findOne = async () => pet
     Sighting.findOne = () => ({
       select: async () => storedSighting,
     })
@@ -329,6 +505,8 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
         location: { type: 'Point', coordinates: [114.1694, 22.3193] },
         locationName: 'Mong Kok MTR Exit E2',
         note: 'Seen walking north',
+        reporterName: 'Spoofed Reporter',
+        reporterPhone: '+852 5555 0999',
         submissionId: 'sighting_test_retry_001',
       },
     }
@@ -341,6 +519,9 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
       coordinates: [114.1694, 22.3193],
     })
     assert.equal(storedSighting.locationName, 'Mong Kok MTR Exit E2')
+    assert.equal(String(storedSighting.reportedBy), String(reporterId))
+    assert.equal(storedSighting.reporterName, 'Finder')
+    assert.equal(storedSighting.reporterPhone, '+852 5555 0102')
 
     const retryResponse = responseRecorder()
     await submitSighting(request, retryResponse, failOnNext)
@@ -349,9 +530,9 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
     assert.equal(createCount, 1)
     assert.equal(saveCount, 1)
   } finally {
-    Pet.findById = originalFindById
+    Pet.findOne = originalFindOne
     Sighting.create = originalCreate
-    Sighting.findOne = originalFindOne
+    Sighting.findOne = originalSightingFindOne
     User.find = originalUserFind
     User.aggregate = originalUserAggregate
     Notification.bulkWrite = originalBulkWrite
@@ -359,11 +540,11 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
 })
 
 test('missing selected location is rejected without inserting a fallback coordinate', async () => {
-  const originalFindById = Pet.findById
+  const originalFindOne = Pet.findOne
   const originalCreate = Sighting.create
   let createCount = 0
   try {
-    Pet.findById = async () => petRecord()
+    Pet.findOne = async () => petRecord()
     Sighting.create = async () => {
       createCount += 1
     }
@@ -384,7 +565,7 @@ test('missing selected location is rejected without inserting a fallback coordin
     assert.equal(response.payload.error, 'A confirmed sighting location is required.')
     assert.equal(createCount, 0)
   } finally {
-    Pet.findById = originalFindById
+    Pet.findOne = originalFindOne
     Sighting.create = originalCreate
   }
 })

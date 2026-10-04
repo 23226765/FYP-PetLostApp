@@ -6,6 +6,8 @@ import Stray from '../models/Stray.js'
 import User from '../models/User.js'
 import SavedStray from '../models/SavedStray.js'
 import StrayComment from '../models/StrayComment.js'
+import ContentReport from '../models/ContentReport.js'
+import UserBlock from '../models/UserBlock.js'
 import { DATABASE_NAME } from './database.js'
 
 export const APPLICATION_COLLECTIONS = Object.freeze([
@@ -17,6 +19,8 @@ export const APPLICATION_COLLECTIONS = Object.freeze([
   'notifications',
   'straycomments',
   'savedstrays',
+  'contentreports',
+  'userblocks',
 ])
 
 const applicationModels = Object.freeze([
@@ -28,6 +32,8 @@ const applicationModels = Object.freeze([
   Notification,
   StrayComment,
   SavedStray,
+  ContentReport,
+  UserBlock,
 ])
 
 export async function initializeApplicationCollections(connection) {

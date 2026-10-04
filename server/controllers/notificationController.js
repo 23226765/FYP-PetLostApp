@@ -1,6 +1,17 @@
 import mongoose from 'mongoose'
 import Notification from '../models/Notification.js'
+import Pet from '../models/Pet.js'
+import Stray from '../models/Stray.js'
 import User from '../models/User.js'
+import Message from '../models/Message.js'
+import StrayComment from '../models/StrayComment.js'
+import Sighting from '../models/Sighting.js'
+import { setLocationPrivacyHeaders } from '../services/locationPrivacy.js'
+import { blockedUserIdsFor } from '../services/trustSafety.js'
+import {
+  isContentVisible,
+  visibleContentFilter,
+} from '../services/moderationVisibility.js'
 
 const MAX_ALERT_RADIUS_KM = 50
 
@@ -36,12 +47,34 @@ function distanceKm([lngA, latA], [lngB, latB]) {
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-function serializeNotification(notification) {
+function notificationReferenceId(value) {
+  return value?._id ? String(value._id) : value ? String(value) : ''
+}
+
+function coarseNotificationBody(notification, petById, strayById) {
+  const pet = petById.get(notificationReferenceId(notification.pet))
+  const stray = strayById.get(notificationReferenceId(notification.stray))
+  const district = pet?.district || stray?.district || 'the reported area'
+
+  if (notification.type === 'sighting') {
+    return pet
+      ? `${pet.name} was spotted in ${district}.`
+      : `A pet was spotted in ${district}.`
+  }
+  if (notification.type === 'proximity') {
+    return pet
+      ? `${pet.name} (${pet.breed || pet.species}) was reported in ${district}.`
+      : `A lost pet was reported in ${district}.`
+  }
+  return notification.body
+}
+
+function serializeNotification(notification, petById = new Map(), strayById = new Map()) {
   return {
     id: String(notification._id),
     type: notification.type,
     title: notification.title,
-    body: notification.body,
+    body: coarseNotificationBody(notification, petById, strayById),
     photo: notification.photo || undefined,
     petId: notification.pet ? String(notification.pet?._id || notification.pet) : undefined,
     strayId: notification.stray ? String(notification.stray?._id || notification.stray) : undefined,
@@ -49,6 +82,94 @@ function serializeNotification(notification) {
     time: relativeTime(notification.createdAt),
     read: Boolean(notification.read),
   }
+}
+
+async function serializeNotifications(notifications) {
+  const sightingIds = [...new Set(
+    notifications.map((item) => notificationReferenceId(item.sighting)).filter(Boolean),
+  )]
+  const commentIds = [...new Set(
+    notifications.map((item) => notificationReferenceId(item.comment)).filter(Boolean),
+  )]
+  const [sightings, comments] = await Promise.all([
+    sightingIds.length
+      ? Sighting.find(visibleContentFilter({ _id: { $in: sightingIds } })).select('_id pet')
+      : [],
+    commentIds.length
+      ? StrayComment.find(visibleContentFilter({ _id: { $in: commentIds } })).select('_id stray')
+      : [],
+  ])
+  const petIds = [...new Set([
+    ...notifications.map((item) => notificationReferenceId(item.pet)),
+    ...sightings.map((item) => notificationReferenceId(item.pet)),
+  ].filter(Boolean))]
+  const strayIds = [...new Set([
+    ...notifications.map((item) => notificationReferenceId(item.stray)),
+    ...comments.map((item) => notificationReferenceId(item.stray)),
+  ].filter(Boolean))]
+  const [pets, strays] = await Promise.all([
+    petIds.length
+      ? Pet.find(visibleContentFilter({ _id: { $in: petIds } }))
+          .select('_id name species breed district')
+      : [],
+    strayIds.length
+      ? Stray.find(visibleContentFilter({
+          _id: { $in: strayIds },
+          active: { $ne: false },
+        })).select('_id district')
+      : [],
+  ])
+  const petById = new Map(pets.map((pet) => [String(pet._id), pet]))
+  const strayById = new Map(strays.map((stray) => [String(stray._id), stray]))
+  const sightingById = new Map(sightings.map((sighting) => [String(sighting._id), sighting]))
+  const commentById = new Map(comments.map((comment) => [String(comment._id), comment]))
+  const visibleNotifications = notifications.filter((notification) => {
+    const petId = notificationReferenceId(notification.pet)
+    const strayId = notificationReferenceId(notification.stray)
+    const sightingId = notificationReferenceId(notification.sighting)
+    const commentId = notificationReferenceId(notification.comment)
+    if (petId && !petById.has(petId)) return false
+    if (strayId && !strayById.has(strayId)) return false
+    if (sightingId) {
+      const sighting = sightingById.get(sightingId)
+      if (!sighting || !petById.has(notificationReferenceId(sighting.pet))) return false
+    }
+    if (commentId) {
+      const comment = commentById.get(commentId)
+      if (!comment || !strayById.has(notificationReferenceId(comment.stray))) return false
+    }
+    return true
+  })
+  return visibleNotifications.map((notification) =>
+    serializeNotification(notification, petById, strayById),
+  )
+}
+
+async function removeBlockedInteractionNotifications(notifications, userId) {
+  const blocked = await blockedUserIdsFor(userId)
+  if (blocked.size === 0) return notifications
+
+  const messageIds = notifications
+    .filter((item) => item.type === 'message' && item.message)
+    .map((item) => item.message)
+  const commentIds = notifications
+    .filter((item) => item.type === 'comment' && item.comment)
+    .map((item) => item.comment)
+  const [messages, comments] = await Promise.all([
+    messageIds.length ? Message.find({ _id: { $in: messageIds } }).select('_id sentBy') : [],
+    commentIds.length ? StrayComment.find({ _id: { $in: commentIds } }).select('_id author') : [],
+  ])
+  const hiddenMessageIds = new Set(
+    messages.filter((item) => blocked.has(String(item.sentBy || ''))).map((item) => String(item._id)),
+  )
+  const hiddenCommentIds = new Set(
+    comments.filter((item) => blocked.has(String(item.author || ''))).map((item) => String(item._id)),
+  )
+  return notifications.filter((item) => {
+    if (item.type === 'message') return !hiddenMessageIds.has(notificationReferenceId(item.message))
+    if (item.type === 'comment') return !hiddenCommentIds.has(notificationReferenceId(item.comment))
+    return true
+  })
 }
 
 async function findAlertRecipients(origin, excludedUserId) {
@@ -92,7 +213,12 @@ async function findAlertRecipients(origin, excludedUserId) {
 
 /** Persist alerts for eligible nearby users and the owner of a sighted pet. */
 export async function createRadiusNotifications({ pet, sighting, type, origin, excludeUserId }) {
-  if (!pet?._id || !isPointCoordinates(origin)) return
+  if (
+    !pet?._id
+    || !isPointCoordinates(origin)
+    || !isContentVisible(pet)
+    || (sighting && !isContentVisible(sighting))
+  ) return
 
   const recipients = await findAlertRecipients(origin.map(Number), excludeUserId)
   const recipientsById = new Map(recipients.map((user) => [String(user._id), user]))
@@ -103,7 +229,9 @@ export async function createRadiusNotifications({ pet, sighting, type, origin, e
   if (recipientsById.size === 0) return
 
   const isSighting = type === 'sighting'
-  const locationName = sighting?.locationName || pet.locationName || 'the reported location'
+  const district = typeof pet.district === 'string' && pet.district.trim()
+    ? pet.district.trim()
+    : 'the reported area'
   const documents = [...recipientsById.values()].map((user) => ({
     user: user._id,
     pet: pet._id,
@@ -111,8 +239,8 @@ export async function createRadiusNotifications({ pet, sighting, type, origin, e
     type,
     title: isSighting ? `New sighting of ${pet.name}` : 'Lost pet near you',
     body: isSighting
-      ? `${pet.name} was spotted near ${locationName}.`
-      : `${pet.name} (${pet.breed || pet.species}) was reported near ${locationName}.`,
+      ? `${pet.name} was spotted in ${district}.`
+      : `${pet.name} (${pet.breed || pet.species}) was reported in ${district}.`,
     photo: sighting?.photo || pet.photo || '',
   }))
 
@@ -134,6 +262,7 @@ export async function createRadiusNotifications({ pet, sighting, type, origin, e
 
 export async function listNotifications(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     let notifications
     try {
       notifications = await Notification.find({ user: req.user._id })
@@ -150,7 +279,11 @@ export async function listNotifications(req, res, next) {
       notifications = notifications.slice(0, 50)
     }
 
-    res.json({ notifications: notifications.map(serializeNotification) })
+    const visibleNotifications = await removeBlockedInteractionNotifications(
+      notifications,
+      req.user._id,
+    )
+    res.json({ notifications: await serializeNotifications(visibleNotifications) })
   } catch (error) {
     next(error)
   }
@@ -158,6 +291,7 @@ export async function listNotifications(req, res, next) {
 
 export async function updatePreferences(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     const enabled = req.body?.enabled
     const radiusKm = Number(req.body?.radiusKm)
     const coordinates = req.body?.coordinates
@@ -193,6 +327,7 @@ export async function updatePreferences(req, res, next) {
 
 export async function markAllRead(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     await Notification.updateMany({ user: req.user._id, read: false }, { $set: { read: true } })
     res.json({ success: true })
   } catch (error) {
@@ -202,6 +337,7 @@ export async function markAllRead(req, res, next) {
 
 export async function markRead(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid notification id' })
     }
@@ -211,7 +347,7 @@ export async function markRead(req, res, next) {
       { new: true },
     )
     if (!notification) return res.status(404).json({ error: 'Notification not found' })
-    res.json({ notification: serializeNotification(notification) })
+    res.json({ notification: (await serializeNotifications([notification]))[0] })
   } catch (error) {
     next(error)
   }

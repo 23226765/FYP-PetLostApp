@@ -10,6 +10,9 @@ import {
   loadContactOwners,
   serializeContact,
 } from '../services/contactPrivacy.js'
+import { setLocationPrivacyHeaders } from '../services/locationPrivacy.js'
+import { blockedUserIdsFor, usersBlockEachOther } from '../services/trustSafety.js'
+import { visibleContentFilter } from '../services/moderationVisibility.js'
 
 const MAX_MESSAGE_LENGTH = 2000
 const MAX_PHOTO_LENGTH = 1_500_000
@@ -34,7 +37,8 @@ function serializeMessage(message, strayById = new Map()) {
       animalType: stray.animalType || '',
       description: stray.description,
       photo: stray.photo || stray.photos?.[0] || '',
-      location: stray.locationName,
+      location: stray.district,
+      locationPrecision: 'approximate',
       district: stray.district,
       rescueStatus: stray.rescueStatus,
     } : undefined,
@@ -44,7 +48,12 @@ function serializeMessage(message, strayById = new Map()) {
 
 async function serializeMessages(messages) {
   const ids = [...new Set(messages.map(strayReferenceId).filter(Boolean).map(String))]
-  const strays = ids.length ? await Stray.find({ _id: { $in: ids }, active: { $ne: false } }).select('species animalType description photo photos locationName district rescueStatus') : []
+  const strays = ids.length
+    ? await Stray.find(visibleContentFilter({
+        _id: { $in: ids },
+        active: { $ne: false },
+      })).select('species animalType description photo photos district rescueStatus')
+    : []
   const strayById = new Map(strays.map((stray) => [String(stray._id), stray]))
   return messages.map((message) => serializeMessage(message, strayById))
 }
@@ -113,7 +122,8 @@ async function findMessages(filter) {
 // GET /api/chat/inbox
 export async function listConversations(req, res, next) {
   try {
-    const ownedPets = await Pet.find({ reportedBy: req.user._id }).select(
+    setLocationPrivacyHeaders(res)
+    const ownedPets = await Pet.find(visibleContentFilter({ reportedBy: req.user._id })).select(
       'name photo ownerName reportedBy',
     )
     const ownedPetIds = ownedPets.map((pet) => pet._id)
@@ -137,7 +147,7 @@ export async function listConversations(req, res, next) {
       ...new Set(messages.map((message) => String(message.participant)).filter(Boolean)),
     ]
 
-    const pets = await Pet.find({ _id: { $in: petIds } }).select(
+    const pets = await Pet.find(visibleContentFilter({ _id: { $in: petIds } })).select(
       'name photo ownerName reportedBy',
     )
     const petById = new Map(pets.map((pet) => [String(pet._id), pet]))
@@ -147,6 +157,7 @@ export async function listConversations(req, res, next) {
       participants.map((participant) => [String(participant._id), participant.name]),
     )
     const serializedLastMessages = new Map((await serializeMessages([...lastMessageByConversation.values()])).map((message) => [message.id, message]))
+    const blockedUserIds = await blockedUserIdsFor(req.user._id)
     const conversations = conversationKeys
       .map((conversationId) => {
         const lastMessage = lastMessageByConversation.get(conversationId)
@@ -155,6 +166,8 @@ export async function listConversations(req, res, next) {
         const participantId = String(lastMessage.participant)
         const pet = petById.get(petId)
         if (!pet) return null
+        const otherUserId = isOwner(pet, req.user._id) ? participantId : String(pet.reportedBy || '')
+        if (blockedUserIds.has(otherUserId)) return null
         return {
           id: conversationId,
           pet: serializeChatPet(
@@ -180,16 +193,27 @@ export async function listConversations(req, res, next) {
 // GET /api/chat/:petId
 export async function getMessages(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!mongoose.isValidObjectId(req.params.petId)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
 
-    const pet = await Pet.findById(req.params.petId).select('reportedBy')
+    const pet = await Pet.findOne(
+      visibleContentFilter({ _id: req.params.petId }),
+    ).select('reportedBy')
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
 
     const participantId = participantIdForRequest(req, pet, req.query)
     if (!participantId) {
       return res.status(400).json({ error: 'A valid conversation participant is required.' })
+    }
+
+    const otherUserId = isOwner(pet, req.user._id) ? participantId : pet.reportedBy
+    if (await usersBlockEachOther(req.user._id, otherUserId)) {
+      return res.status(403).json({
+        error: 'Messaging is unavailable for this conversation.',
+        code: 'USER_BLOCKED',
+      })
     }
 
     const messages = await findMessages({ pet: req.params.petId, participant: participantId })
@@ -205,6 +229,7 @@ export async function getMessages(req, res, next) {
 // POST /api/chat/:petId
 export async function createMessage(req, res, next) {
   try {
+    setLocationPrivacyHeaders(res)
     if (!mongoose.isValidObjectId(req.params.petId)) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
@@ -224,12 +249,21 @@ export async function createMessage(req, res, next) {
       return res.status(413).json({ error: 'Photo is too large. Choose a smaller image.' })
     }
 
-    const pet = await Pet.findById(req.params.petId).select('reportedBy')
+    const pet = await Pet.findOne(
+      visibleContentFilter({ _id: req.params.petId }),
+    ).select('reportedBy')
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
 
     const participantId = participantIdForRequest(req, pet, req.body)
     if (!participantId) {
       return res.status(400).json({ error: 'A valid conversation participant is required.' })
+    }
+    const otherUserId = isOwner(pet, req.user._id) ? participantId : pet.reportedBy
+    if (await usersBlockEachOther(req.user._id, otherUserId)) {
+      return res.status(403).json({
+        error: 'Messaging is unavailable for this conversation.',
+        code: 'USER_BLOCKED',
+      })
     }
     if (isOwner(pet, req.user._id)) {
       const conversationExists = await Message.exists({
@@ -238,7 +272,10 @@ export async function createMessage(req, res, next) {
       })
       const participantReportedSighting = conversationExists
         ? true
-        : await Sighting.exists({ pet: req.params.petId, reportedBy: participantId })
+        : await Sighting.exists(visibleContentFilter({
+            pet: req.params.petId,
+            reportedBy: participantId,
+          }))
       if (!conversationExists && !participantReportedSighting) {
         return res.status(404).json({ error: 'Conversation not found' })
       }
@@ -247,7 +284,10 @@ export async function createMessage(req, res, next) {
     let sharedStray = null
     if (sharedStrayId) {
       if (!mongoose.isValidObjectId(sharedStrayId)) return res.status(400).json({ error: 'Invalid shared stray post id.' })
-      sharedStray = await Stray.findOne({ _id: sharedStrayId, active: { $ne: false } })
+      sharedStray = await Stray.findOne(visibleContentFilter({
+        _id: sharedStrayId,
+        active: { $ne: false },
+      }))
       if (!sharedStray) return res.status(404).json({ error: 'Shared stray post is unavailable.' })
       if (!normalizedRequestId) return res.status(400).json({ error: 'clientRequestId is required when sharing a post.' })
       const existing = await Message.findOne({ sentBy: req.user._id, clientRequestId: normalizedRequestId })

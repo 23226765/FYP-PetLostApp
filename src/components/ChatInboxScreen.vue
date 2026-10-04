@@ -281,7 +281,13 @@ const relativeTime = formatRelativeDate
 
 watch(
   () => props.user?.id,
-  () => void loadInbox(true),
+  () => {
+    requestSequence += 1
+    conversations.value = []
+    failedPhotos.value = new Set()
+    error.value = ''
+    void loadInbox(true)
+  },
   { immediate: true },
 )
 

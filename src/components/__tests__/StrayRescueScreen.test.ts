@@ -18,6 +18,7 @@ const stray: StrayReport = {
   photo: 'https://example.test/cat.jpg', photos: ['https://example.test/cat.jpg'],
   condition: 'healthy', district: 'Wan Chai', location: 'Market entrance',
   coordinates: [114.17, 22.28], rescueStatus: 'reported', reporterName: 'Finder',
+  locationPrecision: 'exact',
   author: { id: 'finder-id', name: 'Finder', avatar: '' }, canViewContact: false,
   reportedBy: 'finder-id', reportedAgo: '2m ago', observedAt: '2026-09-18T08:00:00.000Z',
   createdAt: '2026-09-18T08:00:00.000Z', updatedAt: '2026-09-18T08:00:00.000Z',

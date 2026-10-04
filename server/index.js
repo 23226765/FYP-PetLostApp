@@ -2,7 +2,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import express from 'express'
-import cors from 'cors'
 import { errorHandler } from './middleware/errorHandler.js'
 import {
   connectDatabase,
@@ -12,6 +11,11 @@ import {
 } from './config/database.js'
 import { initializeApplicationCollections } from './config/collections.js'
 import { requireJwtSecret, securityConfigurationMessage } from './config/security.js'
+import {
+  configureHttpSecurity,
+  httpSecurityConfigurationMessage,
+  resolveHttpSecurityConfig,
+} from './config/httpSecurity.js'
 
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.resolve(serverDirectory, '.env') })
@@ -27,6 +31,8 @@ const [
   { default: matchesRouter },
   { default: analyticsRouter },
   { default: uploadsRouter },
+  { default: safetyRouter },
+  { default: moderationRouter },
 ] = await Promise.all([
   import('./routes/pets.js'),
   import('./routes/auth.js'),
@@ -36,34 +42,22 @@ const [
   import('./routes/matches.js'),
   import('./routes/analytics.js'),
   import('./routes/uploads.js'),
+  import('./routes/safety.js'),
+  import('./routes/moderation.js'),
 ])
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5000
 let httpServer = null
+let httpSecurityConfig = null
+let httpSecurityError = null
 
-const defaultOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-]
-const allowedOrigins = (process.env.CORS_ORIGINS || defaultOrigins.join(','))
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean)
-
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
-      const error = new Error('Origin is not allowed by CORS')
-      error.status = 403
-      callback(error)
-    },
-    credentials: true,
-  }),
-)
+try {
+  httpSecurityConfig = resolveHttpSecurityConfig()
+  configureHttpSecurity(app, httpSecurityConfig)
+} catch (error) {
+  httpSecurityError = error
+}
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use('/uploads', express.static(path.resolve(serverDirectory, 'uploads'), {
@@ -91,11 +85,19 @@ app.use('/api/strays', straysRouter)
 app.use('/api/matches', matchesRouter)
 app.use('/api/analytics', analyticsRouter)
 app.use('/api/uploads', uploadsRouter)
+app.use('/api/safety', safetyRouter)
+app.use('/api/moderation', moderationRouter)
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }))
 app.use(errorHandler)
 
 async function start() {
+  if (httpSecurityError) {
+    console.error(`HTTP security startup failed: ${httpSecurityConfigurationMessage(httpSecurityError)}`)
+    process.exitCode = 1
+    return
+  }
+
   try {
     requireJwtSecret()
   } catch (error) {

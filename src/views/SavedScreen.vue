@@ -108,10 +108,11 @@ async function loadSavedPets() {
   const sequence = ++requestSequence
   const ids = [...savedPetIds.value]
   error.value = ''
+  savedPets.value = []
+  savedStrays.value = []
+  unavailableCount.value = 0
 
   if (!ids.length && !props.user) {
-    savedPets.value = []
-    savedStrays.value = []
     loading.value = false
     return
   }

@@ -40,7 +40,7 @@
         :radius-km="radiusKm"
         :user-location="userLocation"
         :report-request="rescueReportRequest"
-        @auth-needed="authOpen = true"
+        @auth-needed="openLogin"
       />
       <PostPetScreen v-if="tab === 'post'" :user="currentUser" @done="onPosted" />
       <ChatInboxScreen
@@ -75,6 +75,18 @@
           @open-boost="openBoost"
           @toggle-alerts="handleAlertsToggle"
           @radius-change="onRadiusChange"
+        />
+        <component
+          :is="Component"
+          v-else-if="currentRoute.name === 'blocked-users'"
+          :user="currentUser"
+          @auth-needed="openLogin"
+        />
+        <component
+          :is="Component"
+          v-else-if="currentRoute.name === 'moderation'"
+          :user="currentUser"
+          @auth-needed="openLogin"
         />
         <component
           :is="Component"
@@ -132,7 +144,7 @@
         @poster="posterPet = selectedPet"
         @chat="openChat(selectedPet)"
         @chat-reporter="openReporterChat"
-        @auth-needed="authOpen = true"
+        @auth-needed="openLogin"
         @status-updated="handlePetStatusUpdated"
       />
     </Transition>
@@ -256,8 +268,9 @@
     <Transition name="page">
       <AuthScreen
         v-if="authOpen"
-        @close="authOpen = false"
-        @guest="authOpen = false"
+        @close="cancelAuthentication"
+        @guest="cancelAuthentication"
+        @failed="clearPendingAuthAction"
         @authenticated="handleAuth"
       />
     </Transition>
@@ -397,6 +410,9 @@ import { applyAccountPreferences } from './composables/usePreferences'
 import { translateApiError, useAppI18n } from './i18n'
 
 type Tab = 'radar' | 'strays' | 'post' | 'messages' | 'profile'
+type PendingAuthAction =
+  | { type: 'post-pet' }
+  | { type: 'sighting'; petId: string }
 
 const router = useRouter()
 const route = useRoute()
@@ -420,6 +436,7 @@ const hasPreciseLocation = ref(false)
 const currentUser = ref<User | null>(null)
 const alertsEnabled = ref(true)
 const authOpen = ref(false)
+const pendingAuthAction = ref<PendingAuthAction | null>(null)
 const showSmartMatch = ref(false)
 const showNotifications = ref(false)
 const showBoost = ref(false)
@@ -603,30 +620,70 @@ async function restoreSession() {
 }
 
 function handleAuth(user: User) {
+  const pendingAction = currentUser.value ? null : pendingAuthAction.value
+  clearAuthorizationScopedState()
   currentUser.value = user
   applyAccountPreferences(user.preferences)
   alertsEnabled.value = user.alertsEnabled !== false
   radiusKm.value = user.alertRadiusKm || radiusKm.value
   authOpen.value = false
-  if (route.name === 'login') void router.replace('/')
+  const loginNavigation = route.name === 'login' || pendingAction
+    ? router.replace('/')
+    : Promise.resolve()
   void (async () => {
+    await loginNavigation
     await loadPets()
+    if (route.name === 'pet-detail') {
+      const routeId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
+      if (typeof routeId === 'string' && routeId.trim()) await openDeepLinkedPet(routeId)
+    }
+    if (currentUser.value?.id === user.id && pendingAction) {
+      await resumePendingAuthAction(pendingAction, user.id)
+    }
     if (currentUser.value?.id === user.id) await activateNotifications()
   })()
 }
 
 function logout() {
   localStorage.removeItem('token')
+  clearAuthorizationScopedState()
   currentUser.value = null
-  notifications.value = []
-  stopNotificationPolling()
-  chatPet.value = null
-  messageUnreadCount.value = 0
-  showBoost.value = false
   tab.value = 'radar'
   authOpen.value = true
   void router.replace('/login')
   void loadPets()
+}
+
+function clearAuthorizationScopedState() {
+  deepLinkRequestSequence += 1
+  petsRequestSequence += 1
+  petsAbortController?.abort()
+  petsAbortController = null
+  clearToastTimers()
+  stopNotificationPolling()
+  pets.value = []
+  selectedPet.value = null
+  selectedSightingId.value = undefined
+  posterPet.value = null
+  toastPet.value = null
+  chatPet.value = null
+  notifications.value = []
+  messageUnreadCount.value = 0
+  sightingPet.value = null
+  sightingNote.value = ''
+  sightingPhoto.value = ''
+  sightingCoordinates.value = null
+  sightingLocationName.value = ''
+  sightingSent.value = false
+  sightingError.value = ''
+  sightingSubmitting.value = false
+  sightingSubmissionId.value = ''
+  showSmartMatch.value = false
+  showNotifications.value = false
+  showBoost.value = false
+  userLocation.value = null
+  hasPreciseLocation.value = false
+  pendingAuthAction.value = null
 }
 
 function clearToastTimers() {
@@ -652,6 +709,10 @@ function scheduleToast(pet: Pet | null) {
 }
 
 function goTab(t: Tab) {
+  if (t === 'post' && !currentUser.value) {
+    openLogin({ type: 'post-pet' })
+    return
+  }
   tab.value = t
   selectedPet.value = null
   if (t === 'profile') {
@@ -668,9 +729,44 @@ function openRescueReport() {
   if (route.name === 'profile') void router.push('/')
 }
 
-function openLogin() {
+function openLogin(action: PendingAuthAction | null = null) {
+  pendingAuthAction.value = action
   if (route.name !== 'login') void router.push('/login')
   authOpen.value = true
+}
+
+function clearPendingAuthAction() {
+  pendingAuthAction.value = null
+}
+
+function cancelAuthentication() {
+  clearPendingAuthAction()
+  authOpen.value = false
+  if (route.name === 'login') void router.replace('/')
+}
+
+async function resumePendingAuthAction(action: PendingAuthAction, userId: string) {
+  // Consume before any asynchronous work so one authentication event can open
+  // at most one form and never submit it.
+  pendingAuthAction.value = null
+  if (currentUser.value?.id !== userId) return
+
+  if (action.type === 'post-pet') {
+    selectedPet.value = null
+    tab.value = 'post'
+    return
+  }
+
+  let pet = pets.value.find((candidate) => String(candidate.id) === action.petId)
+  if (!pet) {
+    try {
+      pet = await getPet(action.petId)
+    } catch {
+      return
+    }
+  }
+  if (currentUser.value?.id !== userId || pet.status === 'reunited') return
+  openSighting(pet)
 }
 
 function openPet(petOrId: Pet | string | number) {
@@ -745,7 +841,7 @@ function handlePetStatusUpdated(updatedPet: Pet) {
 function openChat(pet: ChatPet | null) {
   if (!pet) return
   if (!currentUser.value) {
-    authOpen.value = true
+    openLogin()
     return
   }
   if (pet.reportedBy === currentUser.value.id && !pet.participantId) {
@@ -757,7 +853,7 @@ function openChat(pet: ChatPet | null) {
 
 function openBoost() {
   if (!currentUser.value) {
-    authOpen.value = true
+    openLogin()
     return
   }
   showBoost.value = true
@@ -814,7 +910,7 @@ function confirmSmartMatch(pet: Pet) {
 
 function postFromSmartMatch() {
   showSmartMatch.value = false
-  tab.value = 'post'
+  goTab('post')
 }
 
 async function openPetById(petId: string, sightingId?: string) {
@@ -937,6 +1033,10 @@ async function handleMarkAllNotificationsRead() {
 
 function openSighting(pet: Pet | null) {
   if (!pet) return
+  if (!currentUser.value) {
+    openLogin({ type: 'sighting', petId: String(pet.id) })
+    return
+  }
   sightingPet.value = pet
   sightingSent.value = false
   sightingNote.value = ''
@@ -1033,12 +1133,8 @@ function openFromToast() {
 }
 
 function handleUnauthorized() {
+  clearAuthorizationScopedState()
   currentUser.value = null
-  notifications.value = []
-  stopNotificationPolling()
-  chatPet.value = null
-  messageUnreadCount.value = 0
-  showBoost.value = false
   tab.value = 'radar'
   authOpen.value = true
   void router.replace('/login')

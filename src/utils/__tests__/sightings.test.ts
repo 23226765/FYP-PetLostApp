@@ -7,6 +7,7 @@ function sighting(id: string, createdAt: string): Sighting {
     id,
     petId: 'pet-id',
     coordinates: [114.18, 22.38],
+    locationPrecision: 'exact',
     locationName: 'Test location',
     createdAt,
     canViewContact: false,

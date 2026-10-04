@@ -5,6 +5,17 @@ import type { User } from '../types/user'
 import type { UserPreferences } from '../types/user'
 import type { RescueStatus, StrayComment, StrayCondition, StrayReport } from '../types/stray'
 import type { HotspotResponse } from '../types/analytics'
+import type {
+  BlockedUser,
+  ContentReportResult,
+  ModerationReport,
+  ModerationReportPage,
+  ModerationReportStatus,
+  ContentModerationStatus,
+  ModeratedContentResult,
+  ReportReason,
+  ReportTargetType,
+} from '../types/safety'
 
 // Use the same-origin Vite proxy by default. Deployments can provide an
 // absolute VITE_API_BASE_URL when the API is hosted separately.
@@ -13,17 +24,47 @@ const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+type AuthScopedConfig = {
+  pawRadarAuthToken?: string | null
+}
+
+function storedToken(): string | null {
+  try {
+    return localStorage.getItem('token')
+  } catch {
+    return null
+  }
+}
+
+function authContextChanged(config: unknown): boolean {
+  const scoped = config as AuthScopedConfig | undefined
+  return scoped?.pawRadarAuthToken !== undefined && scoped.pawRadarAuthToken !== storedToken()
+}
+
+function authContextError(): Error & { apiCode: string } {
+  const error = new Error('Authorization context changed before the response completed.') as Error & {
+    apiCode: string
+  }
+  error.apiCode = 'AUTH_CONTEXT_CHANGED'
+  return error
+}
+
 // Attach the JWT to every request when a token is stored.
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = storedToken()
+  ;(config as typeof config & AuthScopedConfig).pawRadarAuthToken = token
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
 // Auto sign-out when a protected request returns 401 (expired/invalid token).
 http.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (authContextChanged(response.config)) return Promise.reject(authContextError())
+    return response
+  },
   (error) => {
+    if (authContextChanged(error?.config)) return Promise.reject(authContextError())
     const url = error?.config?.url || ''
     const status = error?.response?.status
     if (status === 401 && !url.startsWith('/auth/')) {
@@ -109,7 +150,7 @@ export interface SmartMatchBreakdown {
   breed: number
   distance: number
   recency: number
-  distanceKm: number | null
+  distanceBand: 'within_1_km' | '1_to_3_km' | '3_to_5_km' | 'over_5_km' | 'unknown'
   daysAgo: number | null
 }
 
@@ -174,6 +215,8 @@ export interface MySighting {
   _id: string
   pet: MySightingPet | null
   locationName: string
+  locationPrecision: 'exact' | 'approximate'
+  coordinates?: [number, number] | null
   note: string
   photo?: string
   sightedAt?: string
@@ -187,6 +230,13 @@ export async function getMySightings(): Promise<MySighting[]> {
 
 export async function getPet(id: string): Promise<Pet> {
   const { data } = await http.get<{ pet: Pet }>(`/pets/${id}`)
+  return data.pet
+}
+
+export async function getPublicPet(id: string): Promise<Pet> {
+  const { data } = await http.get<{ pet: Pet }>(`/pets/${id}`, {
+    params: { view: 'public' },
+  })
   return data.pet
 }
 
@@ -242,7 +292,7 @@ export interface ChatMessage {
   text: string
   photo?: string
   createdAt: string
-  sharedStray?: Pick<StrayReport, 'id' | 'species' | 'animalType' | 'description' | 'photo' | 'district' | 'rescueStatus'> & { location: string }
+  sharedStray?: Pick<StrayReport, 'id' | 'species' | 'animalType' | 'description' | 'photo' | 'district' | 'rescueStatus' | 'locationPrecision'> & { location: string }
   sharedStrayUnavailable?: boolean
 }
 
@@ -545,4 +595,61 @@ export async function updateUserPreferences(
     preferences,
   )
   return data.preferences
+}
+
+export async function reportContent(payload: {
+  targetType: ReportTargetType
+  targetId: string
+  reason: ReportReason
+  details?: string
+}): Promise<ContentReportResult> {
+  const { data } = await http.post<{ report: ContentReportResult }>('/safety/reports', payload)
+  return data.report
+}
+
+export async function getBlockedUsers(): Promise<BlockedUser[]> {
+  const { data } = await http.get<{ users: BlockedUser[] }>('/safety/blocks')
+  return data.users
+}
+
+export async function blockUser(userId: string): Promise<BlockedUser> {
+  const { data } = await http.put<{ blocked: true; user: BlockedUser }>(`/safety/blocks/${userId}`)
+  return data.user
+}
+
+export async function unblockUser(userId: string): Promise<void> {
+  await http.delete(`/safety/blocks/${userId}`)
+}
+
+export async function getModerationReports(params: {
+  status?: ModerationReportStatus | 'all'
+  targetType?: ReportTargetType
+  page?: number
+  limit?: number
+} = {}): Promise<ModerationReportPage> {
+  const { data } = await http.get<ModerationReportPage>('/moderation/reports', { params })
+  return data
+}
+
+export async function updateModerationReport(
+  id: string,
+  payload: { status: ModerationReportStatus; note?: string },
+): Promise<ModerationReport> {
+  const { data } = await http.patch<{ report: ModerationReport }>(
+    `/moderation/reports/${id}`,
+    payload,
+  )
+  return data.report
+}
+
+export async function updateContentVisibility(
+  targetType: 'pet' | 'sighting' | 'stray' | 'comment',
+  targetId: string,
+  payload: { moderationStatus: ContentModerationStatus; reason?: string },
+): Promise<ModeratedContentResult> {
+  const { data } = await http.patch<{ content: ModeratedContentResult }>(
+    `/moderation/content/${targetType}/${targetId}/visibility`,
+    payload,
+  )
+  return data.content
 }

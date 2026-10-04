@@ -4,6 +4,8 @@ import SettingsScreen from '../views/SettingsScreen.vue'
 import SavedScreen from '../views/SavedScreen.vue'
 import AdoptionHistoryScreen from '../components/AdoptionHistoryScreen.vue'
 import StrayDetailScreen from '../views/StrayDetailScreen.vue'
+import BlockedUsersScreen from '../views/BlockedUsersScreen.vue'
+import ModerationScreen from '../views/ModerationScreen.vue'
 
 const EmptyRouteView = defineComponent({
   name: 'EmptyRouteView',
@@ -19,6 +21,8 @@ const router = createRouter({
     { path: '/pets/:id', name: 'pet-detail', component: EmptyRouteView, props: true },
     { path: '/strays/:id', name: 'stray-detail', component: StrayDetailScreen, props: true },
     { path: '/settings', name: 'settings', component: SettingsScreen },
+    { path: '/settings/blocked', name: 'blocked-users', component: BlockedUsersScreen },
+    { path: '/moderation', name: 'moderation', component: ModerationScreen },
     { path: '/saved', name: 'saved', component: SavedScreen },
     { path: '/my-reports', name: 'my-reports', component: AdoptionHistoryScreen },
     { path: '/:pathMatch(.*)*', redirect: '/' },

@@ -3,7 +3,7 @@
 ## Runtime and database
 
 - Runtime: Node.js with ES modules.
-- HTTP API: Express 4 on `PORT` (default `5000`).
+- HTTP API: Express 4 with Helmet 8 security headers on `PORT` (default `5000`).
 - ODM: Mongoose 8.
 - Authentication: bearer JWT plus bcryptjs password hashing.
 - Database: MongoDB Atlas, always selected as lowercase `petlostapp` through `dbName` in `server/config/database.js`.
@@ -13,6 +13,12 @@
 
 `JWT_SECRET` must contain at least 32 characters and cannot be a known development placeholder. Validation errors never echo the supplied value.
 
+HTTP hardening is configured in `server/config/httpSecurity.js`. API responses
+are non-cacheable, CORS uses exact origins, development does not emit HSTS, and
+production requires an explicit `CORS_ORIGINS` value. `TRUST_PROXY` defaults to
+`false`; use only the deployed reverse proxy's explicit address/CIDR or a
+controlled hop count. Blanket proxy trust is rejected at startup.
+
 ## Collections and schemas
 
 Every model uses Mongoose timestamps. Development fixtures can carry the hidden, immutable `seedBatch` marker.
@@ -20,13 +26,15 @@ Every model uses Mongoose timestamps. Development fixtures can carry the hidden,
 | Model / collection | Core fields | Important rules and indexes |
 |---|---|---|
 | `User` / `users` | `name`, private `realName`, `email`, hidden `password`, `phone`, `avatar`, `role`, alert settings, privacy, language/theme preferences | Unique email; `alertLocation` `2dsphere`; preferences allow `en`, `zh-HK`, `zh-CN` and `light`, `dark` |
-| `Pet` / `pets` | `name`, `species`, `breed`, `district`, `photo(s)`, details, reward, owner contact snapshot, status, location, last seen, `reportedBy` | `location` `2dsphere`; species/status, district/breed/status, owner/date indexes; status is `lost`, `sighted`, or `reunited` |
-| `Sighting` / `sightings` | `pet`, `reportedBy`, location/name, note, photo, reporter contact, confirmations, `sightedAt`, `submissionId` | `location` `2dsphere`; pet/time and reporter/date indexes; sparse unique submission ID prevents retry duplication |
-| `Stray` / `strays` | `species`, specific `animalType`, description, up to six photos, condition, district, location, rescue status, reporter, observed/status dates | `location` `2dsphere`; district/status/date and owner/date indexes; per-owner submission idempotency |
+| `Pet` / `pets` | `name`, `species`, `breed`, `district`, `photo(s)`, details, reward, owner contact snapshot, status, location, last seen, `reportedBy`, moderation audit fields | `location` `2dsphere`; species/status, district/breed/status, owner/date indexes; hidden records are excluded from ordinary reads |
+| `Sighting` / `sightings` | `pet`, `reportedBy`, location/name, note, photo, reporter contact, confirmations, `sightedAt`, `submissionId`, moderation audit fields | `location` `2dsphere`; pet/time and reporter/date indexes; hidden sightings and sightings for hidden pets are excluded |
+| `Stray` / `strays` | `species`, specific `animalType`, description, up to six photos, condition, district, location, rescue status, reporter, observed/status dates, moderation audit fields | `location` `2dsphere`; district/status/date and owner/date indexes; inactive or hidden records are excluded |
 | `Message` / `messages` | `pet`, owner/finder role, `sentBy`, participant, text/photo, shared stray, client request ID | Conversation/date indexes; per-sender request idempotency |
 | `Notification` / `notifications` | recipient, related pet/sighting/stray/comment/message, type, title/body/photo, read state | Recipient/date and related-entity indexes; types: proximity, sighting, message, reunited, comment |
-| `StrayComment` / `straycomments` | stray, author, text, submission ID | Stray/date index; per-author request idempotency |
+| `StrayComment` / `straycomments` | stray, author, text, submission ID, moderation audit fields | Stray/date index; per-author request idempotency; hidden comments do not affect public rows or counts |
 | `SavedStray` / `savedstrays` | user, stray | Unique user/stray pair and user/date index |
+| `ContentReport` / `contentreports` | reporter, generic target type/ID, private target owner, reason/details, moderation status, private moderator note, reviewer and review timestamp | One report per reporter/target; status/date and target lookup indexes; only `shelter_admin` receives the safe moderation projection |
+| `UserBlock` / `userblocks` | blocker, blocked | Unique directed user pair plus reverse relationship index; block lists expose only public user summaries |
 
 ### GeoJSON invariant
 
@@ -46,6 +54,7 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 - **Public**: no token required.
 - **Optional**: public access works; a valid bearer token activates ownership/privacy behavior and excludes the current user's own Radar posts where applicable.
 - **Required**: `Authorization: Bearer <token>` is mandatory.
+- **Shelter admin**: a valid token is mandatory and the current user role must be `shelter_admin`.
 
 ## API routes
 
@@ -71,12 +80,12 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | GET | `/api/pets/mine` | Required | page, limit | Current user's pet reports |
 | GET | `/api/pets/nearby` | Optional | `lat`, `lng`, radiusKm; optional filters/page/limit | Distance-sorted, paginated nearby listings with the same ownership exclusion |
 | POST | `/api/pets/smart-match` | Optional | species, breed, coordinates `[lng,lat]`, limit | Ranked candidates and explainable score breakdown |
-| POST | `/api/pets/report` | Optional | pet fields plus location/coordinates | Created pet report; attaches authenticated reporter when present |
+| POST | `/api/pets/report` | Required | pet fields plus location/coordinates | Created pet report owned by the authenticated reporter |
 | GET | `/api/pets/sightings/mine` | Required | — | Sightings submitted by the current user |
 | GET | `/api/pets/:id/sightings` | Optional | pet ID | Privacy-filtered, chronological sighting history |
 | POST | `/api/pets/:id/sightings/:sightingId/confirm` | Required | pet and sighting IDs | Confirmation state for the sighting |
 | GET | `/api/pets/:id` | Optional | pet ID | Public pet details with privacy-aware contact fields |
-| POST | `/api/pets/:id/sighting` | Optional | location/name, note/photo, reporter details, sightedAt, submissionId | One idempotent sighting and owner notification when supported |
+| POST | `/api/pets/:id/sighting` | Required | location/name, note/photo, reporter details, sightedAt, submissionId | One idempotent sighting and owner notification when supported |
 | PATCH | `/api/pets/:id/status` | Required owner | `{ "status": "lost|sighted|reunited" }` | Updated pet status |
 
 ### Rescue community
@@ -111,8 +120,28 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | PATCH | `/api/notifications/read-all` | Required | — | Marks all current-user notifications read |
 | PATCH | `/api/notifications/:id/read` | Required | notification ID | Marks one owned notification read |
 | POST | `/api/matches/candidates` | Optional | species, breed, coordinates `[lng,lat]`, limit | Same explainable Smart Match engine as pet route |
-| GET | `/api/analytics/hotspots` | Public | lat, lng, radiusKm, days, source | Aggregated pet/sighting/stray heat points |
+| GET | `/api/analytics/hotspots` | Public | lat, lng, radiusKm, days, source | Aggregated visible sighting and active/visible rescue heat cells |
 | POST | `/api/uploads/image` | Required | image `dataUrl` | Validated application image URL/result |
+
+### Trust and safety
+
+| Method | Path | Auth | Main input | Result |
+|---|---|---:|---|---|
+| POST | `/api/safety/reports` | Required | target type/ID, reason, optional details | Private idempotent content report with no moderation metadata exposed |
+| GET | `/api/safety/blocks` | Required | — | Current user's blocked-account summaries |
+| PUT | `/api/safety/blocks/:userId` | Required | target user ID | Idempotently blocks the target account |
+| DELETE | `/api/safety/blocks/:userId` | Required | target user ID | Removes only the current user's block |
+| GET | `/api/moderation/reports` | Shelter admin | status, targetType, page, limit | Paginated private queue with safe account summaries and coordinate-free target previews |
+| PATCH | `/api/moderation/reports/:id` | Shelter admin | status and optional private note | Audited review decision; does not delete or alter target content |
+| PATCH | `/api/moderation/content/:targetType/:targetId/visibility` | Shelter admin | `moderationStatus`, internal reason | Independently hides or restores a supported target with moderator audit data |
+
+Blocking is enforced bidirectionally for messaging and rescue-post comments. Blocked
+interaction notifications and conversations are omitted, and contact fields are
+suppressed. Emergency pet/rescue posts and safety-critical sighting submission remain
+available. Shelter administrators can record reviewed, dismissed, or actioned report
+outcomes independently from an explicit hide/restore action. Hidden records remain stored
+for audit, while ordinary routes return them as unavailable. Moderation endpoints never
+expose contact details or precise coordinates.
 
 ## Local startup
 
