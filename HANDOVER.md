@@ -12,6 +12,15 @@ PawRadar is a mobile-first Vue web application backed by an Express REST API and
 - Backend: Node.js, Express 4, Mongoose 8, JWT, bcryptjs, CORS, dotenv.
 - Database: MongoDB Atlas database `petlostapp`; GeoJSON coordinates are always `[longitude, latitude]`.
 
+## Durable storage foundation (Stage 2, Phase 1)
+
+- Added a provider adapter, private `MediaAsset` model, authenticated multipart upload and uploader-only pending preview, using Cloudinary, Multer, file-type and Sharp.
+- Managed uploads default to disabled; existing avatar/pet/sighting/rescue/chat image flows and records remain unchanged. Configuration is backend-only in `server/.env`; see `.env.example` and README for variable names.
+- Actual JPEG/PNG/static WebP files are re-encoded to bounded WebP with metadata removed. Ownership, idempotency, quotas, concurrency and exact-object compensation are covered by isolated tests.
+- Provider/DB failure leaves auditable recovery state when safe compensation cannot complete. No cleanup worker, migration or arbitrary client deletion is enabled.
+- One approved temporary Cloudinary image was uploaded, read back, and deleted; absence was confirmed. This probe did not connect to MongoDB or alter application records.
+- Next storage phase: integrate managed attachment references and ownership into existing forms/controllers, content-aware image delivery and replacement, with separate approval. Keep migration and abandonment cleanup deferred.
+
 ## Working product flows
 
 - Account registration/login, profile editing, avatar and private real-name persistence.

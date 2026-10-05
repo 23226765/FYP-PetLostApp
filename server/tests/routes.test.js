@@ -139,6 +139,15 @@ test('image upload requires authentication', () => {
   assert.deepEqual(middlewareNames(findRoute(uploadsRouter, '/image', 'post')), ['requireAuth', 'uploadRateLimit', 'uploadImage'])
 })
 
+test('managed image uploads authenticate and rate-limit before bounded multipart parsing', () => {
+  assert.deepEqual(middlewareNames(findRoute(uploadsRouter, '/managed', 'post')), [
+    'requireAuth', 'requireManagedUploads', 'uploadRateLimit', 'imageUploadSlot', 'parseManagedImage', 'uploadManagedImage',
+  ])
+  assert.deepEqual(middlewareNames(findRoute(uploadsRouter, '/managed/:id/preview', 'get')), [
+    'requireAuth', 'requireManagedUploads', 'previewManagedImage',
+  ])
+})
+
 test('profile updates require authentication', () => {
   const update = findRoute(authRouter, '/me', 'patch')
   assert.deepEqual(middlewareNames(update), ['requireAuth', 'mutationRateLimit', 'updateMe'])

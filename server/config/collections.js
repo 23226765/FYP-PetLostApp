@@ -8,6 +8,8 @@ import SavedStray from '../models/SavedStray.js'
 import StrayComment from '../models/StrayComment.js'
 import ContentReport from '../models/ContentReport.js'
 import UserBlock from '../models/UserBlock.js'
+import MediaAsset from '../models/MediaAsset.js'
+import { managedUploadsEnabled } from './imageStorage.js'
 import { DATABASE_NAME } from './database.js'
 
 export const APPLICATION_COLLECTIONS = Object.freeze([
@@ -48,8 +50,10 @@ export async function initializeApplicationCollections(connection) {
     ),
   )
 
-  for (const model of applicationModels) {
-    if (!APPLICATION_COLLECTIONS.includes(model.collection.name)) {
+  const models = managedUploadsEnabled() ? [...applicationModels, MediaAsset] : applicationModels
+  const allowedCollections = [...APPLICATION_COLLECTIONS, 'mediaassets']
+  for (const model of models) {
+    if (!allowedCollections.includes(model.collection.name)) {
       throw new Error(`Unexpected application collection: ${model.collection.name}`)
     }
     try {
@@ -64,5 +68,5 @@ export async function initializeApplicationCollections(connection) {
     }
   }
 
-  return [...APPLICATION_COLLECTIONS]
+  return models.map((model) => model.collection.name)
 }

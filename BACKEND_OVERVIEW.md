@@ -9,7 +9,7 @@
 - Database: MongoDB Atlas, always selected as lowercase `petlostapp` through `dbName` in `server/config/database.js`.
 - Secrets: `MONGODB_URI` and `JWT_SECRET` are loaded only from `server/.env`. That file is Git-ignored.
 - Startup safety: the server validates the JWT secret, connects, confirms the selected database name, pings Atlas, creates the known collections/indexes, and only then listens.
-- Images: MongoDB stores URL/data metadata strings; the server does not store binary image documents.
+- Images: existing application fields retain legacy URL/Base64 strings. The disabled-by-default managed pipeline stores private metadata in `MediaAsset`, never image bytes. Legacy flows are unchanged until Phase 2.
 
 `JWT_SECRET` must contain at least 32 characters and cannot be a known development placeholder. Validation errors never echo the supplied value.
 
@@ -35,6 +35,7 @@ Every model uses Mongoose timestamps. Development fixtures can carry the hidden,
 | `SavedStray` / `savedstrays` | user, stray | Unique user/stray pair and user/date index |
 | `ContentReport` / `contentreports` | reporter, generic target type/ID, private target owner, reason/details, moderation status, private moderator note, reviewer and review timestamp | One report per reporter/target; status/date and target lookup indexes; only `shelter_admin` receives the safe moderation projection |
 | `UserBlock` / `userblocks` | blocker, blocked | Unique directed user pair plus reverse relationship index; block lists expose only public user summaries |
+| `MediaAsset` / `mediaassets` (opt-in) | provider, private public ID/asset ID/secure URL, width, height, format, bytes, uploader, purpose, checksum, idempotency key, expiry, state and recovery metadata | Unique provider/public ID and uploader/idempotency key; owner/date, state/expiry and attachment indexes. No TTL deletion. Collection/index initialization requires `IMAGE_UPLOADS_ENABLED=true`; no application content references are written in Phase 1 |
 
 ### GeoJSON invariant
 
@@ -122,6 +123,16 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | POST | `/api/matches/candidates` | Optional | species, breed, coordinates `[lng,lat]`, limit | Same explainable Smart Match engine as pet route |
 | GET | `/api/analytics/hotspots` | Public | lat, lng, radiusKm, days, source | Aggregated visible sighting and active/visible rescue heat cells |
 | POST | `/api/uploads/image` | Required | image `dataUrl` | Validated application image URL/result |
+| POST | `/api/uploads/managed` | Required; opt-in | multipart `image`, `purpose`, `idempotencyKey` | Idempotent pending media ID, backend preview path and safe dimensions/format/byte count; actual raster validation and Sharp re-encoding |
+| GET | `/api/uploads/managed/:id/preview` | Required uploader; opt-in | pending media ID | Authenticated backend-streamed WebP; expired, foreign or non-pending assets return 404 |
+
+Managed uploads use Cloudinary authenticated delivery and keep credentials, provider IDs
+and signed URLs server-side. Configuration is validated before enabled startup; no
+credentials are printed. Limits and configuration are documented in the README.
+Migration and cleanup are disabled; no automated object deletion or content migration
+runs. Compensating deletion is limited to the server-generated object belonging to
+the failed upload reservation. Recovery state is retained when deletion cannot safely
+complete. Frontend attachment, replacement and full content-aware delivery remain Phase 2 work.
 
 ### Trust and safety
 

@@ -10,6 +10,7 @@ import {
   disconnectDatabase,
 } from './config/database.js'
 import { initializeApplicationCollections } from './config/collections.js'
+import { imageStorageConfig, managedUploadsEnabled } from './config/imageStorage.js'
 import { requireJwtSecret, securityConfigurationMessage } from './config/security.js'
 import {
   configureHttpSecurity,
@@ -104,6 +105,15 @@ async function start() {
     console.error(`Security startup failed: ${securityConfigurationMessage(error)}`)
     process.exitCode = 1
     return
+  }
+
+  if (managedUploadsEnabled()) {
+    try { imageStorageConfig() }
+    catch {
+      console.error('Image storage startup failed: check backend image configuration.')
+      process.exitCode = 1
+      return
+    }
   }
 
   try {

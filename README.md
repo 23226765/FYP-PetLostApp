@@ -75,9 +75,36 @@ The active collections are:
 - `contentreports`
 - `userblocks`
 
-All use timestamps. Ownership checks are enforced in controllers. Idempotency fields prevent duplicate sightings, messages, rescue posts, and comments caused by retried submissions. Image fields contain URLs or validated data references, not MongoDB binary files.
+All use timestamps. Ownership checks are enforced in controllers. Idempotency fields prevent duplicate sightings, messages, rescue posts, and comments caused by retried submissions. Existing image fields still accept legacy URL and Base64 strings; conversion to managed media is not complete.
 
-See [BACKEND_OVERVIEW.md](BACKEND_OVERVIEW.md) for the model/index summary and all 51 registered API endpoints.
+See [BACKEND_OVERVIEW.md](BACKEND_OVERVIEW.md) for the model/index summary and registered API endpoints.
+
+## Durable image storage: Phase 1 foundation
+
+The authenticated managed-image pipeline is separate from existing image flows and disabled by default. It does not migrate or replace existing images. Cloudinary is behind a storage adapter; Sharp validates actual raster bytes, corrects orientation, strips metadata (including EXIF GPS), resizes, and re-encodes images to WebP. SVG, GIF, animated images and non-image files are rejected.
+
+- `POST /api/uploads/managed`: bearer authentication, multipart file `image`, fields `purpose` and `idempotencyKey`. Supported purposes: `avatar`, `pet`, `sighting`, `stray`, `message`.
+- `GET /api/uploads/managed/:id/preview`: uploader-only, unexpired pending-image preview streamed through the backend. Cloudinary delivery is authenticated; provider IDs and signed URLs are not returned to clients.
+- Private `MediaAsset` metadata records track ownership, checksums, idempotency, provider metadata and recovery states. The optional `mediaassets` collection/indexes are initialized only when managed uploads are explicitly enabled.
+- Input limit: 8 MiB, 40 megapixels and 12,000 pixels per side; two concurrent jobs globally and one per user per backend process. Limits are 100 reservations per user per rolling day and ten outstanding uploads. Per-purpose output limits are 250 KiB–1 MiB and 512–1,600 pixels per side.
+- A database reservation precedes upload. A failed final write triggers exact-object compensation when its state can be safely confirmed. Database/provider outages retain recovery metadata rather than deleting an object with an uncertain committed state.
+
+Configuration belongs only in local `server/.env`; never use frontend `VITE_` variables:
+
+```dotenv
+IMAGE_STORAGE_PROVIDER=cloudinary
+IMAGE_UPLOADS_ENABLED=false
+MEDIA_NAMESPACE=petlostapp/dev
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+ALLOW_IMAGE_MIGRATION=false
+ALLOW_IMAGE_CLEANUP=false
+```
+
+Keep managed uploads disabled until Phase 2 connects content attachment and authorized delivery. No migration, abandonment cleanup worker or client deletion endpoint runs in Phase 1. Expired pending records are not automatically deleted; recovery and cleanup require a later, separately approved implementation. Multi-instance deployments will also need distributed concurrency/quota enforcement.
+
+The opt-in `npm.cmd --prefix server run verify:images -- --confirm-temporary-cloudinary-write` probe creates one uniquely named Cloudinary test image, verifies signed delivery, and deletes that exact object. It never connects to MongoDB. Run it only with explicit permission for the temporary provider write.
 
 ## Security and runtime hardening
 
@@ -100,7 +127,7 @@ See [BACKEND_OVERVIEW.md](BACKEND_OVERVIEW.md) for the model/index summary and a
 
 ### Requirements
 
-- Node.js 20 or newer
+- Node.js 22 or newer (required by the image-validation dependencies)
 - npm
 - A MongoDB Atlas URI whose user can access `petlostapp`
 
