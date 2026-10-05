@@ -9,16 +9,21 @@
       <button
         type="button"
         class="photo-drop"
+        :disabled="submitting"
         :aria-label="t('pets.addPhotosA11y')"
         @click="addPhoto"
       >
-        <img v-if="photo" class="photo-preview" :src="photo" :alt="t('pets.selectedPhotoAlt')" />
+        <ManagedImage v-if="photo" class="photo-preview" :src="photo" :alt="t('pets.selectedPhotoAlt')" />
         <template v-else>
           <AppIcon name="camera" :size="26" />
           <span>{{ t('pets.addPhotos') }}</span>
           <span class="hint">{{ t('pets.photoHint') }}</span>
         </template>
       </button>
+
+      <input ref="photoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden @change="selectFile" />
+      <ImageUploadStatus :upload="imageUpload" />
+      <button v-if="photo" type="button" :disabled="submitting" @click="imageUpload.reset()">{{ t('media.remove') }}</button>
 
       <label class="field">
         <span>{{ t('pets.nameLabel') }}</span>
@@ -114,7 +119,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import ManagedImage from "./ManagedImage.vue"
+import { computed, reactive, ref } from 'vue'
+import { useImageUpload, createImageRequestId } from '../composables/useImageUpload'
+import ImageUploadStatus from './ImageUploadStatus.vue'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import { reportLostPet } from '../services/api'
@@ -132,7 +140,10 @@ const species = ['Dog', 'Cat', 'Other'] as const
 const submitted = ref(false)
 const submitting = ref(false)
 const error = ref('')
-const photo = ref('')
+const imageUpload = useImageUpload('pet')
+const photo = computed(() => imageUpload.preview)
+const photoInput = ref<HTMLInputElement | null>(null)
+const submissionId = createImageRequestId()
 const form = reactive({
   name: '',
   species: 'Dog' as (typeof species)[number],
@@ -153,10 +164,16 @@ async function addPhoto() {
       quality: 85,
       allowEditing: false,
     })
-    photo.value = image.dataUrl ?? ''
+    if (image.dataUrl) imageUpload.select(image.dataUrl)
   } catch (e) {
-    error.value = translateApiError(e, 'errors.camera')
+    if (!/cancel/i.test(e instanceof Error ? e.message : '')) photoInput.value?.click()
   }
+}
+function selectFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (file) imageUpload.select(file)
 }
 
 async function currentCoordinates(): Promise<[number, number]> {
@@ -174,12 +191,14 @@ async function submit() {
   error.value = ''
   try {
     const coordinates = await currentCoordinates()
+    const imageIds = await imageUpload.ensure()
     await reportLostPet({
       name: form.name,
       species: form.species,
       breed: form.breed,
       district: form.district,
-      photo: photo.value,
+      imageIds,
+      submissionId,
       description: form.details,
       details: form.details,
       reward: form.reward,
@@ -189,6 +208,7 @@ async function submit() {
       coordinates,
     })
     submitted.value = true
+    imageUpload.finish()
   } catch (e) {
     error.value = translateApiError(e, 'errors.postPet')
   } finally {

@@ -1,3 +1,5 @@
+import { IMAGE_ERRORS, imageErrorResponse } from '../services/imageErrors.js'
+
 /** @param {unknown} err */
 export function safeErrorMetadata(err) {
   const error = err && typeof err === 'object' ? err : {}
@@ -31,6 +33,7 @@ export function logServerError(context, err, req) {
  * @param {import('express').NextFunction} _next
  */
 export function errorHandler(err, req, res, _next) {
+  if (Object.hasOwn(IMAGE_ERRORS, err?.code || '')) return imageErrorResponse(err, res, _next)
   logServerError('Unhandled API error', err, req)
 
   const error = err && typeof err === 'object' ? err : {}

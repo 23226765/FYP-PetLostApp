@@ -79,7 +79,7 @@ All use timestamps. Ownership checks are enforced in controllers. Idempotency fi
 
 See [BACKEND_OVERVIEW.md](BACKEND_OVERVIEW.md) for the model/index summary and registered API endpoints.
 
-## Durable image storage: Phase 1 foundation
+## Durable image storage: Phase 2 integration
 
 The authenticated managed-image pipeline is separate from existing image flows and disabled by default. It does not migrate or replace existing images. Cloudinary is behind a storage adapter; Sharp validates actual raster bytes, corrects orientation, strips metadata (including EXIF GPS), resizes, and re-encodes images to WebP. SVG, GIF, animated images and non-image files are rejected.
 
@@ -102,7 +102,28 @@ ALLOW_IMAGE_MIGRATION=false
 ALLOW_IMAGE_CLEANUP=false
 ```
 
-Keep managed uploads disabled until Phase 2 connects content attachment and authorized delivery. No migration, abandonment cleanup worker or client deletion endpoint runs in Phase 1. Expired pending records are not automatically deleted; recovery and cleanup require a later, separately approved implementation. Multi-instance deployments will also need distributed concurrency/quota enforcement.
+All five forms now send authenticated multipart bytes, then submit server-issued image IDs. Profile writes use `avatarImageId` (explicit `null` removes the avatar); pet/sighting/rescue/message writes use `imageIds`. Legacy `avatar`, `photo`, and `photos` write fields are rejected, and `/api/uploads/image` returns 410 instead of writing local files. Existing Base64, external URLs and `/uploads` records/files remain readable and unchanged. Editing unrelated profile fields does not include an avatar update.
+
+Content attachment, replacement and removal use MongoDB transactions: owner, purpose, expiry, destination and moderation checks precede the atomic asset/content update. A failed attachment leaves the pending image retryable, without altering the old image or leaving broken content references. Once replacement commits, only the detached server-owned IDs may be deleted; failed exact-object deletion retains an auditable `delete_pending` ledger. Repeated submissions reuse their submission identity and attached IDs. Deployment must support transactions (Atlas or a local replica set).
+
+`GET /api/uploads/managed/:id/content` checks the current reference and viewer permissions before streaming bounded WebP bytes. Visible avatar/pet/rescue images support guests; sighting images are owner/reporter-only, and chat images require an unblocked participant. There is no general administrator bypass. Hidden/inactive content, stale references and retired assets return 404. No signed provider URL is returned or redirected; caching is private/no-store. The Vue `ManagedImage` component fetches authenticated blobs and revokes them on source/account changes and unmount.
+
+Owner editors provide replacement/removal except removal of the only rescue photo or an otherwise empty image-only message. Current forms choose one cover/attachment at a time; the pet/rescue backend accepts six IDs. Localized controls provide progress, cancellation and explicit retry in all three locales. Cancellation never submits a form.
+
+Keep `ALLOW_IMAGE_MIGRATION=false`, `ALLOW_IMAGE_CLEANUP=false`, and `ALLOW_TEST_SEED=false`. No migration, bulk abandonment cleanup or legacy-file deletion runs. Explicit cancellation/compensation affects only exact owned IDs; uncertain/expired reservations await separately approved reconciliation. Multi-instance deployments still need distributed quotas/concurrency. Enable `IMAGE_UPLOADS_ENABLED=true` locally only when ready for approved image-write verification; production startup initializes managed indexes and the new partial pet-submission uniqueness index.
+
+```powershell
+npm.cmd run test:frontend
+npm.cmd --prefix server test
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run build
+node server/scripts/verifyManagedImagesReadOnly.js
+```
+
+The last command starts a loopback read-only API harness with index/collection creation disabled, pins `petlostapp`, runs health/smoke and seeded read-only checks, then closes it. It never invokes production collection initialization, uploads, seeds, migration or cleanup. Real transaction tests skip unless `MEDIA_TEST_MONGODB_URI` names a loopback MongoDB replica set; they use a unique isolated test database and remove only exact fixture IDs. They never read the application's Atlas URI. No live image-write verification is authorized by these commands.
+
+Remaining Phase 3: dry-run/idempotent legacy migration, resumable recovery and abandoned-upload cleanup, reviewed rollback and separately approved live end-to-end image-write verification.
 
 The opt-in `npm.cmd --prefix server run verify:images -- --confirm-temporary-cloudinary-write` probe creates one uniquely named Cloudinary test image, verifies signed delivery, and deletes that exact object. It never connects to MongoDB. Run it only with explicit permission for the temporary provider write.
 

@@ -89,7 +89,7 @@
             @click="openConversation(conversation)"
           >
             <span class="pet-photo">
-              <img
+              <ManagedImage
                 v-if="normalizedImageUrl(conversation.pet.photo) && !failedPhotos.has(conversation.pet.id)"
                 :src="normalizedImageUrl(conversation.pet.photo)"
                 :alt="t('pets.photoAlt', { name: conversation.pet.name })"
@@ -128,6 +128,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { getChatInbox, type ChatConversation, type ChatPet } from '../services/api'

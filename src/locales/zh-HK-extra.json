@@ -1,4 +1,23 @@
 {
+  "media": {
+    "uploading": "正在上載圖片… {percent}%",
+    "progress": "圖片上載進度",
+    "retry": "重試上載",
+    "retrySave": "重試儲存相片",
+    "remove": "移除相片",
+    "replace": "更換相片",
+    "cancelled": "已取消上載。已保留所選圖片，可稍後重試。",
+    "uploadFailed": "未能上載圖片。你可以重試，毋須重新填寫表格。",
+    "invalid": "請選擇有效的 JPEG、PNG 或靜態 WebP 圖片。",
+    "tooLarge": "請選擇小於 8 MB 且尺寸符合限制的圖片。",
+    "forbidden": "此圖片不能用於這則帖文。請上載你自己的圖片。",
+    "saveFailed": "未能儲存圖片。原有相片不變，請重試儲存。",
+    "unavailable": "圖片儲存服務暫時無法使用，請稍後再試。",
+    "authChanged": "登入狀態已更改，請重新選擇圖片。",
+    "saved": "相片已更新。",
+    "edit": "編輯相片",
+    "confirmRemove": "要移除此相片嗎？"
+  },
   "pets": {
     "species": "物種",
     "breed": "品種"

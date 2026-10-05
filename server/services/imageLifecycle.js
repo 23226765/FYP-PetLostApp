@@ -27,12 +27,12 @@ export const mediaRepository = Object.freeze({
 
 export function publicPendingImage(asset) {
   return {
-    id: String(asset._id), url: `/api/uploads/managed/${asset._id}/preview`,
+    id: String(asset._id), url: `/api/uploads/managed/${asset._id}/${asset.state === 'attached' ? 'content' : 'preview'}`,
     width: asset.width, height: asset.height, format: asset.format, bytes: asset.bytes,
   }
 }
 
-/** No application-content writes: this phase creates only upload reservations. */
+/** Upload reservations are separate from transactional content attachment. */
 export function createImageLifecycle({
   storage, repository = mediaRepository, processor = processImage, now = () => new Date(),
   logger = logServerError,
@@ -59,6 +59,19 @@ export function createImageLifecycle({
   }
 
   return Object.freeze({
+    async discard(id, userId) {
+      if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(userId)) throw imageError('IMAGE_NOT_FOUND')
+      repository.assertDatabase()
+      const asset = await repository.find({ _id: id, uploadedBy: String(userId) })
+      if (!asset) throw imageError('IMAGE_NOT_FOUND')
+      if (asset.state === 'deleted') return
+      if (!['pending', 'delete_pending'].includes(asset.state)) throw imageError('IMAGE_UPLOAD_IN_PROGRESS')
+      if (asset.state === 'pending' && !await repository.update(id, ['pending'], { state: 'delete_pending' })) throw imageError('IMAGE_UPLOAD_IN_PROGRESS')
+      try {
+        await storage.deleteImage(asset)
+        if (!await repository.update(id, ['delete_pending'], { state: 'deleted', cleanupAttempts: 1 })) throw imageError('IMAGE_DATABASE_UNAVAILABLE')
+      } catch { throw imageError('IMAGE_STORAGE_UNAVAILABLE') }
+    },
     async upload({ userId, purpose, idempotencyKey, buffer }) {
       if (!mongoose.isValidObjectId(userId)) throw imageError('IMAGE_REQUEST_INVALID')
       if (!Object.hasOwn(IMAGE_PURPOSES, purpose)) throw imageError('IMAGE_PURPOSE_INVALID')
@@ -76,9 +89,10 @@ export function createImageLifecycle({
         if (existing.checksum !== processed.checksum || existing.purpose !== purpose) {
           throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
         }
-        if (existing.state === 'pending' && new Date(existing.expiresAt) > timestamp) {
+        if (existing.state === 'attached' || (existing.state === 'pending' && new Date(existing.expiresAt) > timestamp)) {
           return { image: publicPendingImage(existing), duplicate: true }
         }
+        if (['deleted', 'failed', 'delete_pending', 'pending'].includes(existing.state)) throw imageError('IMAGE_UPLOAD_RETRY_REQUIRED')
         throw imageError('IMAGE_UPLOAD_IN_PROGRESS')
       }
 

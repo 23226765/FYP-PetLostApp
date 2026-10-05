@@ -82,7 +82,7 @@
         @dragleave.prevent="isDragging = false"
         @drop.prevent="onDrop"
       >
-        <img
+        <ManagedImage
           v-if="normalizedImageUrl(uploadedPhoto) && !uploadedPhotoFailed"
           :src="normalizedImageUrl(uploadedPhoto)"
           class="selected-upload-photo"
@@ -140,7 +140,7 @@
       <!-- Thumbnail of what was scanned -->
       <div v-if="uploadedPhoto" class="scanned-summary">
         <div class="scanned-thumb" role="img" :aria-label="t('smartMatch.uploadedPhotoAria')">
-          <img
+          <ManagedImage
             v-if="normalizedImageUrl(uploadedPhoto) && !uploadedPhotoFailed"
             :src="normalizedImageUrl(uploadedPhoto)"
             alt=""
@@ -172,7 +172,7 @@
           @click="emit('open-match', m)"
         >
           <div class="photo-wrap">
-            <img
+            <ManagedImage
               v-if="normalizedImageUrl(m.photo) && !failedMatchImages.has(m.id)"
               :src="normalizedImageUrl(m.photo)"
               alt=""
@@ -261,6 +261,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
 import { computed, nextTick, onUnmounted, ref } from 'vue'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import { HK_DISTRICTS, type HongKongDistrict, type Pet } from '../types/pet'

@@ -9,7 +9,7 @@
 - Database: MongoDB Atlas, always selected as lowercase `petlostapp` through `dbName` in `server/config/database.js`.
 - Secrets: `MONGODB_URI` and `JWT_SECRET` are loaded only from `server/.env`. That file is Git-ignored.
 - Startup safety: the server validates the JWT secret, connects, confirms the selected database name, pings Atlas, creates the known collections/indexes, and only then listens.
-- Images: existing application fields retain legacy URL/Base64 strings. The disabled-by-default managed pipeline stores private metadata in `MediaAsset`, never image bytes. Legacy flows are unchanged until Phase 2.
+- Images: legacy URL/Base64 strings and local files remain readable. New avatar/pet/sighting/rescue/chat writes use uploaded `MediaAsset` IDs, never image bytes or arbitrary URLs. Managed uploads remain opt-in; provider metadata is private.
 
 `JWT_SECRET` must contain at least 32 characters and cannot be a known development placeholder. Validation errors never echo the supplied value.
 
@@ -35,7 +35,7 @@ Every model uses Mongoose timestamps. Development fixtures can carry the hidden,
 | `SavedStray` / `savedstrays` | user, stray | Unique user/stray pair and user/date index |
 | `ContentReport` / `contentreports` | reporter, generic target type/ID, private target owner, reason/details, moderation status, private moderator note, reviewer and review timestamp | One report per reporter/target; status/date and target lookup indexes; only `shelter_admin` receives the safe moderation projection |
 | `UserBlock` / `userblocks` | blocker, blocked | Unique directed user pair plus reverse relationship index; block lists expose only public user summaries |
-| `MediaAsset` / `mediaassets` (opt-in) | provider, private public ID/asset ID/secure URL, width, height, format, bytes, uploader, purpose, checksum, idempotency key, expiry, state and recovery metadata | Unique provider/public ID and uploader/idempotency key; owner/date, state/expiry and attachment indexes. No TTL deletion. Collection/index initialization requires `IMAGE_UPLOADS_ENABLED=true`; no application content references are written in Phase 1 |
+| `MediaAsset` / `mediaassets` (opt-in) | provider, private public ID/asset ID/secure URL, width, height, format, bytes, uploader, purpose, checksum, idempotency key, expiry, attachment and recovery states | Unique provider/public ID and uploader/idempotency key; owner/date, state/expiry and attachment indexes. No TTL deletion. Initialization requires `IMAGE_UPLOADS_ENABLED=true`; content `imageIds` references attach transactionally |
 
 ### GeoJSON invariant
 
@@ -67,7 +67,7 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | POST | `/api/auth/register` | Public | name, email, password; optional phone | User and JWT |
 | POST | `/api/auth/login` | Public | email, password | User and JWT; rate-limited by email and IP |
 | GET | `/api/auth/me` | Required | — | Current safe user profile, privacy, preferences |
-| PATCH | `/api/auth/me` | Required | name/displayName, realName, email, phone, avatar | Updated safe current-user profile |
+| PATCH | `/api/auth/me` | Required | name/displayName, realName, email, phone, optional `avatarImageId` (null removes) | Updated safe current-user profile; omitted avatar ID leaves image unchanged |
 | GET | `/api/auth/me/privacy` | Required | — | Contact visibility preference |
 | PATCH | `/api/auth/me/privacy` | Required | `contactVisibility` | Updated privacy preference |
 | GET | `/api/auth/me/preferences` | Required | — | Language and theme |
@@ -81,12 +81,12 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | GET | `/api/pets/mine` | Required | page, limit | Current user's pet reports |
 | GET | `/api/pets/nearby` | Optional | `lat`, `lng`, radiusKm; optional filters/page/limit | Distance-sorted, paginated nearby listings with the same ownership exclusion |
 | POST | `/api/pets/smart-match` | Optional | species, breed, coordinates `[lng,lat]`, limit | Ranked candidates and explainable score breakdown |
-| POST | `/api/pets/report` | Required | pet fields plus location/coordinates | Created pet report owned by the authenticated reporter |
+| POST | `/api/pets/report` | Required | pet fields, location/coordinates, `imageIds`, `submissionId` | Idempotent owner-linked pet report with transactional image attachment |
 | GET | `/api/pets/sightings/mine` | Required | — | Sightings submitted by the current user |
 | GET | `/api/pets/:id/sightings` | Optional | pet ID | Privacy-filtered, chronological sighting history |
 | POST | `/api/pets/:id/sightings/:sightingId/confirm` | Required | pet and sighting IDs | Confirmation state for the sighting |
 | GET | `/api/pets/:id` | Optional | pet ID | Public pet details with privacy-aware contact fields |
-| POST | `/api/pets/:id/sighting` | Required | location/name, note/photo, reporter details, sightedAt, submissionId | One idempotent sighting and owner notification when supported |
+| POST | `/api/pets/:id/sighting` | Required | location/name, note, `imageIds`, reporter details, sightedAt, submissionId | One idempotent sighting and owner notification when supported |
 | PATCH | `/api/pets/:id/status` | Required owner | `{ "status": "lost|sighted|reunited" }` | Updated pet status |
 
 ### Rescue community
@@ -97,7 +97,7 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | GET | `/api/strays/mine` | Required | page, limit | Current user's rescue posts |
 | GET | `/api/strays/nearby` | Optional | `lat`, `lng`, radiusKm, limit and filters | Nearby rescue posts with distances |
 | GET | `/api/strays/saved` | Required | page, limit | Current user's saved rescue posts |
-| POST | `/api/strays/report` | Required | species/animalType, description, photos, condition, district, location, observedAt, submissionId | Idempotently created rescue post |
+| POST | `/api/strays/report` | Required | species/animalType, description, `imageIds`, condition, district, location, observedAt, submissionId | Idempotent rescue post; at least one owned uploaded image |
 | GET | `/api/strays/:id/comments` | Optional | page, limit | Paginated comments |
 | POST | `/api/strays/:id/comments` | Required | text, optional submissionId | Created comment and relevant notification |
 | PATCH | `/api/strays/:id/comments/:commentId` | Required author | text | Updated own comment |
@@ -115,16 +115,19 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 |---|---|---:|---|---|
 | GET | `/api/chat/inbox` | Required | — | Conversations visible to the current user |
 | GET | `/api/chat/:petId` | Required participant | optional participant query for owners | Authorized message thread |
-| POST | `/api/chat/:petId` | Required participant | text/photo/sharedStrayId/clientRequestId; participant where required | Idempotently created message and notification |
+| POST | `/api/chat/:petId` | Required participant | text/imageIds/sharedStrayId/clientRequestId; participant where required | Idempotently created message and notification |
 | GET | `/api/notifications` | Required | — | Current user's notifications |
 | PUT | `/api/notifications/preferences` | Required | enabled, radiusKm, coordinates `[lng,lat]` | Updated alert settings |
 | PATCH | `/api/notifications/read-all` | Required | — | Marks all current-user notifications read |
 | PATCH | `/api/notifications/:id/read` | Required | notification ID | Marks one owned notification read |
 | POST | `/api/matches/candidates` | Optional | species, breed, coordinates `[lng,lat]`, limit | Same explainable Smart Match engine as pet route |
 | GET | `/api/analytics/hotspots` | Public | lat, lng, radiusKm, days, source | Aggregated visible sighting and active/visible rescue heat cells |
-| POST | `/api/uploads/image` | Required | image `dataUrl` | Validated application image URL/result |
+| POST | `/api/uploads/image` | Required | Legacy route | 410 `IMAGE_IDS_REQUIRED`; no local file write |
 | POST | `/api/uploads/managed` | Required; opt-in | multipart `image`, `purpose`, `idempotencyKey` | Idempotent pending media ID, backend preview path and safe dimensions/format/byte count; actual raster validation and Sharp re-encoding |
 | GET | `/api/uploads/managed/:id/preview` | Required uploader; opt-in | pending media ID | Authenticated backend-streamed WebP; expired, foreign or non-pending assets return 404 |
+| GET | `/api/uploads/managed/:id/content` | Optional; target-dependent | attached media ID | Permission-checked WebP; visible avatars/pets/rescues support guests, sightings/chat are private |
+| DELETE | `/api/uploads/managed/:id` | Required uploader | pending media ID | Idempotent exact-owned-object cancellation; attached images cannot be discarded |
+| PATCH | `/api/uploads/managed/content/:type/:id` | Required owner | `imageIds` | Transactional replacement/removal with required rescue/message-content constraints |
 
 Managed uploads use Cloudinary authenticated delivery and keep credentials, provider IDs
 and signed URLs server-side. Configuration is validated before enabled startup; no
@@ -132,7 +135,12 @@ credentials are printed. Limits and configuration are documented in the README.
 Migration and cleanup are disabled; no automated object deletion or content migration
 runs. Compensating deletion is limited to the server-generated object belonging to
 the failed upload reservation. Recovery state is retained when deletion cannot safely
-complete. Frontend attachment, replacement and full content-aware delivery remain Phase 2 work.
+complete. Attachment and replacement now commit atomically using MongoDB transactions.
+Failed attachment keeps pending uploads retryable. Replacement deletion occurs only
+after commit, against exact detached IDs. Expired/uncertain reservations await Phase 3
+reconciliation. Optional hidden `imageIds` references do not require rewriting old
+records. Pet submissions declare a partial owner/submission uniqueness index; the
+read-only verification harness never creates indexes.
 
 ### Trust and safety
 

@@ -17,12 +17,12 @@
     <main v-else class="post">
       <section class="post-card">
         <div class="author-row">
-          <span class="avatar"><img v-if="stray.author.avatar" :src="imageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="21" /></span>
+          <span class="avatar"><ManagedImage v-if="stray.author.avatar" :src="imageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="21" /></span>
           <div><strong>{{ stray.author.name }}</strong><small>{{ relativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></div>
           <span class="status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
         <div class="hero">
-          <img v-if="stray.photo && !imageFailed" :src="imageUrl(stray.photo)" :alt="t('strays.reportedIn', { species: animalLabel, district: districtLabel(stray.district) })" @error="imageFailed = true" />
+          <ManagedImage v-if="stray.photo && !imageFailed" :src="imageUrl(stray.photo)" :alt="t('strays.reportedIn', { species: animalLabel, district: districtLabel(stray.district) })" @error="imageFailed = true" />
           <span v-else><AppIcon name="paw" :size="42" /></span>
         </div>
         <div class="post-copy">
@@ -43,6 +43,7 @@
       </section>
 
       <section v-if="stray.canManage" class="manage-card">
+        <ContentImageEditor type="stray" :id="stray.id" :allow-remove="false" @updated="updatePhotos" />
         <h2>{{ t('strays.managePost') }}</h2>
         <div class="status-buttons">
           <button v-for="option in rescueOptions" :key="option.value" type="button" :class="{ active: stray.rescueStatus === option.value }" :disabled="savingStatus" @click="changeStatus(option.value)">{{ option.label }}</button>
@@ -75,7 +76,7 @@
         <p v-if="commentsLoading" class="comment-state">{{ t('strays.loadingComments') }}</p>
         <p v-else-if="!comments.length" class="comment-state">{{ t('strays.noComments') }}</p>
         <article v-for="comment in comments" :key="comment.id" class="comment">
-          <span class="avatar small"><img v-if="comment.author.avatar" :src="imageUrl(comment.author.avatar)" alt="" /><AppIcon v-else name="user" :size="16" /></span>
+          <span class="avatar small"><ManagedImage v-if="comment.author.avatar" :src="imageUrl(comment.author.avatar)" alt="" /><AppIcon v-else name="user" :size="16" /></span>
           <div><p><strong>{{ comment.author.name }}</strong> {{ comment.text }}</p><small>{{ relativeDate(comment.createdAt) }}</small></div>
           <button v-if="comment.author.id === user?.id" type="button" :aria-label="t('strays.deleteComment')" @click="removeComment(comment.id)"><AppIcon name="close" :size="15" /></button>
           <SafetyActions
@@ -99,7 +100,7 @@
         <p v-else-if="shareError" class="inline-error">{{ shareError }}</p>
         <p v-else-if="!conversations.length">{{ t('strays.shareEmpty') }}</p>
         <button v-for="conversation in conversations" :key="conversation.id" class="conversation" type="button" :disabled="sharing" @click="shareTo(conversation)">
-          <img :src="imageUrl(conversation.pet.photo)" alt="" /><span><strong>{{ conversation.pet.participantName || conversation.pet.owner }}</strong><small>{{ t('strays.conversationAbout', { name: conversation.pet.name }) }}</small></span><AppIcon name="send" :size="18" />
+          <ManagedImage :src="imageUrl(conversation.pet.photo)" alt="" /><span><strong>{{ conversation.pet.participantName || conversation.pet.owner }}</strong><small>{{ t('strays.conversationAbout', { name: conversation.pet.name }) }}</small></span><AppIcon name="send" :size="18" />
         </button>
       </section>
     </div>
@@ -107,6 +108,9 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "../components/ManagedImage.vue"
+import ContentImageEditor from '../components/ContentImageEditor.vue'
+import type { ManagedImage as ManagedImageData } from '../services/api'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
@@ -137,6 +141,11 @@ const rescueOptions = computed(() => ([{ value: 'reported' as const, label: resc
 const uniqueId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 function id() { const value = route.params.id; return Array.isArray(value) ? value[0] : String(value || '') }
+function updatePhotos(images: ManagedImageData[]) {
+  if (!stray.value) return
+  stray.value.photo = images[0]?.url || ''; stray.value.photos = images.map((image) => image.url)
+  imageFailed.value = false
+}
 function imageUrl(value: string) { try { const api = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin); return new URL(value, `${api.origin}/`).href } catch { return '' } }
 function statusLabel(value: RescueStatus) { return rescueStatusLabel(value) }
 function conditionLabel(value: StrayReport['condition']) { return strayConditionLabel(value) }

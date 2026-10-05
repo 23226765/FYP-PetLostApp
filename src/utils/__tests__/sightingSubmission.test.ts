@@ -25,7 +25,7 @@ describe('sighting submission payload', () => {
       location: { type: 'Point', coordinates: [114.1694, 22.3193] },
       locationName: 'Mong Kok MTR Exit E2',
       note: 'Seen walking north',
-      photo: undefined,
+      imageIds: [],
       submissionId: 'sighting_test_002',
     })
   })

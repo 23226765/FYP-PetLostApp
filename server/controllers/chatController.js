@@ -1,4 +1,6 @@
 import mongoose from 'mongoose'
+import { commitContentImages, rejectImageStrings, validateImageIds } from '../services/mediaAttachments.js'
+import { imageError } from '../services/imageErrors.js'
 import Message from '../models/Message.js'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
@@ -15,7 +17,6 @@ import { blockedUserIdsFor, usersBlockEachOther } from '../services/trustSafety.
 import { visibleContentFilter } from '../services/moderationVisibility.js'
 
 const MAX_MESSAGE_LENGTH = 2000
-const MAX_PHOTO_LENGTH = 1_500_000
 
 function strayReferenceId(message) {
   return message.sharedStray?._id || message.sharedStray || null
@@ -234,20 +235,19 @@ export async function createMessage(req, res, next) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
     if (!hasRequestBody(req)) return invalidRequestBody(res)
+    rejectImageStrings(req.body)
 
-    const { text, photo, sharedStrayId, clientRequestId } = req.body
+    const { text, sharedStrayId, clientRequestId } = req.body
     const normalizedMessage = typeof text === 'string' ? text.trim() : ''
-    const normalizedPhoto = typeof photo === 'string' ? photo.trim() : ''
+    const imageIds = validateImageIds(req.body.imageIds === undefined ? [] : req.body.imageIds, 'message')
     const normalizedRequestId = typeof clientRequestId === 'string' ? clientRequestId.trim().slice(0, 100) : ''
-    if (!normalizedMessage && !normalizedPhoto && !sharedStrayId) {
+    if (!normalizedMessage && !imageIds.length && !sharedStrayId) {
       return res.status(400).json({ error: 'A message requires text, a photo, or a shared post.' })
     }
     if (normalizedMessage.length > MAX_MESSAGE_LENGTH) {
       return res.status(400).json({ error: 'Message is too long.' })
     }
-    if (normalizedPhoto.length > MAX_PHOTO_LENGTH) {
-      return res.status(413).json({ error: 'Photo is too large. Choose a smaller image.' })
-    }
+    if (imageIds.length && !normalizedRequestId) throw imageError('IMAGE_REQUEST_INVALID')
 
     const pet = await Pet.findOne(
       visibleContentFilter({ _id: req.params.petId }),
@@ -290,8 +290,6 @@ export async function createMessage(req, res, next) {
       }))
       if (!sharedStray) return res.status(404).json({ error: 'Shared stray post is unavailable.' })
       if (!normalizedRequestId) return res.status(400).json({ error: 'clientRequestId is required when sharing a post.' })
-      const existing = await Message.findOne({ sentBy: req.user._id, clientRequestId: normalizedRequestId })
-      if (existing) return res.json({ message: (await serializeMessages([existing]))[0], duplicate: true })
     }
 
     const messageValues = {
@@ -300,11 +298,27 @@ export async function createMessage(req, res, next) {
       sentBy: req.user._id,
       participant: participantId,
       text: normalizedMessage,
-      photo: normalizedPhoto,
+      photo: '',
       sharedStray: sharedStray?._id || null,
       clientRequestId: normalizedRequestId || undefined,
     }
-    const message = normalizedRequestId
+    if (normalizedRequestId && !imageIds.length) {
+      const existing = await Message.findOne({ sentBy: req.user._id, clientRequestId: normalizedRequestId })
+      if (existing) {
+        if (String(existing.pet) !== String(pet._id) || String(existing.participant) !== String(participantId)) throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
+        return res.json({ message: (await serializeMessages([existing]))[0], duplicate: true })
+      }
+    }
+    const message = imageIds.length
+      ? (await commitContentImages({ Model: Message, type: 'message', purpose: 'message', userId: req.user._id,
+          values: messageValues, imageIds, idempotencyFilter: { sentBy: req.user._id, clientRequestId: normalizedRequestId },
+          authorize: async (session) => {
+            const target = await Pet.findOne(visibleContentFilter({ _id: pet._id })).session(session)
+            if (!target || await usersBlockEachOther(req.user._id, otherUserId)) throw imageError('IMAGE_ATTACHMENT_FORBIDDEN')
+            const prior = await Message.findOne({ sentBy: req.user._id, clientRequestId: normalizedRequestId }).session(session)
+            if (prior && (String(prior.pet) !== String(pet._id) || String(prior.participant) !== String(participantId))) throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
+          } })).doc
+      : normalizedRequestId
       ? await Message.findOneAndUpdate(
           { sentBy: req.user._id, clientRequestId: normalizedRequestId },
           { $setOnInsert: messageValues },
@@ -316,7 +330,7 @@ export async function createMessage(req, res, next) {
     if (recipientId && String(recipientId) !== String(req.user._id)) {
       await Notification.findOneAndUpdate(
         { user: recipientId, type: 'message', message: message._id },
-        { $setOnInsert: { user: recipientId, pet: pet._id, stray: sharedStray?._id || null, message: message._id, type: 'message', title: 'New PawRadar message', body: normalizedMessage || (sharedStray ? 'Shared a stray animal post.' : 'Shared a photo.'), photo: sharedStray?.photo || normalizedPhoto || '' } },
+        { $setOnInsert: { user: recipientId, pet: pet._id, stray: sharedStray?._id || null, message: message._id, type: 'message', title: 'New PawRadar message', body: normalizedMessage || (sharedStray ? 'Shared a stray animal post.' : 'Shared a photo.'), photo: sharedStray?.photo || message.photo || '' } },
         { upsert: true, new: true },
       )
     }

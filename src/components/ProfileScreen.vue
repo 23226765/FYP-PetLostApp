@@ -28,7 +28,7 @@
     </header>
 
     <section class="head">
-      <img
+      <ManagedImage
         class="avatar"
         :src="user?.avatar || '/avatar.svg'"
         :alt="user ? t('settings.profilePhotoAlt', { name: user.name }) : t('profile.guest')"
@@ -114,6 +114,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'

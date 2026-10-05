@@ -66,12 +66,12 @@
     <div v-else-if="view === 'list'" class="report-list">
       <article v-for="stray in strays" :key="stray.id" class="stray-card" tabindex="0" role="link" :aria-label="t('strays.openPost', { species: animalLabel(stray), author: stray.author.name })" @click="openStray(stray)" @keydown.enter="openStray(stray)">
         <div class="post-author">
-          <span class="author-avatar"><img v-if="stray.author.avatar" :src="normalizedImageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="17" /></span>
+          <span class="author-avatar"><ManagedImage v-if="stray.author.avatar" :src="normalizedImageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="17" /></span>
           <span><strong>{{ stray.author.name }}</strong><small>{{ formatRelativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></span>
           <span class="rescue-status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
         <div class="photo-wrap">
-          <img v-if="imageUrl(stray) && !failedImages.has(stray.id)" :src="imageUrl(stray)" :alt="t('strays.reportedAlt', { species: animalLabel(stray) })" @error="markImageFailed(stray.id)" />
+          <ManagedImage v-if="imageUrl(stray) && !failedImages.has(stray.id)" :src="imageUrl(stray)" :alt="t('strays.reportedAlt', { species: animalLabel(stray) })" @error="markImageFailed(stray.id)" />
           <span v-else class="photo-placeholder"><AppIcon name="paw" :size="34" /></span>
           <span class="condition" :class="stray.condition">{{ conditionLabel(stray.condition) }}</span>
         </div>
@@ -107,11 +107,12 @@
             <button type="button" :aria-label="t('strays.closeForm')" @click="showReportForm = false"><AppIcon name="close" :size="20" /></button>
           </div>
           <input ref="photoInput" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" @change="onPhotoSelected" />
-          <button class="photo-button" type="button" @click="addPhoto">
-            <img v-if="form.photo" :src="form.photo" :alt="t('strays.selectedAlt')" />
+          <button class="photo-button" type="button" :disabled="submitting" @click="addPhoto">
+            <ManagedImage v-if="form.photo" :src="form.photo" :alt="t('strays.selectedAlt')" />
             <template v-else><AppIcon name="camera" :size="25" /><span>{{ t('strays.addPhoto') }}</span></template>
           </button>
-          <button v-if="form.photo" class="remove-photo" type="button" @click="form.photo = ''">{{ t('strays.removePhoto') }}</button>
+          <button v-if="form.photo" class="remove-photo" type="button" :disabled="submitting" @click="imageUpload.reset(); form.photo = ''">{{ t('strays.removePhoto') }}</button>
+          <ImageUploadStatus :upload="imageUpload" />
           <div class="form-grid">
             <label><span>{{ t('strays.animal') }}</span><select v-model="form.species" required><option value="Dog">{{ speciesLabel('Dog') }}</option><option value="Cat">{{ speciesLabel('Cat') }}</option><option value="Other">{{ speciesLabel('Other') }}</option></select></label>
             <label><span>{{ t('strays.condition') }}</span><select v-model="form.condition" required><option value="unknown">{{ t('strays.unknownCondition') }}</option><option value="healthy">{{ t('strays.appearsHealthy') }}</option><option value="injured">{{ t('strays.injured') }}</option><option value="critical">{{ t('strays.critical') }}</option></select></label>
@@ -133,13 +134,16 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
 import SightingLocationPicker from './SightingLocationPicker.vue'
-import { getNearbyStrays, reportStray, setStraySaved, uploadImage } from '../services/api'
+import { getNearbyStrays, reportStray, setStraySaved } from '../services/api'
+import { useImageUpload } from '../composables/useImageUpload'
+import ImageUploadStatus from './ImageUploadStatus.vue'
 import { HK_DISTRICTS } from '../types/pet'
 import type { User } from '../types/user'
 import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
@@ -170,6 +174,8 @@ const submitting = ref(false)
 const reportError = ref('')
 const uploadStage = ref<'idle' | 'uploading' | 'posting'>('idle')
 const photoInput = ref<HTMLInputElement | null>(null)
+const imageUpload = useImageUpload('stray')
+watch(showReportForm, (open) => { if (!open && imageUpload.uploading) imageUpload.cancel() })
 let requestSequence = 0
 let abortController: AbortController | null = null
 
@@ -256,7 +262,7 @@ async function addPhoto() {
   reportError.value = ''
   try {
     const image = await Camera.getPhoto({ resultType: CameraResultType.DataUrl, quality: 82, allowEditing: false })
-    form.photo = image.dataUrl || ''
+    if (image.dataUrl) { imageUpload.select(image.dataUrl); form.photo = imageUpload.preview }
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : ''
     if (message.toLowerCase().includes('cancel')) return
@@ -271,10 +277,7 @@ function onPhotoSelected(event: Event) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
     reportError.value = t('validation.rescueImage'); input.value = ''; return
   }
-  const reader = new FileReader()
-  reader.onload = () => { if (typeof reader.result === 'string') form.photo = reader.result; input.value = '' }
-  reader.onerror = () => { reportError.value = t('errors.readImage'); input.value = '' }
-  reader.readAsDataURL(file)
+  imageUpload.select(file); form.photo = imageUpload.preview; input.value = ''
 }
 
 async function submitReport() {
@@ -287,7 +290,7 @@ async function submitReport() {
     if (!form.coordinates) throw new Error(t('validation.rescueLocationRequired'))
     if (form.species === 'Other' && !form.animalType.trim()) throw new Error(t('strayAnimal.typeRequired'))
     uploadStage.value = 'uploading'
-    const photoUrl = form.photo.startsWith('data:') ? await uploadImage(form.photo) : form.photo
+    const imageIds = await imageUpload.ensure()
     uploadStage.value = 'posting'
     const created = await reportStray({
       species: form.species,
@@ -296,8 +299,7 @@ async function submitReport() {
       district: form.district,
       locationName: form.locationName,
       description: form.description,
-      photo: photoUrl,
-      photos: [photoUrl],
+      imageIds,
       coordinates: form.coordinates,
       observedAt: new Date(form.observedAt).toISOString(),
       rescueStatus: 'reported',
@@ -309,6 +311,7 @@ async function submitReport() {
     form.animalType = ''
     form.description = ''
     form.photo = ''
+    imageUpload.finish()
     form.coordinates = null
     form.observedAt = new Date().toISOString().slice(0, 16)
     form.submissionId = ''

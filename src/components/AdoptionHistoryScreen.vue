@@ -78,7 +78,7 @@
       >
         <!-- Pet thumbnail -->
         <div class="thumb-wrap">
-          <img :src="entry.petPhoto" :alt="t('pets.photoAlt', { name: entry.petName })" loading="lazy" />
+          <ManagedImage :src="entry.petPhoto" :alt="t('pets.photoAlt', { name: entry.petName })" loading="lazy" />
           <!-- Outcome badge overlaid on thumbnail -->
           <span class="outcome-badge" :class="entry.outcome">
             {{ outcomeLabel(entry.outcome) }}
@@ -122,7 +122,7 @@
 
           <!-- Sheet header -->
           <div class="sheet-head">
-            <img :src="selectedEntry.petPhoto" :alt="t('pets.photoAlt', { name: selectedEntry.petName })" />
+            <ManagedImage :src="selectedEntry.petPhoto" :alt="t('pets.photoAlt', { name: selectedEntry.petName })" />
             <div>
               <h2>{{ selectedEntry.petName }}</h2>
               <p>{{ selectedEntry.breed }} · {{ selectedEntry.location }}</p>
@@ -263,6 +263,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
 import { computed, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { getMyPets, getMySightings, updatePetStatus } from '../services/api'

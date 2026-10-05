@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { commitContentImages, rejectImageStrings, validateImageIds } from '../services/mediaAttachments.js'
 import Notification from '../models/Notification.js'
 import SavedStray from '../models/SavedStray.js'
 import Stray from '../models/Stray.js'
@@ -40,7 +41,9 @@ function validCoordinates(value) {
 }
 
 function validPhotoUrl(value) {
-  if (typeof value !== 'string' || !value.trim() || value.startsWith('data:') || value.startsWith('blob:')) return false
+  if (typeof value !== 'string' || !value.trim() || value.startsWith('blob:')) return false
+  if (/^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(value)) return value.length <= 10_000_000
+  if (/^\/api\/uploads\/managed\/[a-f0-9]{24}\/content$/i.test(value)) return true
   if (value.startsWith('/uploads/')) return true
   try { return ['http:', 'https:'].includes(new URL(value).protocol) } catch { return false }
 }
@@ -213,23 +216,28 @@ export async function reportStray(req, res, next) {
   try {
     setLocationPrivacyHeaders(res)
     if (!hasBody(req)) return res.status(400).json({ success: false, message: 'Invalid or missing request body' })
+    rejectImageStrings(req.body)
     const { species, condition = 'unknown', district, locationName, coordinates, submissionId } = req.body
     const animalType = cleanText(req.body.animalType, 80)
     const description = cleanText(req.body.description, 2000)
-    const photos = [...new Set((Array.isArray(req.body.photos) ? req.body.photos : [req.body.photo]).filter(validPhotoUrl))].slice(0, 6)
+    const imageIds = validateImageIds(req.body.imageIds === undefined ? [] : req.body.imageIds, 'stray')
     const observedAt = new Date(req.body.observedAt || Date.now())
     if (!SPECIES.has(species) || !description) return res.status(400).json({ error: 'Species and description are required.' })
     if (species === 'Other' && !animalType) return res.status(400).json({ error: 'Please specify what type of animal was seen.' })
     if (!CONDITIONS.has(condition) || !HK_DISTRICTS.has(district) || !cleanText(locationName, 200)) return res.status(400).json({ error: 'Valid condition, district, and location are required.' })
     if (!validCoordinates(coordinates)) return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
-    if (!photos.length) return res.status(400).json({ error: 'At least one uploaded photo URL is required.' })
+    if (!imageIds.length) return res.status(400).json({ error: 'At least one uploaded image is required.', code: 'IMAGE_IDS_REQUIRED' })
     if (Number.isNaN(observedAt.getTime()) || observedAt.getTime() > Date.now() + 300000) return res.status(400).json({ error: 'Observed time is invalid.' })
     const safeSubmissionId = cleanText(submissionId, 100)
     if (!safeSubmissionId) return res.status(400).json({ error: 'A submissionId is required.' })
 
     const filter = { reportedBy: req.user._id, submissionId: safeSubmissionId }
-    const existed = Boolean(await Stray.exists(filter))
-    const stray = await Stray.findOneAndUpdate(filter, { $setOnInsert: { species, animalType: species === 'Other' ? animalType : '', description, photo: photos[0], photos, condition, district, locationName: cleanText(locationName, 200), location: { type: 'Point', coordinates: coordinates.map(Number) }, reporterName: req.user.name, reporterPhone: req.user.phone || '', reportedBy: req.user._id, observedAt, rescueStatus: RESCUE_STATUSES.has(req.body.rescueStatus) ? req.body.rescueStatus : 'reported', submissionId: safeSubmissionId } }, { upsert: true, new: true, setDefaultsOnInsert: true })
+    const { doc: stray, duplicate: existed } = await commitContentImages({ Model: Stray, type: 'stray', purpose: 'stray', userId: req.user._id,
+      imageIds, minimum: 1, idempotencyFilter: filter,
+      values: { species, animalType: species === 'Other' ? animalType : '', description, condition, district,
+        locationName: cleanText(locationName, 200), location: { type: 'Point', coordinates: coordinates.map(Number) },
+        reporterName: req.user.name, reporterPhone: req.user.phone || '', reportedBy: req.user._id, observedAt,
+        rescueStatus: RESCUE_STATUSES.has(req.body.rescueStatus) ? req.body.rescueStatus : 'reported', submissionId: safeSubmissionId } })
     const [serialized] = await serializeMany([stray], req.user)
     res.status(existed ? 200 : 201).json({ stray: serialized, duplicate: existed })
   } catch (error) { next(error) }
@@ -239,6 +247,7 @@ export async function updateStray(req, res, next) {
   try {
     setLocationPrivacyHeaders(res)
     if (!mongoose.isValidObjectId(req.params.id) || !hasBody(req)) return res.status(400).json({ error: 'Invalid request.' })
+    rejectImageStrings(req.body)
     const stray = await Stray.findOne({ _id: req.params.id, ...ACTIVE_FILTER })
     if (!stray) return res.status(404).json({ error: 'Stray report not found' })
     if (String(stray.reportedBy) !== String(req.user._id)) return res.status(403).json({ error: 'Only the author can edit this post.' })
@@ -253,8 +262,13 @@ export async function updateStray(req, res, next) {
     if (req.body.species) stray.species = req.body.species
     stray.animalType = nextSpecies === 'Other' ? nextAnimalType : ''
     if (req.body.condition) stray.condition = req.body.condition
-    await stray.save()
-    const [serialized] = await serializeMany([stray], req.user)
+    let saved = stray
+    if (Object.hasOwn(req.body, 'imageIds')) {
+      saved = (await commitContentImages({ Model: Stray, type: 'stray', purpose: 'stray', userId: req.user._id,
+        existingId: stray._id, imageIds: req.body.imageIds, minimum: 1,
+        values: { description: stray.description, species: stray.species, animalType: stray.animalType, condition: stray.condition } })).doc
+    } else await stray.save()
+    const [serialized] = await serializeMany([saved], req.user)
     res.json({ stray: serialized })
   } catch (error) { next(error) }
 }

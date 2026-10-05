@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Chatscreen from '../Chatscreen.vue'
 
-const apiMocks = vi.hoisted(() => ({ getMessages: vi.fn(), sendMessage: vi.fn() }))
+const apiMocks = vi.hoisted(() => ({ getMessages: vi.fn(), sendMessage: vi.fn(), uploadManagedImage: vi.fn(), discardManagedImage: vi.fn() }))
 vi.mock('../../services/api', () => apiMocks)
 vi.mock('@capacitor/camera', () => ({ Camera: { getPhoto: vi.fn() }, CameraResultType: { DataUrl: 'dataUrl' } }))
 
@@ -34,6 +34,23 @@ describe('structured stray post messages', () => {
   it('renders a graceful unavailable state for a deleted shared post', async () => {
     const { wrapper } = await render({ sharedStrayUnavailable: true })
     expect(wrapper.text()).toContain('This post is no longer available.')
+    wrapper.unmount()
+  })
+
+  it('sends image attachments using multipart and a server-issued ID, never Base64', async () => {
+    localStorage.setItem('token', 'fictional-chat-test')
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fictional-message')
+    const id = 'b'.repeat(24)
+    apiMocks.uploadManagedImage.mockResolvedValue({ id })
+    apiMocks.sendMessage.mockResolvedValue({ id: 'message-new', petId: pet.id, sender: 'finder', text: '', photo: `/api/uploads/managed/${id}/content`, createdAt: new Date().toISOString() })
+    const { wrapper } = await render({})
+    const input = wrapper.get('input[type="file"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['raster'], 'chat.png', { type: 'image/png' })] })
+    await input.trigger('change'); await wrapper.get('.send-btn').trigger('click'); await flushPromises()
+    expect(apiMocks.uploadManagedImage.mock.calls[0][1]).toBe('message')
+    expect(apiMocks.sendMessage).toHaveBeenCalledWith(pet.id, expect.objectContaining({ imageIds: [id], clientRequestId: expect.any(String) }))
+    expect(apiMocks.sendMessage.mock.calls[0][1]).not.toHaveProperty('photo')
+    expect(wrapper.find('.attachment-preview').exists()).toBe(false)
     wrapper.unmount()
   })
 })

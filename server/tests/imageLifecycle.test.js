@@ -167,3 +167,33 @@ test('wrong database or invalid input cannot start a provider operation', async 
   await assert.rejects(f.service().upload({ ...input, purpose: '__proto__' }), { code: 'IMAGE_PURPOSE_INVALID' })
   assert.deepEqual(f.events, [])
 })
+
+test('pending cancellation deletes only the uploader-owned object and is idempotent', async () => {
+  const f = setup(), result = await f.service().upload(input), foreign = String(new mongoose.Types.ObjectId())
+  await assert.rejects(f.service().discard(result.image.id, foreign), { code: 'IMAGE_NOT_FOUND' })
+  await f.service().discard(result.image.id, userId)
+  await f.service().discard(result.image.id, userId)
+  assert.equal(f.events.filter((event) => event.startsWith('delete:')).length, 1)
+  assert.equal([...f.records.values()][0].state, 'deleted')
+  await assert.rejects(f.service().upload(input), { code: 'IMAGE_UPLOAD_RETRY_REQUIRED' })
+})
+
+test('cancellation failure remains auditable and exact-ID retry completes deletion', async () => {
+  const f = setup(), result = await f.service().upload(input), remove = f.storage.deleteImage
+  f.storage.deleteImage = async () => { throw new Error('Provider outage') }
+  await assert.rejects(f.service().discard(result.image.id, userId), { code: 'IMAGE_STORAGE_UNAVAILABLE' })
+  assert.equal([...f.records.values()][0].state, 'delete_pending')
+  f.storage.deleteImage = remove
+  await f.service().discard(result.image.id, userId)
+  assert.equal([...f.records.values()][0].state, 'deleted')
+})
+
+test('attached images cannot be discarded; repeated upload returns their content path', async () => {
+  const f = setup(), first = await f.service().upload(input)
+  const record = [...f.records.values()][0]; record.state = 'attached'
+  await assert.rejects(f.service().discard(first.image.id, userId), { code: 'IMAGE_UPLOAD_IN_PROGRESS' })
+  const again = await f.service().upload(input)
+  assert.equal(again.image.id, first.image.id); assert.equal(again.duplicate, true)
+  assert.ok(again.image.url.endsWith('/content'))
+  assert.equal(f.events.some((event) => event.startsWith('delete:')), false)
+})

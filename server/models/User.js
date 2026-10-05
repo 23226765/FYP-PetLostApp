@@ -63,6 +63,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true, select: false },
     phone: { type: String, default: '', trim: true, maxlength: 30 },
     avatar: { type: String, default: '', trim: true },
+    imageIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'MediaAsset', default: undefined, select: false },
     role: { type: String, enum: ['user', 'shelter_admin'], default: 'user' },
     alertsEnabled: { type: Boolean, default: true },
     alertRadiusKm: { type: Number, min: 1, max: 50, default: 3 },

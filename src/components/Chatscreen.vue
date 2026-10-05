@@ -5,7 +5,7 @@
       <button class="back-btn" :aria-label="t('messages.backToPet')" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
-      <img class="pet-avatar" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" />
+      <ManagedImage class="pet-avatar" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" />
       <div class="chat-title">
         <h1>
           {{
@@ -63,7 +63,7 @@
 
       <template v-for="msg in messages" :key="msg.id">
         <div class="bubble-row" :class="msg.sender === currentSender ? 'out' : 'in'">
-          <img
+          <ManagedImage
             v-if="msg.sender !== currentSender"
             class="bubble-avatar"
             :src="pet.photo"
@@ -71,17 +71,18 @@
           />
           <div class="bubble" :class="msg.sender === currentSender ? 'out' : 'in'">
             <button v-if="msg.sharedStray" class="shared-post" type="button" @click="openSharedPost(msg.sharedStray.id)">
-              <img v-if="msg.sharedStray.photo" :src="imageUrl(msg.sharedStray.photo)" alt="" />
+              <ManagedImage v-if="msg.sharedStray.photo" :src="imageUrl(msg.sharedStray.photo)" alt="" />
               <span><strong>{{ t('messages.sharedRescuePost', { species: strayAnimalLabel(msg.sharedStray.species, msg.sharedStray.animalType) }) }}</strong><small>{{ msg.sharedStray.location }}, {{ districtLabel(msg.sharedStray.district) }}</small><span>{{ msg.sharedStray.description }}</span></span>
             </button>
             <div v-else-if="msg.sharedStrayUnavailable" class="shared-unavailable">{{ t('messages.sharedUnavailable') }}</div>
-            <img
+            <ManagedImage
               v-if="msg.photo"
               class="bubble-photo"
               :src="msg.photo"
               :alt="t('messages.sharedChatPhotoAlt', { name: pet.name })"
             />
             <p v-if="msg.text">{{ msg.text }}</p>
+            <ContentImageEditor v-if="msg.sender === currentSender && !sending" type="message" :id="msg.id" :allow-remove="Boolean(msg.text || msg.sharedStray)" @updated="images => { msg.photo = images[0]?.url || '' }" />
             <span class="time">{{ formatTime(msg.createdAt) }}</span>
             <SafetyActions
               v-if="msg.sender !== currentSender"
@@ -99,11 +100,12 @@
     <!-- Input footer -->
     <footer class="chat-footer">
       <div v-if="pendingPhoto" class="attachment-preview">
-        <img :src="pendingPhoto" :alt="t('messages.readyPhotoAlt')" />
-        <button type="button" :aria-label="t('messages.removePhoto')" @click="pendingPhoto = ''">
+        <ManagedImage :src="pendingPhoto" :alt="t('messages.readyPhotoAlt')" />
+        <button type="button" :disabled="sending" :aria-label="t('messages.removePhoto')" @click="imageUpload.reset()">
           <AppIcon name="close" :size="14" />
         </button>
       </div>
+      <ImageUploadStatus :upload="imageUpload" />
       <input
         ref="attachmentInput"
         class="attachment-input"
@@ -111,7 +113,7 @@
         accept="image/*"
         @change="onAttachmentSelected"
       />
-      <button class="attach-btn" type="button" :aria-label="t('messages.attachPhoto')" @click="attachPhoto">
+      <button class="attach-btn" type="button" :disabled="sending" :aria-label="t('messages.attachPhoto')" @click="attachPhoto">
         <AppIcon name="camera" :size="22" />
       </button>
       <input
@@ -135,9 +137,13 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
+import ContentImageEditor from './ContentImageEditor.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
+import { useImageUpload, createImageRequestId } from '../composables/useImageUpload'
+import ImageUploadStatus from './ImageUploadStatus.vue'
 import AppIcon from './AppIcon.vue'
 import SafetyActions from './SafetyActions.vue'
 import {
@@ -158,7 +164,9 @@ const { t } = useAppI18n()
 
 const messages = ref<ChatMessage[]>([])
 const draft = ref('')
-const pendingPhoto = ref('')
+const imageUpload = useImageUpload('message')
+const pendingPhoto = computed(() => imageUpload.preview)
+let clientRequestId = createImageRequestId()
 const attachmentInput = ref<HTMLInputElement | null>(null)
 const feedEl = ref<HTMLElement | null>(null)
 const loading = ref(true)
@@ -218,11 +226,7 @@ function onEnter(e: KeyboardEvent) {
 }
 
 function setPendingPhoto(dataUrl: string) {
-  if (dataUrl.length > 1_500_000) {
-    error.value = t('validation.chatImageSize')
-    return
-  }
-  pendingPhoto.value = dataUrl
+  imageUpload.select(dataUrl)
   error.value = ''
 }
 
@@ -249,16 +253,8 @@ function onAttachmentSelected(event: Event) {
     return
   }
 
-  const reader = new FileReader()
-  reader.onload = () => {
-    if (typeof reader.result === 'string') setPendingPhoto(reader.result)
-    input.value = ''
-  }
-  reader.onerror = () => {
-    error.value = t('errors.readImage')
-    input.value = ''
-  }
-  reader.readAsDataURL(file)
+  imageUpload.select(file)
+  input.value = ''
 }
 
 async function send() {
@@ -269,15 +265,18 @@ async function send() {
   sending.value = true
   error.value = ''
   try {
+    const imageIds = await imageUpload.ensure()
     const message = await sendMessage(props.pet.id, {
       text,
-      photo: photo || undefined,
+      imageIds,
+      clientRequestId,
       participantId: props.pet.participantId,
     })
     currentSender.value = message.sender
     mergeMessages([message])
     draft.value = ''
-    pendingPhoto.value = ''
+    imageUpload.finish()
+    clientRequestId = createImageRequestId()
     await scrollToBottom('smooth')
   } catch (e) {
     error.value = translateApiError(e, 'errors.sendMessage')

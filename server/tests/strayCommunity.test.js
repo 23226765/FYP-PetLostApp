@@ -181,23 +181,22 @@ test('comments and private saves use ownership indexes', () => {
   assert.ok(Message.schema.path('sharedStray'))
 })
 
-test('new stray posts reject absent selected coordinates and uploaded photo URLs', async () => {
+test('new stray posts reject absent coordinates and reject legacy image strings', async () => {
   const res = responseRecorder()
   await reportStray({ user: { _id: new mongoose.Types.ObjectId(), name: 'Test', phone: '' }, body: { species: 'Dog', description: 'Seen nearby', condition: 'healthy', district: 'Sha Tin', locationName: 'Park', submissionId: 'one' } }, res, (error) => { throw error })
   assert.equal(res.statusCode, 400)
   assert.match(res.payload.error, /coordinates/)
 
-  const dataResponse = responseRecorder()
-  await reportStray({ user: { _id: new mongoose.Types.ObjectId(), name: 'Test', phone: '' }, body: { species: 'Dog', description: 'Seen nearby', photos: ['data:image/png;base64,AAAA'], condition: 'healthy', district: 'Sha Tin', locationName: 'Park', coordinates: [114.18, 22.3], submissionId: 'two' } }, dataResponse, (error) => { throw error })
-  assert.equal(dataResponse.statusCode, 400)
-  assert.match(dataResponse.payload.error, /photo URL/)
+  let rejected
+  await reportStray({ user: { _id: new mongoose.Types.ObjectId(), name: 'Test', phone: '' }, body: { species: 'Dog', description: 'Seen nearby', photos: ['data:image/png;base64,AAAA'], condition: 'healthy', district: 'Sha Tin', locationName: 'Park', coordinates: [114.18, 22.3], submissionId: 'two' } }, responseRecorder(), (error) => { rejected = error })
+  assert.equal(rejected.code, 'IMAGE_IDS_REQUIRED')
 })
 
 test('Other stray reports require a specific animal type before database access', async () => {
   const res = responseRecorder()
   await reportStray({
     user: { _id: new mongoose.Types.ObjectId(), name: 'Test', phone: '' },
-    body: { species: 'Other', description: 'Seen nearby', photos: ['https://example.test/animal.jpg'], condition: 'healthy', district: 'Sha Tin', locationName: 'Park', coordinates: [114.18, 22.3], submissionId: 'other-one' },
+    body: { species: 'Other', description: 'Seen nearby', imageIds: [String(new mongoose.Types.ObjectId())], condition: 'healthy', district: 'Sha Tin', locationName: 'Park', coordinates: [114.18, 22.3], submissionId: 'other-one' },
   }, res, (error) => { throw error })
   assert.equal(res.statusCode, 400)
   assert.match(res.payload.error, /specify what type of animal/i)

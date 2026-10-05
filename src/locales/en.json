@@ -1,4 +1,23 @@
 {
+  "media": {
+    "uploading": "Uploading image… {percent}%",
+    "progress": "Image upload progress",
+    "retry": "Retry upload",
+    "retrySave": "Retry saving photo",
+    "remove": "Remove photo",
+    "replace": "Replace photo",
+    "cancelled": "Upload cancelled. Your selection is kept; retry when ready.",
+    "uploadFailed": "Could not upload the image. Retry without changing your form.",
+    "invalid": "Choose a valid JPEG, PNG or static WebP image.",
+    "tooLarge": "Choose an image smaller than 8 MB and within the supported dimensions.",
+    "forbidden": "This image cannot be used here. Upload your own image for this post.",
+    "saveFailed": "The image could not be attached. Your existing photo is unchanged; retry saving.",
+    "unavailable": "Image storage is unavailable. Please try again later.",
+    "authChanged": "Your sign-in session changed. Choose the image again.",
+    "saved": "Photo updated.",
+    "edit": "Edit photos",
+    "confirmRemove": "Remove this photo?"
+  },
   "strayAnimal": { "typeLabel": "Animal type", "typePlaceholder": "e.g. Parrot, rabbit, or turtle", "typeRequired": "Please specify what animal it is.", "fallback": "Animal" },
   "common": {
     "back": "Back",

@@ -12,14 +12,15 @@ PawRadar is a mobile-first Vue web application backed by an Express REST API and
 - Backend: Node.js, Express 4, Mongoose 8, JWT, bcryptjs, CORS, dotenv.
 - Database: MongoDB Atlas database `petlostapp`; GeoJSON coordinates are always `[longitude, latitude]`.
 
-## Durable storage foundation (Stage 2, Phase 1)
+## Durable storage (Stage 2, Phase 2)
 
 - Added a provider adapter, private `MediaAsset` model, authenticated multipart upload and uploader-only pending preview, using Cloudinary, Multer, file-type and Sharp.
-- Managed uploads default to disabled; existing avatar/pet/sighting/rescue/chat image flows and records remain unchanged. Configuration is backend-only in `server/.env`; see `.env.example` and README for variable names.
+- Managed uploads default to disabled. All five forms now use multipart uploads and server-issued IDs, transactional attachment/replacement, cancellation, retries and permission-checked backend delivery. Legacy records/files remain unchanged and readable. Configuration is backend-only in `server/.env`.
 - Actual JPEG/PNG/static WebP files are re-encoded to bounded WebP with metadata removed. Ownership, idempotency, quotas, concurrency and exact-object compensation are covered by isolated tests.
-- Provider/DB failure leaves auditable recovery state when safe compensation cannot complete. No cleanup worker, migration or arbitrary client deletion is enabled.
+- Provider/DB failure leaves retryable pending images or auditable recovery state. Explicit owner cancellation and post-commit replacement deletion affect exact server-owned IDs only. No bulk cleanup worker, migration or arbitrary provider-ID deletion is enabled.
 - One approved temporary Cloudinary image was uploaded, read back, and deleted; absence was confirmed. This probe did not connect to MongoDB or alter application records.
-- Next storage phase: integrate managed attachment references and ownership into existing forms/controllers, content-aware image delivery and replacement, with separate approval. Keep migration and abandonment cleanup deferred.
+- Hidden `imageIds` references preserve legacy string fields; pet submissions add a partial owner/submission uniqueness index. Mocked API tests and real transaction tests are distinct; the latter require an isolated local replica set. Read-only Atlas checks use `server/scripts/verifyManagedImagesReadOnly.js` without production index initialization.
+- Next storage phase (not started): dry-run legacy migration, resumable recovery/abandoned-upload reconciliation, rollback validation and separately approved live image-write verification. Keep seeds, migration and bulk cleanup disabled.
 
 ## Working product flows
 

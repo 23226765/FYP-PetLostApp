@@ -25,6 +25,8 @@ const petSchema = new mongoose.Schema(
     district: { type: String, default: '', trim: true },
     photo: { type: String, default: '' },
     photos: [{ type: String }],
+    imageIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'MediaAsset', default: undefined, select: false },
+    submissionId: { type: String, maxlength: 128, select: false, default: undefined },
     description: { type: String, default: '', trim: true, maxlength: 3000 },
     details: { type: String, default: '', trim: true, maxlength: 3000 },
     reward: { type: String, default: '' },
@@ -49,5 +51,6 @@ petSchema.index({ location: '2dsphere' })
 petSchema.index({ species: 1, status: 1 })
 petSchema.index({ district: 1, breed: 1, status: 1 })
 petSchema.index({ reportedBy: 1, createdAt: -1 })
+petSchema.index({ reportedBy: 1, submissionId: 1 }, { unique: true, partialFilterExpression: { submissionId: { $type: 'string' } } })
 
 export default mongoose.models.Pet || mongoose.model('Pet', petSchema)

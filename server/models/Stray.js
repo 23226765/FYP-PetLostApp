@@ -29,6 +29,7 @@ const straySchema = new mongoose.Schema(
     animalType: { type: String, trim: true, maxlength: 80, default: '' },
     description: { type: String, required: true, trim: true },
     photo: { type: String, default: '' },
+    imageIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'MediaAsset', default: undefined, select: false },
     photos: {
       type: [String],
       default: [],

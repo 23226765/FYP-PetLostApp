@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
+import { commitContentImages, rejectImageStrings } from '../services/mediaAttachments.js'
 import {
   CONTACT_VISIBILITIES,
   contactVisibilityFor,
@@ -23,9 +24,6 @@ const MAX_EMAIL_LENGTH = 254
 const MIN_PASSWORD_LENGTH = 6
 const MAX_NAME_LENGTH = 100
 const MAX_REAL_NAME_LENGTH = 100
-const MAX_AVATAR_URL_LENGTH = 2048
-const MAX_AVATAR_DATA_URL_LENGTH = 1_400_000
-const MAX_AVATAR_BYTES = 1_000_000
 
 /**
  * @param {unknown} value
@@ -45,49 +43,6 @@ function normalizeRealName(value) {
     : ''
 }
 
-/**
- * Accept a normal HTTP(S) image URL or a bounded raster-image data URL.
- * SVG data is intentionally rejected because it can contain executable markup.
- * @param {unknown} value
- * @returns {{ value?: string, error?: string }}
- */
-function validateAvatar(value) {
-  if (typeof value !== 'string') return { error: 'Avatar must be an image URL.' }
-
-  const avatar = value.trim()
-  if (!avatar) return { value: '' }
-
-  if (/^data:/i.test(avatar)) {
-    if (avatar.length > MAX_AVATAR_DATA_URL_LENGTH) {
-      return { error: 'Avatar image must be 1 MB or smaller.' }
-    }
-
-    const match = avatar.match(/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/i)
-    if (!match || match[2].length % 4 === 1) {
-      return { error: 'Avatar must be a JPEG, PNG, or WebP image.' }
-    }
-    if (Buffer.byteLength(match[2], 'base64') > MAX_AVATAR_BYTES) {
-      return { error: 'Avatar image must be 1 MB or smaller.' }
-    }
-
-    const mime = match[1].toLowerCase() === 'jpg' ? 'jpeg' : match[1].toLowerCase()
-    return { value: `data:image/${mime};base64,${match[2]}` }
-  }
-
-  if (avatar.length > MAX_AVATAR_URL_LENGTH) {
-    return { error: 'Avatar URL is too long.' }
-  }
-
-  try {
-    const url = new URL(avatar)
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
-      return { error: 'Avatar must use a valid HTTP or HTTPS URL.' }
-    }
-    return { value: url.href }
-  } catch {
-    return { error: 'Avatar must use a valid HTTP or HTTPS URL.' }
-  }
-}
 
 /**
  * @param {unknown} body
@@ -234,6 +189,7 @@ export async function updatePrivacy(req, res, next) {
  */
 export async function register(req, res, next) {
   try {
+    rejectImageStrings(req.body)
     const validation = validateRegistration(req.body)
     if (!validation.value) return res.status(400).json({ error: validation.error })
     const { name, email, password, phone } = validation.value
@@ -331,13 +287,14 @@ export async function me(req, res, next) {
 export async function updateMe(req, res, next) {
   try {
     const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}
+    rejectImageStrings(body)
     const hasName =
       Object.prototype.hasOwnProperty.call(body, 'name') ||
       Object.prototype.hasOwnProperty.call(body, 'displayName')
     const hasEmail = Object.prototype.hasOwnProperty.call(body, 'email')
     const hasPhone = Object.prototype.hasOwnProperty.call(body, 'phone')
     const hasRealName = Object.prototype.hasOwnProperty.call(body, 'realName')
-    const hasAvatar = Object.prototype.hasOwnProperty.call(body, 'avatar')
+    const hasAvatar = Object.prototype.hasOwnProperty.call(body, 'avatarImageId')
     const submittedName = typeof body.name === 'string' ? body.name.trim() : ''
     const submittedDisplayName =
       typeof body.displayName === 'string' ? body.displayName.trim() : ''
@@ -345,7 +302,6 @@ export async function updateMe(req, res, next) {
     const email = normalizeEmail(body.email)
     const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
     const realName = normalizeRealName(body.realName)
-    const avatarValidation = hasAvatar ? validateAvatar(body.avatar) : null
 
     if (!hasName && !hasEmail && !hasPhone && !hasRealName && !hasAvatar) {
       return res.status(400).json({ error: 'Provide at least one profile field to update.' })
@@ -368,21 +324,23 @@ export async function updateMe(req, res, next) {
     if (realName.length > MAX_REAL_NAME_LENGTH) {
       return res.status(400).json({ error: `Real name must be ${MAX_REAL_NAME_LENGTH} characters or fewer.` })
     }
-    if (avatarValidation?.error) {
-      return res.status(400).json({ error: avatarValidation.error })
-    }
 
     if (hasEmail) {
       const existing = await User.findOne({ email, _id: { $ne: req.user._id } }).select('_id')
       if (existing) return res.status(409).json({ error: 'That email address is already in use.' })
     }
 
-    if (hasName) req.user.name = resolvedName
-    if (hasEmail) req.user.email = email
-    if (hasPhone) req.user.phone = phone
-    if (hasRealName) req.user.realName = realName
-    if (hasAvatar) req.user.avatar = avatarValidation.value
-    await req.user.save()
+    const values = {
+      ...(hasName ? { name: resolvedName } : {}), ...(hasEmail ? { email } : {}),
+      ...(hasPhone ? { phone } : {}), ...(hasRealName ? { realName } : {}),
+    }
+    if (hasAvatar) {
+      await commitContentImages({ Model: User, type: 'user', purpose: 'avatar', userId: req.user._id,
+        existingId: req.user._id, values, imageIds: body.avatarImageId === null ? [] : [body.avatarImageId] })
+    } else {
+      Object.assign(req.user, values)
+      await req.user.save()
+    }
     const updatedUser = await User.findById(req.user._id).select('+realName')
     if (!updatedUser) return res.status(404).json({ error: 'User not found.' })
     res.json({ success: true, user: serializeUser(updatedUser) })

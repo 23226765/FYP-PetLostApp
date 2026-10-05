@@ -29,7 +29,7 @@
         </section>
 
         <div class="poster-photo-frame">
-          <img
+          <ManagedImage
             v-if="petPhoto && !photoFailed"
             :src="petPhoto"
             :alt="t('poster.photoAlt', { name: posterPet.name, animal: posterPet.breed || speciesLabel(posterPet.species) })"
@@ -113,6 +113,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import AppIcon from './AppIcon.vue'

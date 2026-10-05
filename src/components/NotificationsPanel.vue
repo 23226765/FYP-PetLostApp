@@ -33,7 +33,7 @@
       >
         <!-- Left: photo or type icon -->
         <div class="notif-photo-wrap">
-          <img v-if="n.photo" :src="n.photo" alt="" class="notif-photo" />
+          <ManagedImage v-if="n.photo" :src="n.photo" alt="" class="notif-photo" />
           <span v-else class="notif-icon-fallback">
             <AppIcon :name="typeIcon(n.type)" :size="20" />
           </span>
@@ -62,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
 import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
 import type { AppNotification } from '../types/notification'

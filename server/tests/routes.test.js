@@ -136,7 +136,9 @@ test('stray community writes and private saved posts require authentication', ()
 })
 
 test('image upload requires authentication', () => {
-  assert.deepEqual(middlewareNames(findRoute(uploadsRouter, '/image', 'post')), ['requireAuth', 'uploadRateLimit', 'uploadImage'])
+  assert.equal(middlewareNames(findRoute(uploadsRouter, '/image', 'post'))[0], 'requireAuth')
+  assert.deepEqual(middlewareNames(findRoute(uploadsRouter, '/managed/:id/content', 'get')), ['optionalAuth', 'deliverManagedImage'])
+  assert.deepEqual(middlewareNames(findRoute(uploadsRouter, '/managed/content/:type/:id', 'patch')), ['requireAuth', 'mutationRateLimit', 'replaceContentImages'])
 })
 
 test('managed image uploads authenticate and rate-limit before bounded multipart parsing', () => {

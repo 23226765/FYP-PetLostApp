@@ -45,7 +45,7 @@
         />
         <p v-if="savedStrays.length">{{ t('settings.strayPosts') }}</p>
         <button v-for="stray in savedStrays" :key="stray.id" class="saved-stray" type="button" @click="emit('open-stray', stray.id)">
-          <img v-if="stray.photo" :src="imageUrl(stray.photo)" :alt="t('strays.reportedAlt', { species: strayAnimalLabel(stray.species, stray.animalType) })" />
+          <ManagedImage v-if="stray.photo" :src="imageUrl(stray.photo)" :alt="t('strays.reportedAlt', { species: strayAnimalLabel(stray.species, stray.animalType) })" />
           <span class="saved-stray-copy"><strong>{{ strayAnimalLabel(stray.species, stray.animalType) }} · {{ districtLabel(stray.district) }}</strong><span>{{ stray.description }}</span><small>{{ stray.author.name }} · {{ formatRelativeDate(stray.createdAt) }}</small></span>
         </button>
         <p v-if="unavailableCount" class="unavailable">{{ t('settings.unavailableSaved', { count: unavailableCount }, unavailableCount) }}</p>
@@ -75,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "../components/ManagedImage.vue"
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PetCard from '../components/PetCard.vue'

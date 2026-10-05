@@ -31,6 +31,7 @@ const sightingSchema = new mongoose.Schema(
     locationName: { type: String, required: true, trim: true, maxlength: 200 },
     note: { type: String, default: '', trim: true, maxlength: 2000 },
     photo: { type: String, default: '' },
+    imageIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'MediaAsset', default: undefined, select: false },
     reporterName: { type: String, default: '' },
     reporterPhone: { type: String, default: '' },
     confirmedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

@@ -10,6 +10,8 @@ const apiMocks = vi.hoisted(() => ({
   updateContactPrivacy: vi.fn(),
   updateProfile: vi.fn(),
   updateUserPreferences: vi.fn(),
+  uploadManagedImage: vi.fn(),
+  discardManagedImage: vi.fn(),
 }))
 
 vi.mock('../../services/api', () => apiMocks)
@@ -56,6 +58,50 @@ describe('SettingsScreen contact privacy', () => {
     localStorage.clear()
     applyAccountPreferences({ language: 'en', theme: 'light' })
     apiMocks.getContactPrivacy.mockResolvedValue({ contactVisibility: 'private' })
+  })
+
+  it('uploads an avatar as multipart, saves only its ID and updates the session immediately', async () => {
+    localStorage.setItem('token', 'fictional-avatar-test')
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fictional-avatar')
+    const id = 'a'.repeat(24)
+    apiMocks.uploadManagedImage.mockResolvedValue({ id })
+    apiMocks.updateProfile.mockResolvedValue({ ...user, avatar: `/api/uploads/managed/${id}/content` })
+    const wrapper = await mountSettings()
+    const input = wrapper.get('input[type="file"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['raster'], 'avatar.png', { type: 'image/png' })] })
+    await input.trigger('change'); await flushPromises()
+    expect(apiMocks.uploadManagedImage).toHaveBeenCalledWith(expect.objectContaining({ size: 6 }), 'avatar', expect.any(String), expect.any(Object))
+    expect(apiMocks.updateProfile).toHaveBeenCalledWith({ avatarImageId: id })
+    expect(wrapper.emitted('updated')?.[0]?.[0]).toMatchObject({ avatar: `/api/uploads/managed/${id}/content` })
+    wrapper.unmount()
+  })
+
+  it('editing unrelated profile fields never sends the legacy avatar or an image removal', async () => {
+    apiMocks.updateProfile.mockResolvedValue({ ...user, avatar: '/uploads/legacy.jpg' })
+    const wrapper = await mountSettings({ ...user, avatar: '/uploads/legacy.jpg' })
+    await wrapper.get('.edit-button').trigger('click')
+    await wrapper.get('.profile-form').trigger('submit'); await flushPromises()
+    const body = apiMocks.updateProfile.mock.calls[0][0]
+    expect(body.name).toBe(user.name)
+    expect(body).not.toHaveProperty('avatar'); expect(body).not.toHaveProperty('avatarImageId')
+    wrapper.unmount()
+  })
+
+  it('an account switch ignores a delayed avatar-save response from the previous account', async () => {
+    localStorage.setItem('token', 'fictional-old-account')
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fictional-old-avatar')
+    apiMocks.uploadManagedImage.mockResolvedValue({ id: 'f'.repeat(24) })
+    let finish: (value: User) => void = () => {}
+    apiMocks.updateProfile.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+    const wrapper = await mountSettings()
+    const input = wrapper.get('input[type="file"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['raster'], 'avatar.png', { type: 'image/png' })] })
+    await input.trigger('change'); await flushPromises()
+    await wrapper.setProps({ user: { ...user, id: 'other-id', name: 'Other fictional user', avatar: '/avatar.svg' } })
+    finish({ ...user, avatar: '/api/uploads/managed/' + 'f'.repeat(24) + '/content' }); await flushPromises()
+    expect(wrapper.emitted('updated')).toBeUndefined()
+    expect(wrapper.get('.avatar-picker img').attributes('src')).toBe('/avatar.svg')
+    wrapper.unmount()
   })
 
   it('loads the current setting and saves an accessible radio selection', async () => {

@@ -8,7 +8,8 @@ const apiMocks = vi.hoisted(() => ({
   getNearbyStrays: vi.fn(),
   reportStray: vi.fn(),
   setStraySaved: vi.fn(),
-  uploadImage: vi.fn(),
+  uploadManagedImage: vi.fn(),
+  discardManagedImage: vi.fn(),
 }))
 vi.mock('../../services/api', () => apiMocks)
 vi.mock('@capacitor/camera', () => ({ Camera: { getPhoto: vi.fn().mockResolvedValue({ dataUrl: 'data:image/png;base64,AAAA' }) }, CameraResultType: { DataUrl: 'dataUrl' } }))
@@ -64,8 +65,9 @@ describe('Stray community feed and report flow', () => {
     expect(saveButton.text()).toContain('Saved')
   })
 
-  it('uploads the selected image and submits only its URL with confirmed lng/lat', async () => {
-    apiMocks.uploadImage.mockResolvedValue('/uploads/stray.png')
+  it('uploads multipart bytes and submits only its image ID with confirmed lng/lat', async () => {
+    localStorage.setItem('token', 'fictional-fixture-token')
+    apiMocks.uploadManagedImage.mockResolvedValue({ id: '123456789012345678901234', url: '/api/uploads/managed/123456789012345678901234/preview' })
     apiMocks.reportStray.mockResolvedValue(stray)
     const { wrapper } = await render([])
     await wrapper.get('.report-button').trigger('click')
@@ -78,9 +80,9 @@ describe('Stray community feed and report flow', () => {
     await textInput.setValue('Market entrance')
     await wrapper.get('.report-sheet textarea').setValue('Calm ginger cat near the entrance')
     await wrapper.get('.report-sheet').trigger('submit'); await flushPromises()
-    expect(apiMocks.uploadImage).toHaveBeenCalledWith('data:image/png;base64,AAAA')
+    expect(apiMocks.uploadManagedImage).toHaveBeenCalledWith(expect.objectContaining({ size: 3, type: 'image/png' }), 'stray', expect.any(String), expect.objectContaining({ signal: expect.objectContaining({ aborted: false }) }))
     expect(apiMocks.reportStray).toHaveBeenCalledWith(expect.objectContaining({
-      coordinates: [114.18, 22.29], photo: '/uploads/stray.png', photos: ['/uploads/stray.png'],
+      coordinates: [114.18, 22.29], imageIds: ['123456789012345678901234'],
     }))
   })
 

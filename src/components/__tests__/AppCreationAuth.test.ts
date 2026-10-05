@@ -19,6 +19,8 @@ const apiMocks = vi.hoisted(() => ({
   register: vi.fn(),
   reportSighting: vi.fn(),
   updateNotificationPreferences: vi.fn(),
+  uploadManagedImage: vi.fn(),
+  discardManagedImage: vi.fn(),
 }))
 
 vi.mock('../../services/api', () => apiMocks)
@@ -109,7 +111,7 @@ async function renderApp(token?: string) {
         Chatscreen: { template: '<div />' },
         NotificationsPanel: { template: '<div />' },
         BoostScreen: { template: '<div />' },
-        SightingLocationPicker: { template: '<div />' },
+        SightingLocationPicker: { emits: ['update:modelValue'], template: '<button class="sighting-location-stub" @click="$emit(\'update:modelValue\', [114.18, 22.3])">Choose location</button>' },
       },
     },
   })
@@ -201,6 +203,47 @@ describe('authenticated creation entry points', () => {
     await flushPromises()
     expect(wrapper.find('.sheet').exists()).toBe(true)
     expect(wrapper.find('[data-testid="auth-screen"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('submits sighting photos using the authenticated uploader and ID-only payload', async () => {
+    apiMocks.getProfile.mockResolvedValue({ id: 'finder-id', name: 'Finder', email: 'finder@example.test', alertsEnabled: false, preferences: { language: 'en', theme: 'light' } })
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fictional-sighting')
+    const id = 'c'.repeat(24)
+    apiMocks.uploadManagedImage.mockResolvedValue({ id })
+    apiMocks.reportSighting.mockResolvedValue({})
+    const { wrapper } = await renderApp('fictional-sighting-test')
+    await wrapper.get('.stub-found').trigger('click'); await flushPromises()
+    await wrapper.get('.sighting-location-stub').trigger('click')
+    await wrapper.get('.sheet-field input').setValue('Fictional park')
+    const input = wrapper.get('.sheet input[type="file"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['raster'], 'sighting.png', { type: 'image/png' })] })
+    await input.trigger('change'); await wrapper.get('.sheet-send').trigger('click'); await flushPromises()
+    expect(apiMocks.uploadManagedImage.mock.calls[0][1]).toBe('sighting')
+    expect(apiMocks.reportSighting).toHaveBeenCalledWith(pet.id, expect.objectContaining({ imageIds: [id], submissionId: expect.any(String) }))
+    expect(apiMocks.reportSighting.mock.calls[0][1]).not.toHaveProperty('photo')
+    wrapper.unmount()
+  })
+
+  it('closing/reopening a sighting form prevents a late upload from submitting or changing the new form', async () => {
+    apiMocks.getProfile.mockResolvedValue({ id: 'finder-id', name: 'Finder', email: 'finder@example.test', alertsEnabled: false, preferences: { language: 'en', theme: 'light' } })
+    apiMocks.discardManagedImage.mockResolvedValue(undefined)
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fictional-late-sighting')
+    let finish: (value: { id: string }) => void = () => {}
+    apiMocks.uploadManagedImage.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+    const { wrapper } = await renderApp('fictional-late-sighting-test')
+    await wrapper.get('.stub-found').trigger('click'); await flushPromises()
+    await wrapper.get('.sighting-location-stub').trigger('click')
+    await wrapper.get('.sheet-field input').setValue('Fictional park')
+    const input = wrapper.get('.sheet input[type="file"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['raster'], 'sighting.png', { type: 'image/png' })] })
+    await input.trigger('change'); await wrapper.get('.sheet-send').trigger('click')
+    await wrapper.get('.scrim').trigger('click')
+    await wrapper.get('.stub-found').trigger('click')
+    finish({ id: 'e'.repeat(24) }); await flushPromises()
+    expect(apiMocks.reportSighting).not.toHaveBeenCalled()
+    expect(wrapper.find('.sheet').exists()).toBe(true)
+    expect(wrapper.get('.sheet-send').attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })
 

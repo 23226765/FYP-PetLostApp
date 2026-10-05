@@ -22,7 +22,7 @@ export function buildSightingPayload(input: {
   coordinates: unknown
   locationName: string
   note?: string
-  photo?: string
+  imageIds?: string[]
   submissionId: string
 }): SightingPayload {
   if (!isValidSightingCoordinates(input.coordinates)) {
@@ -38,7 +38,7 @@ export function buildSightingPayload(input: {
     },
     locationName,
     note: input.note?.trim() || undefined,
-    photo: input.photo || undefined,
+    imageIds: input.imageIds || [],
     submissionId: input.submissionId,
   }
 }

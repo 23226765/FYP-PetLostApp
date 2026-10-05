@@ -75,7 +75,9 @@ function serializeNotification(notification, petById = new Map(), strayById = ne
     type: notification.type,
     title: notification.title,
     body: coarseNotificationBody(notification, petById, strayById),
-    photo: notification.photo || undefined,
+    photo: typeof notification.photo === 'string' && notification.photo.startsWith('/api/uploads/managed/')
+      ? petById.get(notificationReferenceId(notification.pet))?.photo || strayById.get(notificationReferenceId(notification.stray))?.photo || undefined
+      : notification.photo || undefined,
     petId: notification.pet ? String(notification.pet?._id || notification.pet) : undefined,
     strayId: notification.stray ? String(notification.stray?._id || notification.stray) : undefined,
     sightingId: notification.sighting ? String(notification.sighting?._id || notification.sighting) : undefined,
@@ -110,13 +112,13 @@ async function serializeNotifications(notifications) {
   const [pets, strays] = await Promise.all([
     petIds.length
       ? Pet.find(visibleContentFilter({ _id: { $in: petIds } }))
-          .select('_id name species breed district')
+          .select('_id name species breed district photo')
       : [],
     strayIds.length
       ? Stray.find(visibleContentFilter({
           _id: { $in: strayIds },
           active: { $ne: false },
-        })).select('_id district')
+        })).select('_id district photo')
       : [],
   ])
   const petById = new Map(pets.map((pet) => [String(pet._id), pet]))
@@ -241,7 +243,7 @@ export async function createRadiusNotifications({ pet, sighting, type, origin, e
     body: isSighting
       ? `${pet.name} was spotted in ${district}.`
       : `${pet.name} (${pet.breed || pet.species}) was reported in ${district}.`,
-    photo: sighting?.photo || pet.photo || '',
+    photo: String(user._id) === String(pet.reportedBy) ? sighting?.photo || pet.photo || '' : pet.photo || '',
   }))
 
   await Notification.bulkWrite(

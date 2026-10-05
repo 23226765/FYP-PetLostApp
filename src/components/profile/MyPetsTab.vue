@@ -35,7 +35,7 @@
           @keydown.space.prevent="openPet(pet, $event)"
         >
           <span class="pet-photo">
-            <img v-if="pet.photo && !failedImages.has(pet.id)" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" @error="markImageFailed(pet.id)" />
+            <ManagedImage v-if="pet.photo && !failedImages.has(pet.id)" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" @error="markImageFailed(pet.id)" />
             <AppIcon v-else name="paw" :size="26" />
           </span>
           <div class="my-pet-info"><strong>{{ pet.name }}</strong><span>{{ pet.breed || pet.species }}</span></div>
@@ -51,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "../ManagedImage.vue"
 import { onBeforeUnmount, ref, watch } from 'vue'
 import AppIcon from '../AppIcon.vue'
 import { getMyPetsPage } from '../../services/api'

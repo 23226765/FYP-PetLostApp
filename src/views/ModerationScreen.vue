@@ -52,7 +52,7 @@
         <article v-for="report in reports" :key="report.id" class="report-card">
           <header class="report-heading">
             <div class="target-photo" aria-hidden="true">
-              <img v-if="report.target.photo" :src="report.target.photo" alt="" @error="hideBrokenImage" />
+              <ManagedImage v-if="report.target.photo" :src="report.target.photo" alt="" @error="hideBrokenImage" />
               <span>!</span>
             </div>
             <div class="target-copy">
@@ -146,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "../components/ManagedImage.vue"
 import { reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { User } from '../types/user'

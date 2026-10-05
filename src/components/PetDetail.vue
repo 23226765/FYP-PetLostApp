@@ -1,7 +1,7 @@
 <template>
   <div class="detail">
     <div class="hero">
-      <img
+      <ManagedImage
         v-if="heroPhotoUrl && !heroPhotoFailed"
         :src="heroPhotoUrl"
         alt=""
@@ -47,6 +47,7 @@
     </div>
 
     <div class="sheet">
+      <ContentImageEditor v-if="isOwner" type="pet" :id="pet.id" @updated="updatePetImages" />
       <div class="grab" />
       <div v-if="showCelebration" class="celebration-banner" role="status">
         <span aria-hidden="true">🎉</span>
@@ -137,6 +138,7 @@
                 </time>
               </div>
               <p v-if="sighting.note">{{ sighting.note }}</p>
+              <ContentImageEditor v-if="user && sighting.reportedBy === user.id" type="sighting" :id="sighting.id" @updated="images => updateSightingImage(sighting.id, images)" />
               <div
                 v-if="sighting.reporterName || sighting.reporterPhone"
                 class="reporter-details"
@@ -160,7 +162,7 @@
                 </div>
               </div>
               <div class="sighting-thumbnail" role="img" :aria-label="t('sightings.photoOf', { name: pet.name })">
-                <img
+                <ManagedImage
                   v-if="normalizedImageUrl(sighting.photo) && !failedSightingPhotos.has(sightingImageKey(sighting))"
                   :src="normalizedImageUrl(sighting.photo)"
                   alt=""
@@ -343,6 +345,9 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
+import ContentImageEditor from './ContentImageEditor.vue'
+import type { ManagedImage as ManagedImageData } from '../services/api'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { Pet, Sighting } from '../types/pet'
 import type { User } from '../types/user'
@@ -389,6 +394,14 @@ const showCelebration = ref(false)
 const blockedOwner = ref(Boolean(props.pet.interactionBlocked))
 const activeSightingId = ref<string | undefined>(props.focusSightingId)
 const heroPhotoUrl = computed(() => normalizedImageUrl(props.pet.photo))
+function updatePetImages(images: ManagedImageData[]) {
+  heroPhotoFailed.value = false
+  emit('status-updated', { ...props.pet, photo: images[0]?.url || '', photos: images.map((image) => image.url) })
+}
+function updateSightingImage(id: string, images: ManagedImageData[]) {
+  sightings.value = sightings.value.map((sighting) => sighting.id === id ? { ...sighting, photo: images[0]?.url || '' } : sighting)
+  failedSightingPhotos.value = new Set()
+}
 const isOwner = computed(() => {
   const legacyUserId = (props.user as (User & { _id?: string }) | null | undefined)?._id
   const userId = props.user?.id || legacyUserId

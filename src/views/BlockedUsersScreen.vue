@@ -21,7 +21,7 @@
       </section>
       <ul v-else class="blocked-list">
         <li v-for="blocked in users" :key="blocked.id">
-          <img :src="blocked.avatar || '/avatar.svg'" alt="" />
+          <ManagedImage :src="blocked.avatar || '/avatar.svg'" alt="" />
           <span><strong>{{ blocked.name }}</strong><small>{{ t('safety.blockedAccount') }}</small></span>
           <button type="button" :disabled="busyIds.has(blocked.id)" @click="unblock(blocked.id)">
             {{ busyIds.has(blocked.id) ? t('common.saving') : t('safety.unblock') }}
@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "../components/ManagedImage.vue"
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { User } from '../types/user'

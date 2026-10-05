@@ -1,4 +1,6 @@
 import mongoose from 'mongoose'
+import { commitContentImages, rejectImageStrings, validateImageIds } from '../services/mediaAttachments.js'
+import { imageError } from '../services/imageErrors.js'
 import Pet from '../models/Pet.js'
 import Sighting from '../models/Sighting.js'
 import { scoreCandidate } from '../services/matchEngine.js'
@@ -20,7 +22,7 @@ import {
   setLocationPrivacyHeaders,
 } from '../services/locationPrivacy.js'
 import { blockedUserIdsFor } from '../services/trustSafety.js'
-import { visibleContentFilter } from '../services/moderationVisibility.js'
+import { visibleContentFilter, isContentVisible } from '../services/moderationVisibility.js'
 
 /* ───────────────────────── Helpers ───────────────────────── */
 
@@ -72,7 +74,6 @@ function sightingTime(sighting) {
   return Number.isFinite(timestamp) ? timestamp : 0
 }
 
-const MAX_PHOTO_LENGTH = 1_500_000
 const DEFAULT_PAGE_SIZE = 50
 const MAX_PAGE_SIZE = 100
 const PHONE_PATTERN = /^\+?[\d\s().-]{8,30}$/
@@ -688,8 +689,14 @@ export async function reportPet(req, res, next) {
     setLocationPrivacyHeaders(res)
     if (!hasRequestBody(req)) return invalidRequestBody(res)
 
+    rejectImageStrings(req.body)
+    const imageIds = validateImageIds(req.body.imageIds === undefined ? [] : req.body.imageIds, 'pet')
+    const submissionId = req.body.submissionId
+    if (submissionId !== undefined && (typeof submissionId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(submissionId))) throw imageError('IMAGE_REQUEST_INVALID')
+    if (imageIds.length && !submissionId) throw imageError('IMAGE_REQUEST_INVALID')
+
     const {
-      name, species, breed, district, photo, description, details, reward,
+      name, species, breed, district, description, details, reward,
       ownerName, ownerPhone, locationName, coordinates, lastSeen, mapX, mapY,
     } = req.body
 
@@ -715,17 +722,12 @@ export async function reportPet(req, res, next) {
     if (!resolvedOwnerName || !isValidPhone(resolvedOwnerPhone)) {
       return res.status(400).json({ error: 'A valid contact name and phone are required.' })
     }
-    if (typeof photo === 'string' && photo.length > MAX_PHOTO_LENGTH) {
-      return res.status(413).json({ error: 'Photo is too large. Choose a smaller image.' })
-    }
-
-    const pet = await Pet.create({
+    const values = {
       name: normalizedName,
       species,
       breed: normalizedText(breed, 120),
       district: normalizedDistrict,
-      photo: photo || '',
-      photos: photo ? [photo] : [],
+      photo: '', photos: [],
       description: normalizedText(description, 2000),
       details: normalizedText(details, 2000),
       reward: normalizedText(reward, 100),
@@ -738,10 +740,23 @@ export async function reportPet(req, res, next) {
       mapY: Number.isFinite(Number(mapY)) ? Number(mapY) : 50,
       status: 'lost',
       reportedBy: req.user?._id || undefined,
-    })
+      submissionId,
+    }
+    const filter = submissionId ? { reportedBy: req.user._id, submissionId } : undefined
+    let pet, duplicate = false
+    if (imageIds.length) {
+      const result = await commitContentImages({ Model: Pet, type: 'pet', purpose: 'pet', userId: req.user._id,
+        values, imageIds, idempotencyFilter: filter })
+      pet = result.doc; duplicate = result.duplicate
+    } else if (filter) {
+      pet = await Pet.findOne(filter)
+      if (pet && !isContentVisible(pet)) throw imageError('IMAGE_NOT_FOUND')
+      duplicate = Boolean(pet)
+      if (!pet) pet = await Pet.findOneAndUpdate(filter, { $setOnInsert: values }, { upsert: true, new: true, setDefaultsOnInsert: true })
+    } else pet = await Pet.create(values)
 
     try {
-      await createRadiusNotifications({
+      if (!duplicate) await createRadiusNotifications({
         pet,
         type: 'proximity',
         origin: pet.location.coordinates,
@@ -751,7 +766,7 @@ export async function reportPet(req, res, next) {
       logServerError('Could not create proximity notifications', notificationError)
     }
 
-    res.status(201).json({ pet: await serializeOnePet(pet, req.user) })
+    res.status(duplicate ? 200 : 201).json({ pet: await serializeOnePet(pet, req.user), duplicate })
   } catch (err) {
     next(err)
   }
@@ -765,6 +780,8 @@ export async function submitSighting(req, res, next) {
       return res.status(400).json({ error: 'Invalid pet id' })
     }
     if (!hasRequestBody(req)) return invalidRequestBody(res)
+    rejectImageStrings(req.body)
+    const imageIds = validateImageIds(req.body.imageIds === undefined ? [] : req.body.imageIds, 'sighting')
 
     const pet = await Pet.findOne(visibleContentFilter({ _id: req.params.id }))
     if (!pet) return res.status(404).json({ error: 'Pet not found' })
@@ -778,7 +795,6 @@ export async function submitSighting(req, res, next) {
       location,
       locationName,
       note,
-      photo,
       reporterName,
       reporterPhone,
       submissionId,
@@ -790,9 +806,6 @@ export async function submitSighting(req, res, next) {
     const normalizedLocationName = normalizedText(locationName, 200)
     if (!normalizedLocationName) {
       return res.status(400).json({ error: '`locationName` is required.' })
-    }
-    if (typeof photo === 'string' && photo.length > MAX_PHOTO_LENGTH) {
-      return res.status(413).json({ error: 'Photo is too large. Choose a smaller image.' })
     }
     const normalizedSubmissionId = normalizedText(submissionId, 128)
     if (
@@ -808,7 +821,7 @@ export async function submitSighting(req, res, next) {
       location: { type: 'Point', coordinates: locationValidation.coordinates },
       locationName: normalizedLocationName,
       note: normalizedText(note, 2000),
-      photo: photo || '',
+      photo: '',
       reporterName: normalizedText(req.user?.name || reporterName, 100),
       reporterPhone: normalizedText(req.user?.phone || reporterPhone, 30),
       submissionId: normalizedSubmissionId || undefined,
@@ -817,7 +830,18 @@ export async function submitSighting(req, res, next) {
 
     let sighting = null
     let created = true
-    if (normalizedSubmissionId) {
+    if (imageIds.length) {
+      if (!normalizedSubmissionId) throw imageError('IMAGE_REQUEST_INVALID')
+      const result = await commitContentImages({ Model: Sighting, type: 'sighting', purpose: 'sighting', userId: req.user._id,
+        values: sightingData, imageIds, idempotencyFilter: { submissionId: normalizedSubmissionId, pet: pet._id, reportedBy: req.user._id },
+        authorize: async (session) => {
+          const target = await Pet.findOne(visibleContentFilter({ _id: pet._id, status: { $ne: 'reunited' } })).session(session)
+          if (!target) throw imageError('IMAGE_NOT_FOUND')
+          await Pet.updateOne({ _id: pet._id }, { $set: { status: 'sighted' } }, { session })
+        } })
+      sighting = result.doc; created = !result.duplicate
+    }
+    if (normalizedSubmissionId && !sighting) {
       sighting = await Sighting.findOne(
         visibleContentFilter({ submissionId: normalizedSubmissionId }),
       ).select('+submissionId')
@@ -849,7 +873,7 @@ export async function submitSighting(req, res, next) {
 
     if (created) {
       pet.status = 'sighted'
-      await pet.save()
+      if (!imageIds.length) await pet.save()
 
       try {
         await createRadiusNotifications({

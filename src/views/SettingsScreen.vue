@@ -72,7 +72,7 @@
                 :aria-label="pickingAvatar ? t('settings.openingPicker') : t('settings.changePhoto')"
                 @click="pickAvatar"
               >
-                <img
+                <ManagedImage
                   :src="form.avatar || user.avatar || '/avatar.svg'"
                   :alt="t('settings.profilePhotoAlt', { name: user.name })"
                   @error="handleAvatarError"
@@ -100,6 +100,9 @@
             <p v-if="savingAvatar" class="form-message" role="status">{{ t('settings.savingPhoto') }}</p>
             <p v-else-if="profileError" class="form-message error" role="alert">{{ profileError }}</p>
             <p v-else-if="profileMessage" class="form-message" role="status">{{ profileMessage }}</p>
+            <ImageUploadStatus :upload="avatarUpload" />
+            <button v-if="profileError && avatarUpload.preview" type="button" class="edit-button" :disabled="savingAvatar" @click="persistAvatar()">{{ t('media.retrySave') }}</button>
+            <button v-if="user.avatar" type="button" class="edit-button" :disabled="savingAvatar" @click="removeAvatar">{{ t('media.remove') }}</button>
 
             <Transition name="expand">
               <form v-if="editingProfile" class="profile-form" @submit.prevent="saveProfile">
@@ -283,9 +286,12 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "../components/ManagedImage.vue"
 import { computed, reactive, ref, watch } from 'vue'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { Capacitor } from '@capacitor/core'
+import { useImageUpload } from '../composables/useImageUpload'
+import ImageUploadStatus from '../components/ImageUploadStatus.vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { usePreferences } from '../composables/usePreferences'
@@ -339,9 +345,9 @@ const privacyError = ref('')
 const privacyMessage = ref('')
 const privacyDirty = computed(() => contactVisibility.value !== savedContactVisibility.value)
 const avatarInput = ref<HTMLInputElement | null>(null)
+const avatarUpload = useImageUpload('avatar')
 const form = reactive({ name: '', realName: '', email: '', phone: '', avatar: '' })
 const MAX_SOURCE_FILE_BYTES = 8 * 1024 * 1024
-const MAX_AVATAR_DATA_URL_LENGTH = 8_000_000
 
 async function updatePreference(update: { language?: AppLanguage; theme?: AppTheme }) {
   preferenceError.value = ''
@@ -374,6 +380,7 @@ function resetForm(user: User | null) {
 watch(
   () => props.user?.id,
   () => {
+    avatarUpload.reset(false)
     resetForm(props.user)
     editingProfile.value = false
     profileError.value = ''
@@ -452,7 +459,7 @@ async function pickAvatar() {
       height: 512,
     })
     if (!photo.dataUrl) throw new Error(t('errors.readImage'))
-    await persistAvatar(await prepareAvatar(photo.dataUrl))
+    await persistAvatar(photo.dataUrl)
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : ''
     if (!/cancel(?:led|ed)|no image/i.test(message)) {
@@ -482,7 +489,7 @@ async function handleAvatarFile(event: Event) {
 
   pickingAvatar.value = true
   try {
-    await persistAvatar(await prepareAvatar(await readFileAsDataUrl(file)))
+    await persistAvatar(file)
   } catch (caught) {
     profileError.value = translateApiError(caught, 'errors.readImage')
   } finally {
@@ -490,61 +497,42 @@ async function handleAvatarFile(event: Event) {
   }
 }
 
-async function persistAvatar(avatar: string) {
+async function persistAvatar(source?: Blob | string) {
+  if (!props.user || savingAvatar.value) return
+  const userId = props.user?.id
   const previousAvatar = form.avatar
-  form.avatar = avatar
+  if (source) avatarUpload.select(source)
+  form.avatar = avatarUpload.preview
   savingAvatar.value = true
   try {
-    const updatedUser = await updateProfile({ avatar })
-    form.avatar = updatedUser.avatar || avatar
+    const [avatarImageId] = await avatarUpload.ensure()
+    if (!avatarImageId || props.user?.id !== userId) return
+    const updatedUser = await updateProfile({ avatarImageId })
+    if (props.user?.id !== userId) return
+    form.avatar = updatedUser.avatar || ''
     emit('updated', updatedUser)
+    avatarUpload.finish()
     profileError.value = ''
     profileMessage.value = t('settings.photoUpdated')
   } catch (caught) {
-    form.avatar = previousAvatar
-    throw caught
+    if (props.user?.id === userId) {
+      form.avatar = previousAvatar
+      profileError.value = translateApiError(caught, 'errors.updateProfile')
+    }
   } finally {
     savingAvatar.value = false
   }
 }
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error(t('errors.readImage')))
-    reader.onerror = () => reject(new Error(t('errors.readImage')))
-    reader.readAsDataURL(file)
-  })
+async function removeAvatar() {
+  if (savingAvatar.value) return
+  savingAvatar.value = true
+  try {
+    const user = await updateProfile({ avatarImageId: null })
+    form.avatar = ''; avatarUpload.finish(); emit('updated', user)
+  } catch (error) { profileError.value = translateApiError(error, 'errors.updateProfile') }
+  finally { savingAvatar.value = false }
 }
 
-function prepareAvatar(dataUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => {
-      const largestSide = Math.max(image.naturalWidth, image.naturalHeight)
-      const scale = largestSide > 512 ? 512 / largestSide : 1
-      const width = Math.max(1, Math.round(image.naturalWidth * scale))
-      const height = Math.max(1, Math.round(image.naturalHeight * scale))
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const context = canvas.getContext('2d')
-      if (!context) return reject(new Error(t('errors.readImage')))
-
-      context.fillStyle = '#fcf9f2'
-      context.fillRect(0, 0, width, height)
-      context.drawImage(image, 0, 0, width, height)
-      const prepared = canvas.toDataURL('image/jpeg', 0.8)
-      if (prepared.length > MAX_AVATAR_DATA_URL_LENGTH) {
-        reject(new Error('The processed avatar is too large. Choose a smaller image.'))
-        return
-      }
-      resolve(prepared)
-    }
-    image.onerror = () => reject(new Error(t('errors.readImage')))
-    image.src = dataUrl
-  })
-}
 
 function handleAvatarError(event: Event) {
   const image = event.target as HTMLImageElement
@@ -563,7 +551,6 @@ async function saveProfile() {
       realName: form.realName,
       email: form.email,
       phone: form.phone,
-      avatar: form.avatar,
     })
     resetForm(updatedUser)
     emit('updated', updatedUser)

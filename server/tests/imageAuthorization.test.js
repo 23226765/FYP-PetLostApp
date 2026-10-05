@@ -88,7 +88,7 @@ test('owner/reporter/unrelated/admin may upload only their own pending images', 
     assets.push(body.image)
     const preview = await fetch(`${baseUrl}${body.image.url}`, { headers: { authorization: `Bearer ${actor.token}` } })
     assert.equal(preview.status, 200)
-    assert.equal(preview.headers.get('cache-control'), 'no-store')
+    assert.match(preview.headers.get('cache-control'), /no-store/)
     assert.equal(preview.headers.get('content-type'), 'image/webp')
     await preview.arrayBuffer()
   }

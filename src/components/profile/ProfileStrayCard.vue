@@ -9,7 +9,7 @@
     @keydown.space.prevent="openPost"
   >
     <div class="photo-wrap">
-      <img
+      <ManagedImage
         v-if="stray.photo && !imageFailed"
         :src="imageUrl(stray.photo)"
         :alt="t('strays.reportedAlt', { species: animalLabel })"
@@ -38,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "../ManagedImage.vue"
 import { computed, ref } from 'vue'
 import AppIcon from '../AppIcon.vue'
 import type { StrayReport } from '../../types/stray'

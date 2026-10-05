@@ -298,7 +298,7 @@ export interface ChatMessage {
 
 export interface SendMessagePayload {
   text: string
-  photo?: string
+  imageIds?: string[]
   participantId?: string
   sharedStrayId?: string
   clientRequestId?: string
@@ -356,7 +356,8 @@ export interface ReportPetPayload {
   species: 'Dog' | 'Cat' | 'Other'
   breed?: string
   district: string
-  photo?: string
+  imageIds?: string[]
+  submissionId?: string
   description?: string
   details?: string
   reward?: string
@@ -381,7 +382,7 @@ export interface SightingPayload {
   }
   locationName: string
   note?: string
-  photo?: string
+  imageIds?: string[]
   submissionId: string
 }
 
@@ -445,8 +446,7 @@ export interface ReportStrayPayload {
   species: StrayReport['species']
   animalType?: string
   description: string
-  photo?: string
-  photos: string[]
+  imageIds: string[]
   condition: StrayCondition
   district: string
   locationName: string
@@ -520,9 +520,29 @@ export async function deleteStray(id: string): Promise<void> {
   await http.delete(`/strays/${id}`)
 }
 
-export async function uploadImage(dataUrl: string): Promise<string> {
-  const { data } = await http.post<{ url: string }>('/uploads/image', { dataUrl })
-  return data.url
+export type ImagePurpose = 'avatar' | 'pet' | 'sighting' | 'stray' | 'message'
+export interface ManagedImage { id: string; url: string; width: number; height: number; format: 'webp'; bytes: number }
+export async function uploadManagedImage(file: Blob, purpose: ImagePurpose, idempotencyKey: string,
+  options: { signal?: AbortSignal; onProgress?: (percent: number) => void } = {}): Promise<ManagedImage> {
+  const form = new FormData()
+  form.append('image', file, 'image')
+  form.append('purpose', purpose)
+  form.append('idempotencyKey', idempotencyKey)
+  const { data } = await http.post<{ image: ManagedImage }>('/uploads/managed', form, {
+    headers: { 'Content-Type': undefined }, signal: options.signal,
+    onUploadProgress: (event) => options.onProgress?.(event.total ? Math.min(99, Math.round(event.loaded / event.total * 100)) : 0),
+  })
+  options.onProgress?.(100)
+  return data.image
+}
+export async function discardManagedImage(id: string): Promise<void> { await http.delete(`/uploads/managed/${id}`) }
+export async function replaceContentImages(type: 'user' | 'pet' | 'sighting' | 'stray' | 'message', id: string, imageIds: string[]): Promise<ManagedImage[]> {
+  const { data } = await http.patch<{ images: ManagedImage[] }>(`/uploads/managed/content/${type}/${id}`, { imageIds })
+  return data.images
+}
+export async function readManagedImage(path: string, signal: AbortSignal): Promise<Blob> {
+  const { data } = await http.get<Blob>(path, { responseType: 'blob', signal })
+  return data
 }
 
 /* ── Auth ── */
@@ -558,7 +578,7 @@ export interface UpdateProfilePayload {
   realName?: string
   email?: string
   phone?: string
-  avatar?: string
+  avatarImageId?: string | null
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {

@@ -1,4 +1,23 @@
 {
+  "media": {
+    "uploading": "正在上传图片… {percent}%",
+    "progress": "图片上传进度",
+    "retry": "重试上传",
+    "retrySave": "重试保存照片",
+    "remove": "移除照片",
+    "replace": "更换照片",
+    "cancelled": "已取消上传。已保留所选图片，可稍后重试。",
+    "uploadFailed": "无法上传图片。你可以重试，无需重新填写表单。",
+    "invalid": "请选择有效的 JPEG、PNG 或静态 WebP 图片。",
+    "tooLarge": "请选择小于 8 MB 且尺寸符合限制的图片。",
+    "forbidden": "此图片不能用于这篇帖子。请上传你自己的图片。",
+    "saveFailed": "无法保存图片。原有照片不变，请重试保存。",
+    "unavailable": "图片存储服务暂时不可用，请稍后再试。",
+    "authChanged": "登录状态已更改，请重新选择图片。",
+    "saved": "照片已更新。",
+    "edit": "编辑照片",
+    "confirmRemove": "要移除此照片吗？"
+  },
   "pets": {
     "species": "物种",
     "breed": "品种"

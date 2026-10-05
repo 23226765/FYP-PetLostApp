@@ -1,4 +1,6 @@
 export const IMAGE_ERRORS = Object.freeze({
+  IMAGE_IDS_REQUIRED: [400, 'Upload the image first and submit its image ID.'],
+  IMAGE_ATTACHMENT_FORBIDDEN: [403, 'This image cannot be attached to this content.'],
   IMAGE_UPLOADS_DISABLED: [503, 'Managed image uploads are not enabled.'],
   IMAGE_STORAGE_CONFIG_INVALID: [503, 'Image storage is not configured.'],
   IMAGE_STORAGE_UNAVAILABLE: [503, 'Image storage is temporarily unavailable.'],
@@ -9,6 +11,7 @@ export const IMAGE_ERRORS = Object.freeze({
   IMAGE_PURPOSE_INVALID: [400, 'Choose a valid image purpose.'],
   IMAGE_REQUEST_INVALID: [400, 'Invalid image upload request.'],
   IMAGE_UPLOAD_IN_PROGRESS: [409, 'An image upload is already in progress.'],
+  IMAGE_UPLOAD_RETRY_REQUIRED: [409, 'The previous image reservation has ended. Retry with a new upload identifier.'],
   IMAGE_IDEMPOTENCY_CONFLICT: [409, 'This upload identifier belongs to a different image.'],
   IMAGE_UPLOAD_QUOTA: [429, 'The image upload allowance has been reached.'],
   IMAGE_PROCESSING_BUSY: [503, 'Image processing is busy. Please retry shortly.'],

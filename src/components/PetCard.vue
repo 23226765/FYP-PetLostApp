@@ -1,7 +1,7 @@
 <template>
   <article class="card" @click="emit('open')">
     <div class="photo-wrap">
-      <img
+      <ManagedImage
         v-if="photoUrl && !imageFailed"
         :src="photoUrl"
         alt=""
@@ -63,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./ManagedImage.vue"
 import { computed, ref, watch } from 'vue'
 import type { Pet } from '../types/pet'
 import { useSavedPets } from '../composables/useSavedPets'

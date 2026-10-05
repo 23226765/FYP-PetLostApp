@@ -24,6 +24,7 @@ const messageSchema = new mongoose.Schema(
     },
     text: { type: String, default: '', trim: true, maxlength: 2000 },
     photo: { type: String, default: '' },
+    imageIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'MediaAsset', default: undefined, select: false },
     sharedStray: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Stray',

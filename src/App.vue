@@ -3,7 +3,7 @@
     <!-- Proximity notification toast -->
     <Transition name="toast">
       <button v-if="toastPet" class="toast" aria-live="polite" @click="openFromToast">
-        <img :src="toastPet.photo" alt="" />
+        <ManagedImage :src="toastPet.photo" alt="" />
         <span class="toast-text">
           <strong>{{ toastPet.name }} · {{ t('common.kilometres', { count: toastPet.distanceKm }) }}</strong>
           <span>{{ t('pets.lastSeenAt', { location: toastPet.location }) }}</span>
@@ -202,7 +202,7 @@
           <div class="grab" />
           <template v-if="!sightingSent">
             <div class="sheet-head">
-              <img :src="sightingPet.photo" alt="" />
+              <ManagedImage :src="sightingPet.photo" alt="" />
               <div>
                 <h2>{{ t('sightings.foundQuestion', { name: sightingPet.name }) }}</h2>
                 <p>{{ t('sightings.locationShared') }}</p>
@@ -231,17 +231,20 @@
               />
               <small>{{ t('sightings.locationHelp') }}</small>
             </label>
-            <button class="sheet-photo" type="button" @click="attachSightingPhoto">
+            <button class="sheet-photo" type="button" :disabled="sightingSubmitting" @click="attachSightingPhoto">
               <AppIcon name="camera" :size="19" />
               {{ sightingPhoto ? t('sightings.changePhoto') : t('sightings.attachPhoto') }}
             </button>
-            <img
+            <ManagedImage
               v-if="sightingPhoto"
               class="sighting-photo-preview"
               :src="sightingPhoto"
               :alt="t('sightings.photoPreviewAlt')"
             />
             <p v-if="sightingError" class="sheet-error">{{ sightingError }}</p>
+            <ImageUploadStatus :upload="sightingUpload" />
+            <input ref="sightingPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden @change="selectSightingFile" />
+            <button v-if="sightingPhoto" type="button" :disabled="sightingSubmitting" @click="sightingUpload.reset(); sightingPhoto = ''">{{ t('media.remove') }}</button>
             <button
               class="sheet-send"
               type="button"
@@ -373,9 +376,12 @@
 </template>
 
 <script setup lang="ts">
+import ManagedImage from "./components/ManagedImage.vue"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
+import { useImageUpload } from './composables/useImageUpload'
+import ImageUploadStatus from './components/ImageUploadStatus.vue'
 import type { Pet } from './types/pet'
 import type { AppNotification } from './types/notification'
 import type { User } from './types/user'
@@ -452,6 +458,8 @@ const rescueReportRequest = ref(0)
 const sightingPet = ref<Pet | null>(null)
 const sightingNote = ref('')
 const sightingPhoto = ref('')
+const sightingUpload = useImageUpload('sighting')
+const sightingPhotoInput = ref<HTMLInputElement | null>(null)
 const sightingCoordinates = ref<[number, number] | null>(null)
 const sightingLocationName = ref('')
 const sightingSent = ref(false)
@@ -655,6 +663,8 @@ function logout() {
 }
 
 function clearAuthorizationScopedState() {
+  window.dispatchEvent(new Event('auth:changed'))
+  sightingUpload.reset(false)
   deepLinkRequestSequence += 1
   petsRequestSequence += 1
   petsAbortController?.abort()
@@ -1037,6 +1047,7 @@ function openSighting(pet: Pet | null) {
     openLogin({ type: 'sighting', petId: String(pet.id) })
     return
   }
+  sightingUpload.reset()
   sightingPet.value = pet
   sightingSent.value = false
   sightingNote.value = ''
@@ -1049,6 +1060,7 @@ function openSighting(pet: Pet | null) {
 }
 
 function closeSighting() {
+  sightingUpload.reset()
   if (sightingSent.value && sightingPet.value) {
     const p = pets.value.find((x) => x.id === sightingPet.value?.id)
     if (p) p.status = 'sighted'
@@ -1077,12 +1089,20 @@ async function attachSightingPhoto() {
       quality: 85,
     })
     sightingPhoto.value = dataUrl ?? ''
+    if (dataUrl) sightingUpload.select(dataUrl)
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
     if (!message.toLowerCase().includes('cancel')) {
-      sightingError.value = t('errors.photoPicker')
+      sightingPhotoInput.value?.click()
     }
   }
+}
+
+function selectSightingFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (file) { sightingUpload.select(file); sightingPhoto.value = sightingUpload.preview }
 }
 
 async function sendSighting() {
@@ -1098,23 +1118,24 @@ async function sendSighting() {
   }
   sightingSubmitting.value = true
   sightingError.value = ''
+  const submissionId = sightingSubmissionId.value || createSightingSubmissionId()
+  sightingSubmissionId.value = submissionId
+  const userId = currentUser.value?.id
+  const active = () => sightingSubmissionId.value === submissionId && sightingPet.value?.id === pet.id && currentUser.value?.id === userId
+  const details = { coordinates: sightingCoordinates.value, note: sightingNote.value, locationName: sightingLocationName.value.trim(), submissionId }
   try {
-    const submissionId = sightingSubmissionId.value || createSightingSubmissionId()
-    sightingSubmissionId.value = submissionId
-    await reportSighting(pet.id, buildSightingPayload({
-      coordinates: sightingCoordinates.value,
-      note: sightingNote.value,
-      locationName: sightingLocationName.value.trim(),
-      photo: sightingPhoto.value,
-      submissionId,
-    }))
+    const imageIds = await sightingUpload.ensure()
+    if (!active()) return
+    await reportSighting(pet.id, buildSightingPayload({ ...details, imageIds }))
+    if (!active()) return
     sightingSent.value = true
+    sightingUpload.finish()
     const p = pets.value.find((x) => x.id === pet.id)
     if (p) p.status = 'sighted'
   } catch (e) {
-    sightingError.value = translateApiError(e, 'errors.sendSighting')
+    if (active()) sightingError.value = translateApiError(e, 'errors.sendSighting')
   } finally {
-    sightingSubmitting.value = false
+    if (active()) sightingSubmitting.value = false
   }
 }
 
