@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Chatscreen from '../Chatscreen.vue'
+import { setSessionToken } from '../../services/authSession'
 
 const apiMocks = vi.hoisted(() => ({ getMessages: vi.fn(), sendMessage: vi.fn(), uploadManagedImage: vi.fn(), discardManagedImage: vi.fn() }))
 vi.mock('../../services/api', () => apiMocks)
@@ -34,6 +35,17 @@ describe('structured stray post messages', () => {
   it('renders a graceful unavailable state for a deleted shared post', async () => {
     const { wrapper } = await render({ sharedStrayUnavailable: true })
     expect(wrapper.text()).toContain('This post is no longer available.')
+    wrapper.unmount()
+  })
+
+  it('account switching between submission and dispatch cannot send under the new identity', async () => {
+    setSessionToken('old-finder-fixture')
+    const { wrapper } = await render({})
+    await wrapper.get('textarea, input[type="text"]').setValue('Old account draft')
+    const click = wrapper.get('.send-btn').trigger('click')
+    setSessionToken('new-user-fixture')
+    await click; await flushPromises()
+    expect(apiMocks.sendMessage).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 

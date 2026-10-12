@@ -87,4 +87,12 @@ describe('managed image upload state', () => {
     expect(state.preview).toBe('blob:fictional-preview')
     stop()
   })
+
+  it('a disposed upload scope cannot start work from a late camera/form continuation', async () => {
+    const { state, stop } = setup('avatar')
+    stop()
+    state.select(new Blob(['late-camera-result'], { type: 'image/png' }))
+    await expect(state.ensure()).rejects.toMatchObject({ apiCode: 'IMAGE_CANCELLED' })
+    expect(mocks.uploadManagedImage).not.toHaveBeenCalled()
+  })
 })

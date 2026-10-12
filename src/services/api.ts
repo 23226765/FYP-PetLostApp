@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { captureAuthContext, isAuthContextCurrent, authContextError, setSessionToken, type AuthContext } from './authSession'
 import type { Pet, Sighting } from '../types/pet'
 import type { AppNotification } from '../types/notification'
 import type { User } from '../types/user'
@@ -25,34 +26,19 @@ const http = axios.create({
 })
 
 type AuthScopedConfig = {
-  pawRadarAuthToken?: string | null
-}
-
-function storedToken(): string | null {
-  try {
-    return localStorage.getItem('token')
-  } catch {
-    return null
-  }
+  pawRadarAuthContext?: AuthContext
 }
 
 function authContextChanged(config: unknown): boolean {
   const scoped = config as AuthScopedConfig | undefined
-  return scoped?.pawRadarAuthToken !== undefined && scoped.pawRadarAuthToken !== storedToken()
-}
-
-function authContextError(): Error & { apiCode: string } {
-  const error = new Error('Authorization context changed before the response completed.') as Error & {
-    apiCode: string
-  }
-  error.apiCode = 'AUTH_CONTEXT_CHANGED'
-  return error
+  return Boolean(scoped?.pawRadarAuthContext && !isAuthContextCurrent(scoped.pawRadarAuthContext))
 }
 
 // Attach the JWT to every request when a token is stored.
 http.interceptors.request.use((config) => {
-  const token = storedToken()
-  ;(config as typeof config & AuthScopedConfig).pawRadarAuthToken = token
+  const context = captureAuthContext()
+  const token = context.token
+  ;(config as typeof config & AuthScopedConfig).pawRadarAuthContext = context
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -67,8 +53,8 @@ http.interceptors.response.use(
     if (authContextChanged(error?.config)) return Promise.reject(authContextError())
     const url = error?.config?.url || ''
     const status = error?.response?.status
-    if (status === 401 && !url.startsWith('/auth/')) {
-      localStorage.removeItem('token')
+    if (status === 401 && !['/auth/login', '/auth/register'].includes(url)) {
+      setSessionToken(null)
       window.dispatchEvent(new Event('auth:unauthorized'))
     }
     if (axios.isCancel(error)) return Promise.reject(error)
@@ -80,9 +66,10 @@ http.interceptors.response.use(
         : error?.response
           ? `Request failed with status ${error.response.status}.`
           : 'Cannot reach the PawRadar server. Check that the backend is running.'
-    const clientError = new Error(message) as Error & { apiCode?: string; field?: string }
+    const clientError = new Error(message) as Error & { apiCode?: string; field?: string; status?: number }
     clientError.apiCode = error?.response?.data?.code
     clientError.field = error?.response?.data?.field
+    clientError.status = status
     return Promise.reject(clientError)
   },
 )

@@ -60,7 +60,8 @@ const RadarStub = defineComponent({
 })
 
 const AuthStub = defineComponent({
-  emits: ['close', 'guest', 'failed', 'authenticated'],
+  props: ['sessionError'],
+  emits: ['close', 'guest', 'failed', 'authenticated', 'retry-session'],
   setup() {
     return {
       user: {
@@ -75,6 +76,8 @@ const AuthStub = defineComponent({
   },
   template: `
     <div data-testid="auth-screen">
+      <p class="stub-session-error">{{ sessionError }}</p>
+      <button class="stub-retry-session" @click="$emit('retry-session')">Retry</button>
       <button class="stub-guest" @click="$emit('guest')">Guest</button>
       <button class="stub-close" @click="$emit('close')">Close</button>
       <button class="stub-failed" @click="$emit('failed')">Fail</button>
@@ -90,6 +93,8 @@ async function renderApp(token?: string) {
     routes: [
       { path: '/', name: 'home', component: { template: '<div />' } },
       { path: '/login', name: 'login', component: { template: '<div />' } },
+      { path: '/profile', name: 'profile', component: { template: '<div />' } },
+      { path: '/settings', name: 'settings', component: { emits: ['logout'], template: '<button class="stub-logout" @click="$emit(\'logout\')">Logout</button>' } },
     ],
   })
   await router.push('/')
@@ -103,7 +108,7 @@ async function renderApp(token?: string) {
         StrayRescueScreen: { template: '<div />' },
         PostPetScreen: { template: '<div data-testid="post-pet" />' },
         ChatInboxScreen: { template: '<div />' },
-        ProfileScreen: { template: '<div />' },
+        ProfileScreen: { props: ['user'], template: '<p class="stub-profile-id">{{ user?.id }}</p>' },
         PetDetail: { template: '<div />' },
         AuthScreen: AuthStub,
         SmartMatchScreen: { template: '<div />' },
@@ -336,6 +341,85 @@ describe('authenticated creation entry points', () => {
 
     expect(wrapper.get('[role="alert"]').text()).toContain('要求次數過多，請稍候再試。')
     expect(wrapper.emitted('failed')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('keeps the session through a temporary restore failure and can retry successfully', async () => {
+    apiMocks.getProfile.mockRejectedValueOnce(Object.assign(new Error('Temporary DB failure'), { status: 503, apiCode: 'AUTH_SERVICE_UNAVAILABLE' }))
+    const { wrapper } = await renderApp('owner-session')
+    expect(localStorage.getItem('token')).toBe('owner-session')
+    expect(wrapper.get('.stub-session-error').text()).toContain('temporarily unavailable')
+    apiMocks.getProfile.mockResolvedValueOnce({ id: 'owner-id', name: 'Owner', email: 'owner@example.test', alertsEnabled: false })
+    await wrapper.get('.stub-retry-session').trigger('click'); await flushPromises()
+    expect(wrapper.find('[data-testid="auth-screen"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('removes truly invalid credentials rather than showing a service outage', async () => {
+    apiMocks.getProfile.mockRejectedValueOnce(Object.assign(new Error('Invalid token'), { status: 401 }))
+    const { wrapper } = await renderApp('invalid-fixture')
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(wrapper.get('.stub-session-error').text()).toBe('')
+    wrapper.unmount()
+  })
+
+  it('cross-tab logout immediately clears the identity and creation/privileged overlays', async () => {
+    apiMocks.getProfile.mockResolvedValue({ id: 'owner-id', name: 'Owner', email: 'owner@example.test', alertsEnabled: false })
+    const { wrapper, router } = await renderApp('owner-fixture')
+    await wrapper.get('.report-item').trigger('click'); await flushPromises()
+    expect(wrapper.find('[data-testid="post-pet"]').exists()).toBe(true)
+    localStorage.removeItem('token')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'token', oldValue: 'owner-fixture', newValue: null }))
+    await flushPromises()
+    expect(wrapper.find('[data-testid="post-pet"]').exists()).toBe(false)
+    expect(wrapper.find('.sheet').exists()).toBe(false)
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(wrapper.find('[data-testid="auth-screen"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('cross-tab switching clears the old identity while the new account is being restored', async () => {
+    apiMocks.getProfile.mockResolvedValueOnce({ id: 'owner-id', name: 'Owner', email: 'owner@example.test', alertsEnabled: false })
+    const { wrapper } = await renderApp('owner-fixture')
+    await wrapper.get('.tabbar .nav-item:last-child').trigger('click'); await flushPromises()
+    expect(wrapper.get('.stub-profile-id').text()).toBe('owner-id')
+    let resolve!: (value: unknown) => void
+    apiMocks.getProfile.mockReturnValueOnce(new Promise((yes) => { resolve = yes }))
+    localStorage.setItem('token', 'finder-fixture')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'token', oldValue: 'owner-fixture', newValue: 'finder-fixture' }))
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('owner-id')
+    resolve({ id: 'finder-id', name: 'Finder', email: 'finder@example.test', alertsEnabled: false, preferences: { language: 'en', theme: 'dark' } })
+    await flushPromises()
+    await wrapper.get('.tabbar .nav-item:last-child').trigger('click'); await flushPromises()
+    expect(wrapper.get('.stub-profile-id').text()).toBe('finder-id')
+    wrapper.unmount()
+  })
+
+  it('explicit logout clears the token and returns to login', async () => {
+    apiMocks.getProfile.mockResolvedValueOnce({ id: 'owner-id', name: 'Owner', email: 'owner@example.test', alertsEnabled: false })
+    const { wrapper, router } = await renderApp('owner-fixture')
+    await router.push('/settings'); await flushPromises()
+    await wrapper.get('.stub-logout').trigger('click'); await flushPromises()
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(wrapper.find('[data-testid="auth-screen"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('late session restoration cannot reauthenticate after cross-tab logout', async () => {
+    let finish!: (value: unknown) => void
+    apiMocks.getProfile.mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    const { wrapper } = await renderApp('old-fixture')
+    localStorage.removeItem('token')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'token', oldValue: 'old-fixture', newValue: null }))
+    await flushPromises()
+    finish({ id: 'obsolete-user', name: 'Old account', email: 'old@example.test', alertsEnabled: true })
+    await flushPromises()
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(wrapper.find('[data-testid="auth-screen"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('obsolete-user')
+    expect(apiMocks.updateNotificationPreferences).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 })

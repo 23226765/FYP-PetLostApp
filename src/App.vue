@@ -12,7 +12,7 @@
       </button>
     </Transition>
 
-    <main>
+    <main :key="authViewKey">
       <RadarScreen
         v-show="tab === 'radar'"
         :pets="pets"
@@ -61,7 +61,7 @@
       />
     </main>
 
-    <RouterView v-slot="{ Component, route: currentRoute }">
+    <RouterView :key="authViewKey" v-slot="{ Component, route: currentRoute }">
       <Transition name="page">
         <component
           :is="Component"
@@ -271,10 +271,12 @@
     <Transition name="page">
       <AuthScreen
         v-if="authOpen"
+        :session-error="sessionRestoreError"
         @close="cancelAuthentication"
         @guest="cancelAuthentication"
         @failed="clearPendingAuthAction"
         @authenticated="handleAuth"
+        @retry-session="retrySession"
       />
     </Transition>
 
@@ -397,6 +399,7 @@ import {
   updateNotificationPreferences,
 } from './services/api'
 import { getCurrentLocation } from './services/geolocation'
+import { captureAuthContext, isAuthContextCurrent, invalidateAuthContext, setSessionToken, storedSessionToken } from './services/authSession'
 import { buildSightingPayload } from './utils/sightingSubmission'
 import AppIcon from './components/AppIcon.vue'
 import RadarScreen from './components/RadarScreen.vue'
@@ -442,6 +445,8 @@ const hasPreciseLocation = ref(false)
 const currentUser = ref<User | null>(null)
 const alertsEnabled = ref(true)
 const authOpen = ref(false)
+const authViewKey = ref(0)
+const sessionRestoreError = ref('')
 const pendingAuthAction = ref<PendingAuthAction | null>(null)
 const showSmartMatch = ref(false)
 const showNotifications = ref(false)
@@ -610,27 +615,49 @@ function schedulePetsReload() {
 }
 
 async function restoreSession() {
-  const token = localStorage.getItem('token')
+  const context = captureAuthContext()
+  const token = context.token
   if (!token) {
     if (route.name !== 'pet-detail') authOpen.value = true
     return
   }
   try {
     const user = await getProfile()
+    if (!isAuthContextCurrent(context)) return
     currentUser.value = user
     applyAccountPreferences(user.preferences)
     alertsEnabled.value = user.alertsEnabled !== false
     radiusKm.value = user.alertRadiusKm || radiusKm.value
-  } catch {
-    localStorage.removeItem('token')
+    sessionRestoreError.value = ''
+    authOpen.value = false
+  } catch (cause) {
+    if (!isAuthContextCurrent(context)) return
+    const status = (cause as { status?: number }).status
+    if (status === 401 || status === 404) {
+      setSessionToken(null)
+      clearAuthorizationScopedState()
+      currentUser.value = null
+    } else {
+      sessionRestoreError.value = translateApiError(cause, 'errors.authenticationUnavailable')
+    }
     if (route.name !== 'pet-detail') authOpen.value = true
   }
+}
+
+async function retrySession() {
+  const context = captureAuthContext()
+  sessionRestoreError.value = ''
+  await restoreSession()
+  if (!isAuthContextCurrent(context)) return
+  await loadPets()
+  if (currentUser.value && isAuthContextCurrent(context)) await activateNotifications()
 }
 
 function handleAuth(user: User) {
   const pendingAction = currentUser.value ? null : pendingAuthAction.value
   clearAuthorizationScopedState()
   currentUser.value = user
+  const context = captureAuthContext()
   applyAccountPreferences(user.preferences)
   alertsEnabled.value = user.alertsEnabled !== false
   radiusKm.value = user.alertRadiusKm || radiusKm.value
@@ -640,20 +667,22 @@ function handleAuth(user: User) {
     : Promise.resolve()
   void (async () => {
     await loginNavigation
+    if (!isAuthContextCurrent(context)) return
     await loadPets()
+    if (!isAuthContextCurrent(context)) return
     if (route.name === 'pet-detail') {
       const routeId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
       if (typeof routeId === 'string' && routeId.trim()) await openDeepLinkedPet(routeId)
     }
-    if (currentUser.value?.id === user.id && pendingAction) {
+    if (isAuthContextCurrent(context) && currentUser.value?.id === user.id && pendingAction) {
       await resumePendingAuthAction(pendingAction, user.id)
     }
-    if (currentUser.value?.id === user.id) await activateNotifications()
+    if (isAuthContextCurrent(context) && currentUser.value?.id === user.id) await activateNotifications()
   })()
 }
 
 function logout() {
-  localStorage.removeItem('token')
+  setSessionToken(null)
   clearAuthorizationScopedState()
   currentUser.value = null
   tab.value = 'radar'
@@ -663,7 +692,9 @@ function logout() {
 }
 
 function clearAuthorizationScopedState() {
-  window.dispatchEvent(new Event('auth:changed'))
+  invalidateAuthContext()
+  authViewKey.value += 1
+  sessionRestoreError.value = ''
   sightingUpload.reset(false)
   deepLinkRequestSequence += 1
   petsRequestSequence += 1
@@ -750,12 +781,14 @@ function clearPendingAuthAction() {
 }
 
 function cancelAuthentication() {
+  invalidateAuthContext()
   clearPendingAuthAction()
   authOpen.value = false
   if (route.name === 'login') void router.replace('/')
 }
 
 async function resumePendingAuthAction(action: PendingAuthAction, userId: string) {
+  const context = captureAuthContext()
   // Consume before any asynchronous work so one authentication event can open
   // at most one form and never submit it.
   pendingAuthAction.value = null
@@ -775,7 +808,7 @@ async function resumePendingAuthAction(action: PendingAuthAction, userId: string
       return
     }
   }
-  if (currentUser.value?.id !== userId || pet.status === 'reunited') return
+  if (!isAuthContextCurrent(context) || currentUser.value?.id !== userId || pet.status === 'reunited') return
   openSighting(pet)
 }
 
@@ -950,6 +983,7 @@ function openStrayFromNotification(strayId: string) {
 }
 
 async function loadNotifications(showNewAlert = false) {
+  const context = captureAuthContext()
   if (!currentUser.value) {
     notifications.value = []
     return
@@ -957,6 +991,7 @@ async function loadNotifications(showNewAlert = false) {
   const knownIds = new Set(notifications.value.map((notification) => notification.id))
   try {
     const nextNotifications = await getNotifications()
+    if (!isAuthContextCurrent(context)) return
     notifications.value = nextNotifications
     if (showNewAlert) {
       const fresh = nextNotifications.find(
@@ -996,38 +1031,44 @@ function stopNotificationPolling() {
 }
 
 async function activateNotifications() {
+  const context = captureAuthContext()
   try {
     await syncNotificationPreferences()
+    if (!isAuthContextCurrent(context) || !currentUser.value) return
     await loadNotifications()
+    if (!isAuthContextCurrent(context) || !currentUser.value) return
     startNotificationPolling()
   } catch {
-    stopNotificationPolling()
+    if (isAuthContextCurrent(context)) stopNotificationPolling()
   }
 }
 
 async function handleAlertsToggle(enabled: boolean) {
+  const context = captureAuthContext()
   const previous = alertsEnabled.value
   alertsEnabled.value = enabled
   try {
     await syncNotificationPreferences()
-    startNotificationPolling()
+    if (isAuthContextCurrent(context)) startNotificationPolling()
   } catch {
-    alertsEnabled.value = previous
+    if (isAuthContextCurrent(context)) alertsEnabled.value = previous
   }
 }
 
 async function handleMarkNotificationRead(notificationId: string) {
+  const context = captureAuthContext()
   const notification = notifications.value.find((item) => item.id === notificationId)
   if (!notification || notification.read) return
   notification.read = true
   try {
     await markNotificationRead(notificationId)
   } catch {
-    notification.read = false
+    if (isAuthContextCurrent(context)) notification.read = false
   }
 }
 
 async function handleMarkAllNotificationsRead() {
+  const context = captureAuthContext()
   const unreadIds = new Set(
     notifications.value.filter((item) => !item.read).map((item) => item.id),
   )
@@ -1035,6 +1076,7 @@ async function handleMarkAllNotificationsRead() {
   try {
     await markAllNotificationsRead()
   } catch {
+    if (!isAuthContextCurrent(context)) return
     notifications.value.forEach((item) => {
       if (unreadIds.has(item.id)) item.read = false
     })
@@ -1162,11 +1204,27 @@ function handleUnauthorized() {
   void loadPets()
 }
 
-onMounted(() => {
+function handleExternalSessionChange() {
+  clearAuthorizationScopedState()
+  currentUser.value = null
+  tab.value = 'radar'
+  authOpen.value = !storedSessionToken()
+  const context = captureAuthContext()
   void (async () => {
+    await router.replace(context.token ? '/' : '/login')
+    if (!isAuthContextCurrent(context)) return
+    await retrySession()
+  })()
+}
+
+onMounted(() => {
+  window.addEventListener('auth:external-change', handleExternalSessionChange)
+  void (async () => {
+    const context = captureAuthContext()
     await restoreSession()
+    if (!isAuthContextCurrent(context)) return
     await loadPets()
-    if (currentUser.value) await activateNotifications()
+    if (currentUser.value && isAuthContextCurrent(context)) await activateNotifications()
   })()
   window.addEventListener('auth:unauthorized', handleUnauthorized)
 })
@@ -1183,6 +1241,7 @@ onBeforeUnmount(() => {
   clearToastTimers()
   stopNotificationPolling()
   window.removeEventListener('auth:unauthorized', handleUnauthorized)
+  window.removeEventListener('auth:external-change', handleExternalSessionChange)
 })
 </script>
 

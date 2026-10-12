@@ -34,7 +34,7 @@ function assertSafePayload(value) {
 }
 const tables = new Map(models.map((Model) => [Model, new Map()]))
 const restore = [], owner = new mongoose.Types.ObjectId(), finder = new mongoose.Types.ObjectId(), unrelated = new mongoose.Types.ObjectId(), admin = new mongoose.Types.ObjectId()
-let server, url, petId, messageId, sightingId, failModel, blocked = false
+let server, url, petId, messageId, sightingId, failModel, reuniteAtStart, blocked = false
 const snapshot = (value) => JSON.parse(JSON.stringify(value))
 function match(row, filter) {
   return Object.entries(filter).every(([key, value]) => {
@@ -72,10 +72,12 @@ before(async () => {
   const connection = mongoose.connection, oldName = connection.name, oldReady = connection.readyState
   connection.name = 'petlostapp'; connection.readyState = 1
   restore.push(() => { connection.name = oldName; connection.readyState = oldReady })
-  patch(connection, 'startSession', async () => ({ async withTransaction(callback) {
+  patch(connection, 'startSession', async () => {
+    if (reuniteAtStart) { tables.get(Pet).get(reuniteAtStart).status = 'reunited'; reuniteAtStart = null }
+    return { async withTransaction(callback) {
     const beforeRows = new Map([...tables].map(([Model, rows]) => [Model, snapshot([...rows])]))
     try { await callback() } catch (error) { beforeRows.forEach((rows, Model) => { tables.set(Model, new Map(rows)) }); throw error }
-  }, async endSession() {} }))
+  }, async endSession() {} } })
   for (const Model of models) {
     const read = (filter) => [...tables.get(Model).values()].filter((row) => match(row, filter)).map((row) => new Model(row))
     patch(Model, 'find', (filter = {}) => query(() => read(filter)))
@@ -129,14 +131,63 @@ test('pet: new image IDs create one report and repeated submission returns that 
   assert.equal(tables.get(Pet).size, 1)
 })
 test('sighting: attaches once, owner/reporter delivery succeeds and unrelated/admin delivery fails', async () => {
-  const imageId = asset(finder, 'sighting'), body = { location: { type: 'Point', coordinates: [114.181, 22.301] }, locationName: 'Fictional sighting', imageIds: [imageId], submissionId: 'fictional_sighting_001' }
+  const imageId = asset(finder, 'sighting'), body = { location: { type: 'Point', coordinates: [114.181, 22.301] }, locationName: 'Fictional sighting', note: 'Private fixture details', imageIds: [imageId], submissionId: 'fictional_sighting_001' }
   const first = await request(`/pets/${petId}/sighting`, finder, body), result = await first.json()
   assert.equal(first.status, 201); sightingId = result.sighting.id
   const again = await request(`/pets/${petId}/sighting`, finder, body)
   assert.equal(again.status, 200); assert.equal((await again.json()).sighting.id, sightingId)
   for (const actor of [owner, finder]) assert.equal((await request(`/uploads/managed/${imageId}/content`, actor, undefined, 'GET')).status, 200)
   for (const actor of [undefined, unrelated, admin]) assert.equal((await request(`/uploads/managed/${imageId}/content`, actor, undefined, 'GET')).status, 404)
+  for (const actor of [owner, finder, undefined, unrelated, admin]) {
+    const history = await request(`/pets/${petId}/sightings`, actor, undefined, 'GET')
+    assert.equal(history.status, 200)
+    const entry = (await history.json()).sightings[0]
+    const permitted = actor === owner || actor === finder
+    assert.equal('note' in entry, permitted); assert.equal('photo' in entry, permitted)
+    assert.equal(entry.locationPrecision, permitted ? 'exact' : 'approximate')
+    if (permitted) { assert.equal(entry.note, body.note); assert.match(entry.photo, new RegExp(imageId)) }
+  }
+  const publicHistory = await request(`/pets/${petId}/sightings?view=public`, owner, undefined, 'GET')
+  assert.equal('note' in (await publicHistory.json()).sightings[0], false)
   assert.equal(tables.get(Sighting).size, 1)
+})
+
+test('photo-free HTTP submissions are idempotent; legacy photo references obey the same role projection', async () => {
+  const body = { location: { type: 'Point', coordinates: [114.182, 22.302] }, locationName: 'Fixture without image', note: 'Private photo-free note', submissionId: 'fictional_photo_free_001' }
+  const first = await request(`/pets/${petId}/sighting`, finder, body)
+  assert.equal(first.status, 201)
+  const firstBody = await first.json()
+  const duplicate = await request(`/pets/${petId}/sighting`, finder, body)
+  assert.equal(duplicate.status, 200); assert.equal((await duplicate.json()).sighting.id, firstBody.sighting.id)
+  assert.equal([...tables.get(Sighting).values()].filter((row) => row.submissionId === body.submissionId).length, 1)
+  tables.get(Sighting).get(firstBody.sighting.id).photo = '/uploads/legacy-fixture.jpg'
+  for (const actor of [owner, finder, undefined, unrelated, admin]) {
+    const history = await request(`/pets/${petId}/sightings`, actor, undefined, 'GET')
+    const entry = (await history.json()).sightings.find((row) => row.id === firstBody.sighting.id)
+    const permitted = actor === owner || actor === finder
+    assert.equal('note' in entry, permitted); assert.equal('photo' in entry, permitted)
+  }
+})
+
+test('HTTP creation rolls back status/assets on write failure and loses safely to a concurrent reunion (mock DB)', async () => {
+  for (const withImage of [false, true]) {
+    const targetId = String(put(Pet, { name: 'Fictional concurrency pet', species: 'Dog', reportedBy: owner, location: { type: 'Point', coordinates: [114.18, 22.3] } })._id)
+    const imageId = withImage ? asset(finder, 'sighting') : null
+    const body = { location: { type: 'Point', coordinates: [114.181, 22.301] }, locationName: 'Fixture concurrency', submissionId: `fictional_concurrency_${targetId}`, imageIds: imageId ? [imageId] : [] }
+    try {
+      failModel = Sighting
+      const failure = await request(`/pets/${targetId}/sighting`, finder, body)
+      assert.equal(failure.status, 503)
+      assert.equal(tables.get(Pet).get(targetId).status, 'lost')
+      if (imageId) assert.equal(tables.get(MediaAsset).get(imageId).state, 'pending')
+      failModel = null; reuniteAtStart = targetId
+      const conflict = await request(`/pets/${targetId}/sighting`, finder, body)
+      assert.equal(conflict.status, 409)
+      assert.equal(tables.get(Pet).get(targetId).status, 'reunited')
+      assert.equal([...tables.get(Sighting).values()].filter((row) => row.pet === targetId).length, 0)
+      if (imageId) assert.equal(tables.get(MediaAsset).get(imageId).state, 'pending')
+    } finally { failModel = null; reuniteAtStart = null }
+  }
 })
 test('rescue: URLs survive serialization and guest image delivery is available for a visible post', async () => {
   const imageId = asset(finder, 'stray')

@@ -206,7 +206,7 @@
           </section>
 
           <button
-            v-if="selectedEntry.type === 'post' && selectedEntry.outcome === 'lost'"
+            v-if="selectedEntry.type === 'post' && ['lost', 'sighted'].includes(selectedEntry.outcome)"
             class="reunited-action"
             type="button"
             @click="requestReunion(selectedEntry)"
@@ -411,7 +411,7 @@ function closeReunionConfirmation() {
 
 async function confirmReunion() {
   const target = reunionTarget.value
-  if (!target?.petId || target.type !== 'post' || target.outcome !== 'lost' || reunionSaving.value) {
+  if (!target?.petId || target.type !== 'post' || !['lost', 'sighted'].includes(target.outcome) || reunionSaving.value) {
     return
   }
 

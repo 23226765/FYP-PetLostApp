@@ -2,6 +2,7 @@ import { computed, readonly, ref } from 'vue'
 import { i18n, SUPPORTED_LANGUAGES } from '../i18n'
 import { updateUserPreferences } from '../services/api'
 import type { AppLanguage, AppTheme, UserPreferences } from '../types/user'
+import { captureAuthContext, isAuthContextCurrent, authContextError } from '../services/authSession'
 
 const STORAGE_KEY = 'pawradar_preferences_v1'
 const DEFAULTS: UserPreferences = { language: 'en', theme: 'light' }
@@ -42,6 +43,7 @@ const language = ref<AppLanguage>(initial.language)
 const theme = ref<AppTheme>(initial.theme)
 const saving = ref(false)
 const status = ref<'idle' | 'saved' | 'error'>('idle')
+let requestSequence = 0
 
 function applyDocumentPreferences(preferences: UserPreferences) {
   i18n.global.locale.value = preferences.language
@@ -69,11 +71,16 @@ function apply(preferences: UserPreferences, persist = true) {
 apply(initial, false)
 
 export function applyAccountPreferences(value: unknown) {
+  requestSequence += 1
+  saving.value = false
   apply(normalizePreferences(value))
   status.value = 'idle'
 }
 
 export async function setPreferences(update: Partial<UserPreferences>) {
+  const request = ++requestSequence
+  const context = captureAuthContext()
+  const active = () => request === requestSequence && isAuthContextCurrent(context)
   const previous: UserPreferences = { language: language.value, theme: theme.value }
   const next = normalizePreferences({ ...previous, ...update })
   apply(next)
@@ -84,15 +91,18 @@ export async function setPreferences(update: Partial<UserPreferences>) {
   saving.value = true
   try {
     const saved = normalizePreferences(await updateUserPreferences(update))
+    if (!active()) throw authContextError()
     apply(saved)
     status.value = 'saved'
     return saved
   } catch (error) {
-    apply(previous)
-    status.value = 'error'
+    if (active()) {
+      apply(previous)
+      status.value = 'error'
+    }
     throw error
   } finally {
-    saving.value = false
+    if (active()) saving.value = false
   }
 }
 
@@ -101,6 +111,11 @@ export function clearPreferenceStatus() {
 }
 
 if (typeof window !== 'undefined') {
+  window.addEventListener('auth:changed', () => {
+    requestSequence += 1
+    saving.value = false
+    status.value = 'idle'
+  })
   window.addEventListener('storage', (event) => {
     if (event.key !== STORAGE_KEY || !event.newValue) return
     try {

@@ -9,6 +9,7 @@ export function useImageUpload(purpose: ImagePurpose) {
   let key = createImageRequestId()
   let generation = 0
   let objectUrl = ''
+  let disposed = false
   const state = reactive({ preview: '', id: '', progress: 0, uploading: false, error: '' })
   const token = () => localStorage.getItem('token')
   function cancel() {
@@ -26,12 +27,14 @@ export function useImageUpload(purpose: ImagePurpose) {
     Object.assign(state, { preview: '', id: '', progress: 0, error: '' })
   }
   function select(value: Blob | string) {
+    if (disposed) return
     reset()
     source = value
     if (value instanceof Blob) { objectUrl = URL.createObjectURL(value); state.preview = objectUrl }
     else state.preview = value
   }
   async function ensure(): Promise<string[]> {
+    if (disposed) throw Object.assign(new Error('Cancelled'), { apiCode: 'IMAGE_CANCELLED' })
     if (!source) return []
     if (state.id) return [state.id]
     if (state.uploading) throw new Error('Image upload already in progress')
@@ -81,6 +84,7 @@ export function useImageUpload(purpose: ImagePurpose) {
   window.addEventListener('auth:unauthorized', authChanged)
   window.addEventListener('storage', authChanged)
   onScopeDispose(() => {
+    disposed = true
     reset()
     window.removeEventListener('auth:changed', authChanged)
     window.removeEventListener('auth:unauthorized', authChanged)

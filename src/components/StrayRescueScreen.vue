@@ -136,6 +136,7 @@
 <script setup lang="ts">
 import ManagedImage from "./ManagedImage.vue"
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
@@ -282,6 +283,8 @@ function onPhotoSelected(event: Event) {
 
 async function submitReport() {
   if (submitting.value) return
+  const context = captureAuthContext()
+  const active = () => !disposed && isAuthContextCurrent(context)
   submitting.value = true
   reportError.value = ''
   try {
@@ -291,6 +294,7 @@ async function submitReport() {
     if (form.species === 'Other' && !form.animalType.trim()) throw new Error(t('strayAnimal.typeRequired'))
     uploadStage.value = 'uploading'
     const imageIds = await imageUpload.ensure()
+    if (!active()) return
     uploadStage.value = 'posting'
     const created = await reportStray({
       species: form.species,
@@ -305,6 +309,7 @@ async function submitReport() {
       rescueStatus: 'reported',
       submissionId: form.submissionId,
     })
+    if (!active()) return
     strays.value = [created, ...strays.value.filter((item) => item.id !== created.id)]
     showReportForm.value = false
     form.locationName = ''
@@ -317,8 +322,8 @@ async function submitReport() {
     form.submissionId = ''
     await router.push(`/strays/${created.id}`)
   } catch (caught) {
-    reportError.value = translateApiError(caught, 'errors.submitStray')
-  } finally { submitting.value = false; uploadStage.value = 'idle' }
+    if (active()) reportError.value = translateApiError(caught, 'errors.submitStray')
+  } finally { if (active()) { submitting.value = false; uploadStage.value = 'idle' } }
 }
 
 watch(
@@ -329,7 +334,8 @@ watch(
 watch(() => props.reportRequest, (value, previous) => {
   if (value && value !== previous) openReportForm()
 }, { immediate: true })
-onBeforeUnmount(() => { requestSequence += 1; abortController?.abort() })
+let disposed = false
+onBeforeUnmount(() => { disposed = true; requestSequence += 1; abortController?.abort() })
 </script>
 
 <style scoped>

@@ -41,7 +41,7 @@ export async function retireMediaAssets(ids, { Assets = MediaAsset, storageFacto
  */
 export async function commitContentImages({
   Model, userId, purpose, type, values = {}, imageIds, existingId,
-  idempotencyFilter, authorize = async () => {}, minimum = 0,
+  idempotencyFilter, authorize = async () => {}, beforeCreate = async () => {}, minimum = 0,
 }, {
   Assets = MediaAsset, connection = Model.db, expectedDatabase = DATABASE_NAME,
   retire = retireMediaAssets, now = () => new Date(), retryDuplicate = true,
@@ -70,7 +70,12 @@ export async function commitContentImages({
         if (oldIds.join(',') !== ids.join(',')) throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
         result = { doc, duplicate: true }; return
       }
-      if (!doc) doc = new Model({ ...values, _id: new mongoose.Types.ObjectId() })
+      if (!doc) {
+        // Creation-only side effects share the transaction and must not run
+        // again when an idempotent request resolves to an existing document.
+        await beforeCreate(session)
+        doc = new Model({ ...values, _id: new mongoose.Types.ObjectId() })
+      }
       const destinationOwner = type === 'user' ? doc._id : type === 'message' ? doc.sentBy : doc.reportedBy
       if (String(destinationOwner) !== String(userId)) throw imageError('IMAGE_ATTACHMENT_FORBIDDEN')
       const oldIds = (doc.imageIds || []).map(String)
@@ -104,6 +109,7 @@ export async function commitContentImages({
     }, { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } })
   } catch (error) {
     if (error?.code?.startsWith?.('IMAGE_')) throw error
+    if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 500) throw error
     if (error?.code === 11000 && retryDuplicate && idempotencyFilter && !existingId) collided = true
     else if (error?.code === 11000) throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
     else {
@@ -113,7 +119,7 @@ export async function commitContentImages({
   } finally { await session.endSession() }
   // A simultaneous identical request may win the unique submission index. Read
   // it in a fresh transaction, repeating authorization and identity checks.
-  if (collided) return commitContentImages({ Model, userId, purpose, type, values, imageIds: ids, existingId, idempotencyFilter, authorize, minimum },
+  if (collided) return commitContentImages({ Model, userId, purpose, type, values, imageIds: ids, existingId, idempotencyFilter, authorize, beforeCreate, minimum },
     { Assets, connection, expectedDatabase, retire, now, retryDuplicate: false })
   // Never delete the old provider object before the new DB state commits.
   if (detached.length) {

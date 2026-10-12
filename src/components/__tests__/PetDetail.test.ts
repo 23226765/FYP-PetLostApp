@@ -48,6 +48,36 @@ const sighting: Sighting = {
 describe('PetDetail sighting history', () => {
   beforeEach(() => apiMocks.getPetSightings.mockReset())
 
+  it.each(['lost', 'sighted'] as const)('owner can reunite a %s pet and further sightings are disabled', async (status) => {
+    apiMocks.getPetSightings.mockResolvedValue([])
+    apiMocks.updatePetStatus.mockResolvedValue({ ...maple, status: 'reunited' })
+    const wrapper = mount(PetDetail, {
+      props: { pet: { ...maple, status }, user: { id: 'owner-id', name: 'Owner', email: 'owner@example.test' } },
+      global: { stubs: { MapView: true, AppIcon: true, ContentImageEditor: true } },
+    })
+    await flushPromises()
+    await wrapper.get('.reunited-cta').trigger('click')
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Has your pet')
+    await wrapper.get('.confirm-reunion').trigger('click'); await flushPromises()
+    expect(apiMocks.updatePetStatus).toHaveBeenCalledWith(maple.id, 'reunited')
+    expect(wrapper.find('.reunited-cta').exists()).toBe(false)
+    expect(wrapper.get('.found-cta').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.found-cta').classes()).toContain('sightings-closed')
+    expect(wrapper.emitted('status-updated')?.[0]).toEqual([{ ...maple, status: 'reunited' }])
+    wrapper.unmount()
+  })
+
+  it('unrelated users have no reunion control even when a pet is sighted', async () => {
+    apiMocks.getPetSightings.mockResolvedValue([])
+    const wrapper = mount(PetDetail, {
+      props: { pet: { ...maple, status: 'sighted' }, user: { id: 'unrelated', name: 'Unrelated', email: 'other@example.test' } },
+      global: { stubs: { MapView: true, AppIcon: true } },
+    })
+    await flushPromises()
+    expect(wrapper.find('.reunited-cta').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('renders one timeline entry per MongoDB id and keeps owner-only contact data', async () => {
     apiMocks.getPetSightings.mockResolvedValue([sighting, { ...sighting }])
     const wrapper = mount(PetDetail, {

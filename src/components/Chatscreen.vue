@@ -140,6 +140,7 @@
 import ManagedImage from "./ManagedImage.vue"
 import ContentImageEditor from './ContentImageEditor.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import { useImageUpload, createImageRequestId } from '../composables/useImageUpload'
@@ -258,6 +259,9 @@ function onAttachmentSelected(event: Event) {
 }
 
 async function send() {
+  const context = captureAuthContext()
+  const petId = props.pet.id, participantId = props.pet.participantId
+  const active = () => !disposed && isAuthContextCurrent(context) && props.pet.id === petId && props.pet.participantId === participantId
   const text = draft.value.trim()
   const photo = pendingPhoto.value
   if ((!text && !photo) || sending.value) return
@@ -266,12 +270,14 @@ async function send() {
   error.value = ''
   try {
     const imageIds = await imageUpload.ensure()
-    const message = await sendMessage(props.pet.id, {
+    if (!active()) return
+    const message = await sendMessage(petId, {
       text,
       imageIds,
       clientRequestId,
-      participantId: props.pet.participantId,
+      participantId,
     })
+    if (!active()) return
     currentSender.value = message.sender
     mergeMessages([message])
     draft.value = ''
@@ -279,9 +285,9 @@ async function send() {
     clientRequestId = createImageRequestId()
     await scrollToBottom('smooth')
   } catch (e) {
-    error.value = translateApiError(e, 'errors.sendMessage')
+    if (active()) error.value = translateApiError(e, 'errors.sendMessage')
   } finally {
-    sending.value = false
+    if (active()) sending.value = false
   }
 }
 
@@ -298,12 +304,16 @@ function openSharedPost(id: string) {
   void router.push(`/strays/${id}`)
 }
 
+let disposed = false
 onMounted(async () => {
+  const context = captureAuthContext()
   await loadMessages(true)
+  if (disposed || !isAuthContextCurrent(context)) return
   pollTimer = setInterval(() => void loadMessages(), 5000)
 })
 
 onBeforeUnmount(() => {
+  disposed = true
   if (pollTimer) clearInterval(pollTimer)
 })
 </script>

@@ -58,4 +58,22 @@ describe('central language and appearance preferences', () => {
     expect(petName).toBe('Little Save')
     expect(userMessage).toBe('Please meet me near the station.')
   })
+
+  it.each(['resolve', 'reject'])('ignores an old account preference completion (%s)', async (outcome) => {
+    let resolve!: (value: unknown) => void
+    let reject!: (error: Error) => void
+    localStorage.setItem('token', 'owner-fixture')
+    apiMocks.updateUserPreferences.mockReturnValue(new Promise((yes, no) => { resolve = yes; reject = no }))
+    const pending = setPreferences({ theme: 'dark' }).catch(() => undefined)
+    localStorage.setItem('token', 'finder-fixture')
+    applyAccountPreferences({ language: 'zh-HK', theme: 'dark' })
+    if (outcome === 'resolve') resolve({ language: 'en', theme: 'light' })
+    else reject(new Error('Old account failed'))
+    await pending
+    expect(usePreferences().language.value).toBe('zh-HK')
+    expect(usePreferences().theme.value).toBe('dark')
+    expect(usePreferences().status.value).toBe('idle')
+    expect(usePreferences().saving.value).toBe(false)
+    expect(JSON.parse(localStorage.getItem('pawradar_preferences_v1') || '{}')).toEqual({ language: 'zh-HK', theme: 'dark' })
+  })
 })

@@ -224,7 +224,7 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
     location: { type: 'Point', coordinates: [114.19, 22.38] },
     locationName: 'Sha Tin Park',
     note: 'Near the fountain',
-    photo: '',
+    photo: 'https://example.test/private-sighting.jpg',
     reporterName: 'FYP Finder',
     reporterPhone: '+852 5555 0102',
     confirmedBy: [],
@@ -256,6 +256,8 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
       assert.equal(response.payload.sightings[0].locationPrecision, 'exact')
       assert.deepEqual(response.payload.sightings[0].coordinates, [114.19, 22.38])
       assert.equal(response.payload.sightings.length, 1)
+      assert.equal(response.payload.sightings[0].note, 'Near the fountain')
+      assert.equal(response.payload.sightings[0].photo, sighting.photo)
     }
 
     const unrelatedResponse = responseRecorder()
@@ -270,7 +272,8 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
     assert.equal(unrelatedResponse.payload.sightings[0].locationPrecision, 'approximate')
     assert.equal(unrelatedResponse.payload.sightings[0].locationName, 'Sha Tin')
     assert.notDeepEqual(unrelatedResponse.payload.sightings[0].coordinates, [114.19, 22.38])
-    assert.equal(unrelatedResponse.payload.sightings[0].note, 'Near the fountain')
+    assert.equal('note' in unrelatedResponse.payload.sightings[0], false)
+    assert.equal('photo' in unrelatedResponse.payload.sightings[0], false)
 
     const adminResponse = responseRecorder()
     await listSightings(
@@ -283,6 +286,8 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
     )
     assert.equal(adminResponse.payload.sightings[0].locationPrecision, 'approximate')
     assert.equal('reporterName' in adminResponse.payload.sightings[0], false)
+    assert.equal('note' in adminResponse.payload.sightings[0], false)
+    assert.equal('photo' in adminResponse.payload.sightings[0], false)
 
     const guestResponse = responseRecorder()
     await listSightings({ params: { id: String(petId) } }, guestResponse, failOnNext)
@@ -465,6 +470,10 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
   let storedSighting = null
   let createCount = 0
   let saveCount = 0
+  const originalSave = Sighting.prototype.save
+  const originalUpdateOne = Pet.updateOne
+  const connection = Sighting.db
+  const originalName = connection.name, originalReady = connection.readyState, originalStartSession = connection.startSession
   const pet = petRecord({
     _id: petId,
     reportedBy: ownerId,
@@ -472,18 +481,19 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
   })
 
   try {
-    Pet.findOne = async () => pet
+    connection.name = 'petlostapp'; connection.readyState = 1
+    connection.startSession = async () => ({ withTransaction: async (callback) => callback(), endSession: async () => {} })
+    Pet.findOne = () => ({ session() { return this }, then(resolve) { return Promise.resolve(pet).then(resolve) } })
+    Pet.updateOne = async (_filter, _update, { session }) => { assert.ok(session); saveCount++; return { matchedCount: 1 } }
     Sighting.findOne = () => ({
-      select: async () => storedSighting,
+      select() { return this }, session() { return this }, then(resolve) { return Promise.resolve(storedSighting).then(resolve) },
     })
-    Sighting.create = async (data) => {
+    Sighting.prototype.save = async function ({ session }) {
+      assert.ok(session)
       createCount += 1
-      storedSighting = {
-        _id: sightingId,
-        ...data,
-        confirmedBy: [],
-        createdAt: new Date('2026-09-18T08:00:00.000Z'),
-      }
+      this._id = sightingId
+      this.createdAt = new Date('2026-09-18T08:00:00.000Z')
+      storedSighting = this
       return storedSighting
     }
     User.aggregate = async () => []
@@ -514,7 +524,7 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
     const firstResponse = responseRecorder()
     await submitSighting(request, firstResponse, failOnNext)
     assert.equal(firstResponse.statusCode, 201)
-    assert.deepEqual(storedSighting.location, {
+    assert.deepEqual(storedSighting.location.toObject(), {
       type: 'Point',
       coordinates: [114.1694, 22.3193],
     })
@@ -536,6 +546,9 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
     User.find = originalUserFind
     User.aggregate = originalUserAggregate
     Notification.bulkWrite = originalBulkWrite
+    Sighting.prototype.save = originalSave
+    Pet.updateOne = originalUpdateOne
+    connection.name = originalName; connection.readyState = originalReady; connection.startSession = originalStartSession
   }
 })
 

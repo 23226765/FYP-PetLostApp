@@ -83,6 +83,7 @@ export function translateApiError(error: unknown, fallbackKey = 'errors.generic'
     IMAGE_UPLOAD_RETRY_REQUIRED: 'media.unavailable',
     IMAGE_UPLOAD_QUOTA: 'errors.rateLimited',
     AUTH_CONTEXT_CHANGED: 'media.authChanged',
+    AUTH_SERVICE_UNAVAILABLE: 'errors.authenticationUnavailable',
     IMAGE_CANCELLED: 'media.cancelled',
     INVALID_PREFERENCES_BODY: 'errors.savePreferences',
     EMPTY_PREFERENCES_UPDATE: 'errors.savePreferences',

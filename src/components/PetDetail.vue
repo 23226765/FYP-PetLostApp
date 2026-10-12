@@ -280,7 +280,7 @@
       />
 
       <button
-        v-if="isOwner && currentStatus === 'lost'"
+        v-if="isOwner && ['lost', 'sighted'].includes(currentStatus)"
         class="reunited-cta"
         type="button"
         @click="showReunionConfirm = true"
@@ -454,7 +454,7 @@ function closeReunionConfirmation() {
 }
 
 async function confirmReunion() {
-  if (!isOwner.value || currentStatus.value !== 'lost' || reunionSaving.value) return
+  if (!isOwner.value || !['lost', 'sighted'].includes(currentStatus.value) || reunionSaving.value) return
 
   reunionSaving.value = true
   reunionError.value = ''

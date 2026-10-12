@@ -120,13 +120,14 @@
 
 <script setup lang="ts">
 import ManagedImage from "./ManagedImage.vue"
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useImageUpload, createImageRequestId } from '../composables/useImageUpload'
 import ImageUploadStatus from './ImageUploadStatus.vue'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import { reportLostPet } from '../services/api'
 import { getCurrentLocation } from '../services/geolocation'
+import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import type { User } from '../types/user'
 import { HK_DISTRICTS } from '../types/pet'
 import { translateApiError, useAppI18n } from '../i18n'
@@ -144,6 +145,8 @@ const imageUpload = useImageUpload('pet')
 const photo = computed(() => imageUpload.preview)
 const photoInput = ref<HTMLInputElement | null>(null)
 const submissionId = createImageRequestId()
+let disposed = false
+onBeforeUnmount(() => { disposed = true })
 const form = reactive({
   name: '',
   species: 'Dog' as (typeof species)[number],
@@ -187,11 +190,15 @@ async function currentCoordinates(): Promise<[number, number]> {
 
 async function submit() {
   if (submitting.value) return
+  const context = captureAuthContext()
+  const active = () => !disposed && isAuthContextCurrent(context)
   submitting.value = true
   error.value = ''
   try {
     const coordinates = await currentCoordinates()
+    if (!active()) return
     const imageIds = await imageUpload.ensure()
+    if (!active()) return
     await reportLostPet({
       name: form.name,
       species: form.species,
@@ -207,12 +214,13 @@ async function submit() {
       locationName: form.location || 'Current location',
       coordinates,
     })
+    if (!active()) return
     submitted.value = true
     imageUpload.finish()
   } catch (e) {
-    error.value = translateApiError(e, 'errors.postPet')
+    if (active()) error.value = translateApiError(e, 'errors.postPet')
   } finally {
-    submitting.value = false
+    if (active()) submitting.value = false
   }
 }
 </script>

@@ -1,7 +1,7 @@
 <template>
   <div class="auth-screen">
     <header class="auth-head">
-      <button class="close-btn" :aria-label="t('common.close')" @click="emit('close')">
+      <button class="close-btn" :aria-label="t('common.close')" @click="cancel('close')">
         <AppIcon name="close" :size="20" />
       </button>
       <div class="logo-circle"><AppIcon name="paw" :size="34" /></div>
@@ -18,11 +18,12 @@
 
     <form class="form" @submit.prevent="submit">
       <Transition name="expand">
-        <p v-if="error" class="error-banner" role="alert">
+        <p v-if="error || sessionError" class="error-banner" role="alert">
           <AppIcon name="close" :size="15" />
-          {{ error }}
+          {{ error || sessionError }}
         </p>
       </Transition>
+      <button v-if="sessionError" type="button" class="guest-link" @click="emit('retry-session')">{{ t('common.retry') }}</button>
 
       <label v-if="mode === 'register'" class="field">
         <span>{{ t('authentication.fullName') }}</span>
@@ -63,22 +64,26 @@
       </button>
     </form>
 
-    <button class="guest-link" @click="emit('guest')">{{ t('authentication.continueGuest') }}</button>
+    <button class="guest-link" @click="cancel('guest')">{{ t('authentication.continueGuest') }}</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { login, register } from '../services/api'
 import type { User } from '../types/user'
 import { translateApiError, useAppI18n } from '../i18n'
+import { captureAuthContext, isAuthContextCurrent, invalidateAuthContext, setSessionToken } from '../services/authSession'
+
+withDefaults(defineProps<{ sessionError?: string }>(), { sessionError: '' })
 
 const emit = defineEmits<{
   close: []
   guest: []
   failed: []
   authenticated: [user: User]
+  'retry-session': []
 }>()
 const { t } = useAppI18n()
 
@@ -89,20 +94,37 @@ const phone = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+let requestSequence = 0
+
+function cancel(action: 'close' | 'guest') {
+  requestSequence += 1
+  loading.value = false
+  invalidateAuthContext()
+  if (action === 'close') emit('close')
+  else emit('guest')
+}
+
+onBeforeUnmount(() => { requestSequence += 1 })
 
 function switchMode(m: 'login' | 'register') {
+  requestSequence += 1
+  loading.value = false
   mode.value = m
   error.value = ''
 }
 
 async function submit() {
   if (loading.value) return
+  const request = ++requestSequence
+  const context = captureAuthContext()
+  const active = () => request === requestSequence && isAuthContextCurrent(context)
   loading.value = true
   error.value = ''
   try {
     if (mode.value === 'login') {
       const res = await login({ email: email.value, password: password.value })
-      localStorage.setItem('token', res.token)
+      if (!active()) return
+      setSessionToken(res.token)
       emit('authenticated', res.user)
     } else {
       const res = await register({
@@ -111,15 +133,17 @@ async function submit() {
         password: password.value,
         phone: phone.value,
       })
-      localStorage.setItem('token', res.token)
+      if (!active()) return
+      setSessionToken(res.token)
       emit('authenticated', res.user)
     }
   } catch (e) {
+    if (!active()) return
     emit('failed')
     const err = e as Error & { apiCode?: string }
     error.value = err.apiCode ? translateApiError(e) : err.message || translateApiError(e)
   } finally {
-    loading.value = false
+    if (request === requestSequence) loading.value = false
   }
 }
 </script>

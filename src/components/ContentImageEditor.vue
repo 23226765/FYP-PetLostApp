@@ -13,7 +13,8 @@
   </details>
 </template>
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
+import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import { useImageUpload } from '../composables/useImageUpload'
 import { replaceContentImages, type ManagedImage as ManagedImageData } from '../services/api'
 import { translateApiError, useAppI18n } from '../i18n'
@@ -24,6 +25,8 @@ const emit = defineEmits<{ updated: [images: ManagedImageData[]] }>()
 const { t } = useAppI18n()
 const upload = useImageUpload(props.type)
 const saving = ref(false), error = ref(''), saved = ref(false)
+let disposed = false
+onBeforeUnmount(() => { disposed = true })
 watch(() => [props.type, props.id], () => { upload.reset(false); error.value = ''; saved.value = false })
 function choose(event: Event) {
   const input = event.target as HTMLInputElement
@@ -34,23 +37,28 @@ async function save() {
   if (saving.value) return
   saving.value = true; error.value = ''; saved.value = false
   const type = props.type, id = props.id
+  const context = captureAuthContext()
+  const active = () => !disposed && isAuthContextCurrent(context) && props.type === type && props.id === id
   try {
     const ids = await upload.ensure()
-    if (!ids.length || props.type !== type || props.id !== id) return
+    if (!ids.length || !active()) return
     const images = await replaceContentImages(type, id, ids)
-    if (props.type !== type || props.id !== id) return
+    if (!active()) return
     upload.finish(); emit('updated', images); saved.value = true
-  } catch (caught) { error.value = translateApiError(caught, 'media.saveFailed') }
-  finally { saving.value = false }
+  } catch (caught) { if (active()) error.value = translateApiError(caught, 'media.saveFailed') }
+  finally { if (!disposed && isAuthContextCurrent(context)) saving.value = false }
 }
 async function remove() {
   if (saving.value || !window.confirm(t('media.confirmRemove'))) return
   saving.value = true; error.value = ''
+  const context = captureAuthContext(), type = props.type, id = props.id
+  const active = () => !disposed && isAuthContextCurrent(context) && props.type === type && props.id === id
   try {
-    const images = await replaceContentImages(props.type, props.id, [])
+    const images = await replaceContentImages(type, id, [])
+    if (!active()) return
     upload.finish(); emit('updated', images); saved.value = true
-  } catch (caught) { error.value = translateApiError(caught, 'media.saveFailed') }
-  finally { saving.value = false }
+  } catch (caught) { if (active()) error.value = translateApiError(caught, 'media.saveFailed') }
+  finally { if (!disposed && isAuthContextCurrent(context)) saving.value = false }
 }
 </script>
 <style scoped>

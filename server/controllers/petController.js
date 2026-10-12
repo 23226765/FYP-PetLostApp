@@ -11,8 +11,10 @@ import {
 } from '../services/contactPrivacy.js'
 import { createRadiusNotifications } from './notificationController.js'
 import { logServerError } from '../middleware/errorHandler.js'
+import { commitSightingSubmission } from '../services/sightingSubmission.js'
 import {
   anonymousSearchCoordinates,
+  canViewExactSightingLocation,
   distanceBand,
   exactDistanceKm,
   MIN_ANONYMOUS_RADIUS_KM,
@@ -143,14 +145,6 @@ function invalidRequestBody(res) {
     success: false,
     message: 'Invalid or missing request body',
   })
-}
-
-function isSameSightingSubmission(sighting, pet, user) {
-  const existingReporterId = sighting.reportedBy ? String(sighting.reportedBy) : ''
-  const requestReporterId = user?._id ? String(user._id) : ''
-  return (
-    String(sighting.pet) === String(pet._id) && existingReporterId === requestReporterId
-  )
 }
 
 function relativeDay(date) {
@@ -522,17 +516,23 @@ export async function smartMatch(req, res, next) {
     const observation = {
       species,
       breed: normalizedBreed,
-      coordinates: coordinates.map(Number),
+      coordinates: anonymousSearchCoordinates(null, coordinates),
     }
     const contactOwners = await loadContactOwners(pets)
     const blockedUserIds = req.user ? await blockedUserIdsFor(req.user._id) : new Set()
     const matches = pets
       .map((pet) => {
-        const score = scoreCandidate(observation, pet)
-        const internalDistanceKm = score.breakdown.distanceKm
+        // Every disclosed score and ranking uses the public grid, not the
+        // precise stored point. Removing distanceKm alone is not sufficient:
+        // the continuous distance score and totals can be inverted.
+        const publicLocation = projectPetLocation(pet, null)
+        const score = scoreCandidate(observation, {
+          species: pet.species, breed: pet.breed, createdAt: pet.createdAt,
+          coordinates: publicLocation.coordinates,
+        })
+        const publicDistanceKm = score.breakdown.distanceKm
         const { distanceKm: _privateDistanceKm, ...publicBreakdown } = score.breakdown
         return {
-          internalDistanceKm,
           result: {
             ...serializePet(pet, {
               requester: req.user,
@@ -542,7 +542,7 @@ export async function smartMatch(req, res, next) {
             totalScore: score.totalScore,
             breakdown: {
               ...publicBreakdown,
-              distanceBand: distanceBand(internalDistanceKm),
+              distanceBand: distanceBand(publicDistanceKm),
             },
             confidence: score.totalScore,
             sightingCount: sightingCounts.get(String(pet._id)) || 0,
@@ -552,8 +552,7 @@ export async function smartMatch(req, res, next) {
       .sort(
         (left, right) =>
           right.result.totalScore - left.result.totalScore ||
-          (left.internalDistanceKm ?? Number.POSITIVE_INFINITY) -
-            (right.internalDistanceKm ?? Number.POSITIVE_INFINITY),
+          left.result.id.localeCompare(right.result.id),
       )
       .slice(0, resultLimit)
       .map(({ result }) => result)
@@ -600,7 +599,6 @@ export async function listSightings(req, res, next) {
       visibleContentFilter({ pet: req.params.id }),
     ).sort({ createdAt: 1, _id: 1 })
     const currentUserId = req.user?._id ? String(req.user._id) : null
-    const ownerId = pet.reportedBy ? String(pet.reportedBy) : null
     const uniqueDocs = [
       ...new Map(docs.map((sighting) => [String(sighting._id), sighting])).values(),
     ].sort(
@@ -613,11 +611,10 @@ export async function listSightings(req, res, next) {
     const sightings = uniqueDocs.map((sighting) => {
       const confirmedBy = Array.isArray(sighting.confirmedBy) ? sighting.confirmedBy : []
       const reporterId = sighting.reportedBy ? String(sighting.reportedBy) : null
-      const canViewReporter = Boolean(
-        currentUserId && (currentUserId === ownerId || currentUserId === reporterId),
-      )
-      const projectedLocation = projectSightingLocation(sighting, pet, req.user)
-      const canViewContent = Boolean(currentUserId)
+      const options = { forcePublic: forcePublicProjection(req) }
+      const canViewContent = canViewExactSightingLocation(req.user, pet, sighting, options)
+      const canViewReporter = canViewContent
+      const projectedLocation = projectSightingLocation(sighting, pet, req.user, options)
       const contactOwner = contactOwnerFrom(reporters, sighting.reportedBy)
       const serialized = {
         id: String(sighting._id),
@@ -828,52 +825,16 @@ export async function submitSighting(req, res, next) {
       sightedAt: new Date(),
     }
 
-    let sighting = null
-    let created = true
-    if (imageIds.length) {
-      if (!normalizedSubmissionId) throw imageError('IMAGE_REQUEST_INVALID')
-      const result = await commitContentImages({ Model: Sighting, type: 'sighting', purpose: 'sighting', userId: req.user._id,
-        values: sightingData, imageIds, idempotencyFilter: { submissionId: normalizedSubmissionId, pet: pet._id, reportedBy: req.user._id },
-        authorize: async (session) => {
-          const target = await Pet.findOne(visibleContentFilter({ _id: pet._id, status: { $ne: 'reunited' } })).session(session)
-          if (!target) throw imageError('IMAGE_NOT_FOUND')
-          await Pet.updateOne({ _id: pet._id }, { $set: { status: 'sighted' } }, { session })
-        } })
-      sighting = result.doc; created = !result.duplicate
-    }
-    if (normalizedSubmissionId && !sighting) {
-      sighting = await Sighting.findOne(
-        visibleContentFilter({ submissionId: normalizedSubmissionId }),
-      ).select('+submissionId')
-      if (sighting) {
-        if (!isSameSightingSubmission(sighting, pet, req.user)) {
-          return res.status(409).json({ error: 'This sighting submission identifier is in use.' })
-        }
-        created = false
-      }
-    }
-
-    if (!sighting) {
-      try {
-        sighting = await Sighting.create(sightingData)
-      } catch (error) {
-        if (error?.code !== 11000 || !normalizedSubmissionId) throw error
-        sighting = await Sighting.findOne(
-          visibleContentFilter({ submissionId: normalizedSubmissionId }),
-        ).select('+submissionId')
-        if (!sighting) {
-          return res.status(409).json({ error: 'This sighting submission is unavailable.' })
-        }
-        if (!isSameSightingSubmission(sighting, pet, req.user)) {
-          return res.status(409).json({ error: 'This sighting submission identifier is in use.' })
-        }
-        created = false
-      }
-    }
+    if (imageIds.length && !normalizedSubmissionId) throw imageError('IMAGE_REQUEST_INVALID')
+    const result = await commitSightingSubmission({
+      petId: pet._id, userId: req.user._id, values: sightingData,
+      imageIds, submissionId: normalizedSubmissionId,
+    })
+    const sighting = result.doc
+    const created = !result.duplicate
 
     if (created) {
       pet.status = 'sighted'
-      if (!imageIds.length) await pet.save()
 
       try {
         await createRadiusNotifications({

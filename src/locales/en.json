@@ -723,6 +723,7 @@
     "rescueLocationRequired": "Choose the animal's location before publishing."
   },
   "errors": {
+    "authenticationUnavailable": "Sign-in is temporarily unavailable. Your saved session has been kept. Please try again.",
     "generic": "Something went wrong. Please try again.",
     "network": "Cannot reach the PawRadar server. Check that the backend is running.",
     "loadPreferences": "Unable to load preferences.",
