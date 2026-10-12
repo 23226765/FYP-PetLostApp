@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { getProfile } from '../api'
+import { getProfile, readManagedImage } from '../api'
 import { invalidateAuthContext, setSessionToken } from '../authSession'
 
 const transport = vi.hoisted(() => vi.fn())
@@ -24,6 +24,17 @@ describe('real Axios interceptors with isolated transport fixtures', () => {
       { config, status: 401, statusText: 'Unauthorized', headers: {}, data: {} })))
     await expect(getProfile()).rejects.toMatchObject({ status: 401 })
     expect(localStorage.getItem('token')).toBeNull()
+  })
+  it('legacy image requests use Authorization headers and a token-free fixed API path', async () => {
+    setSessionToken('fictional-legacy-token')
+    transport.mockImplementation((config: InternalAxiosRequestConfig) => {
+      expect(config.url).toBe('/uploads/legacy/private.webp')
+      expect(config.headers.Authorization).toBe('Bearer fictional-legacy-token')
+      expect(config.url).not.toContain('fictional-legacy-token')
+      expect(config.responseType).toBe('blob')
+      return Promise.resolve({ config, status: 200, statusText: 'OK', headers: {}, data: new Blob(['safe']) })
+    })
+    await expect(readManagedImage('/uploads/legacy/private.webp', new AbortController().signal)).resolves.toBeInstanceOf(Blob)
   })
   it.each(['success', 'failure'])('same-token invalidation rejects stale %s without changing the new context', async (outcome) => {
     setSessionToken('fixture-session')

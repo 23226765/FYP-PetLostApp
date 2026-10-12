@@ -29,6 +29,8 @@ import type { Pet, Sighting } from '../types/pet'
 import type { StrayReport } from '../types/stray'
 import type { HotspotCell } from '../types/analytics'
 import { getCurrentLocation } from '../services/geolocation'
+import { protectedImagePath } from '../utils/managedImages'
+import { createProtectedMapImages } from '../utils/protectedMapImages'
 import { translateApiError, useAppI18n } from '../i18n'
 import { formatDateTime, petStatusLabel, rescueStatusLabel, strayAnimalLabel, strayConditionLabel } from '../i18n/formatters'
 
@@ -51,6 +53,9 @@ const emit = defineEmits<{
 }>()
 
 const mapEl = ref<HTMLElement | null>(null)
+const protectedImages = createProtectedMapImages()
+function clearProtectedImages() { protectedImages.clear(true) }
+window.addEventListener('auth:changed', clearProtectedImages)
 
 let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
@@ -111,14 +116,15 @@ function normalizedImageUrl(value: string | null | undefined): string {
 
 function imageMarkup(photo: string | undefined, label: string, className: string): string {
   const url = normalizedImageUrl(photo)
-  const placeholderClass = url ? '' : ' is-placeholder'
+  const placeholderClass = url && !protectedImagePath(url) ? '' : ' is-placeholder'
   const image = url
-    ? `<img src="${esc(url)}" alt="" aria-hidden="true" data-pawradar-image />`
+    ? `<img ${protectedImagePath(url) ? `data-pawradar-source="${esc(url)}"` : `src="${esc(url)}"`} alt="" aria-hidden="true" data-pawradar-image />`
     : ''
   return `<span class="pawradar-media ${className}${placeholderClass}" data-pawradar-media role="img" aria-label="${esc(label)}">${image}${PAW_PLACEHOLDER}</span>`
 }
 
 function bindImageFallback(root: HTMLElement | null | undefined) {
+  protectedImages.prune()
   root?.querySelectorAll<HTMLImageElement>('[data-pawradar-image]').forEach((image) => {
     const media = image.closest<HTMLElement>('[data-pawradar-media]')
     const showPlaceholder = () => {
@@ -128,7 +134,8 @@ function bindImageFallback(root: HTMLElement | null | undefined) {
 
     image.onerror = showPlaceholder
     image.onload = () => media?.classList.remove('is-placeholder')
-    if (image.complete && image.naturalWidth === 0) showPlaceholder()
+    if (image.dataset.pawradarSource) void protectedImages.load(image, image.dataset.pawradarSource)
+    else if (image.complete && image.naturalWidth === 0) showPlaceholder()
   })
 }
 
@@ -211,6 +218,7 @@ function popupHtml(pet: Pet): string {
 function renderPets() {
   if (!map || !markersLayer) return
   markersLayer.clearLayers()
+  protectedImages.prune()
   for (const pet of props.pets) {
     const coordinates = petLatLng(pet)
     if (!coordinates) continue
@@ -226,6 +234,7 @@ function renderPets() {
     marker.on('popupclose', () => {
       const btn = marker.getPopup()?.getElement()?.querySelector<HTMLButtonElement>('.pawradar-view')
       if (btn) btn.onclick = null
+      protectedImages.prune()
     })
     markersLayer.addLayer(marker)
     bindImageFallback(marker.getElement())
@@ -269,6 +278,7 @@ function renderStrays() {
   if (!map || !straysLayer) return
   const layer = straysLayer
   layer.clearLayers()
+  protectedImages.prune()
   for (const stray of props.strays ?? []) {
     const coordinates = strayLatLng(stray)
     if (!coordinates) continue
@@ -283,6 +293,7 @@ function renderStrays() {
     marker.on('popupclose', () => {
       const button = marker.getPopup()?.getElement()?.querySelector<HTMLButtonElement>('[data-stray-id]')
       if (button) button.onclick = null
+      protectedImages.prune()
     })
     marker.addTo(layer)
     bindImageFallback(marker.getElement())
@@ -590,6 +601,8 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  protectedImages.dispose()
+  window.removeEventListener('auth:changed', clearProtectedImages)
   disposed = true
   centerRequest += 1
   heatRenderRequest += 1

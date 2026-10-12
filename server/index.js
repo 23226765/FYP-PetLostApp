@@ -34,6 +34,7 @@ const [
   { default: uploadsRouter },
   { default: safetyRouter },
   { default: moderationRouter },
+  { default: legacyImagesRouter },
 ] = await Promise.all([
   import('./routes/pets.js'),
   import('./routes/auth.js'),
@@ -45,6 +46,7 @@ const [
   import('./routes/uploads.js'),
   import('./routes/safety.js'),
   import('./routes/moderation.js'),
+  import('./routes/legacyImages.js'),
 ])
 
 const app = express()
@@ -61,11 +63,7 @@ try {
 }
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
-app.use('/uploads', express.static(path.resolve(serverDirectory, 'uploads'), {
-  fallthrough: false,
-  immutable: true,
-  maxAge: '30d',
-}))
+app.use('/uploads', legacyImagesRouter)
 
 app.get('/api/health', async (_req, res) => {
   const database = await databaseHealth()

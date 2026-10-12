@@ -9,7 +9,7 @@
 - Database: MongoDB Atlas, always selected as lowercase `petlostapp` through `dbName` in `server/config/database.js`.
 - Secrets: `MONGODB_URI` and `JWT_SECRET` are loaded only from `server/.env`. That file is Git-ignored.
 - Startup safety: the server validates the JWT secret, connects, confirms the selected database name, pings Atlas, creates the known collections/indexes, and only then listens.
-- Images: legacy URL/Base64 strings and local files remain readable. New avatar/pet/sighting/rescue/chat writes use uploaded `MediaAsset` IDs, never image bytes or arbitrary URLs. Managed uploads remain opt-in; provider metadata is private.
+- Images: legacy URL/Base64 strings remain compatible; local files require established owning references and permission-checked delivery. New avatar/pet/sighting/rescue/chat writes use uploaded `MediaAsset` IDs, never image bytes or arbitrary URLs. Managed uploads remain opt-in; provider metadata is private.
 
 `JWT_SECRET` must contain at least 32 characters and cannot be a known development placeholder. Validation errors never echo the supplied value.
 
@@ -123,6 +123,8 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | POST | `/api/matches/candidates` | Optional | species, breed, coordinates `[lng,lat]`, limit | Same explainable Smart Match engine as pet route |
 | GET | `/api/analytics/hotspots` | Public | lat, lng, radiusKm, days, source | Aggregated visible sighting and active/visible rescue heat cells |
 | POST | `/api/uploads/image` | Required | Legacy route | 410 `IMAGE_IDS_REQUIRED`; no local file write |
+| GET / HEAD | `/uploads/*` | Optional; all owning references must permit access | Existing normalized local image path | Protected legacy raster delivery, private/no-store; unknown/hidden/private-for-viewer references return 404 |
+| GET / HEAD | `/api/uploads/legacy/*` | Optional; same policy | Existing normalized local image path | Authenticated frontend blob-delivery alias; no token in URL |
 | POST | `/api/uploads/managed` | Required; opt-in | multipart `image`, `purpose`, `idempotencyKey` | Idempotent pending media ID, backend preview path and safe dimensions/format/byte count; actual raster validation and Sharp re-encoding |
 | GET | `/api/uploads/managed/:id/preview` | Required uploader; opt-in | pending media ID | Authenticated backend-streamed WebP; expired, foreign or non-pending assets return 404 |
 | GET | `/api/uploads/managed/:id/content` | Optional; target-dependent | attached media ID | Permission-checked WebP; visible avatars/pets/rescues support guests, sightings/chat are private |
@@ -141,6 +143,8 @@ after commit, against exact detached IDs. Expired/uncertain reservations await P
 reconciliation. Optional hidden `imageIds` references do not require rewriting old
 records. Pet submissions declare a partial owner/submission uniqueness index; the
 read-only verification harness never creates indexes.
+
+Legacy delivery preserves files and database URLs, rejects traversal and filesystem aliases, and requires the intersection of every owning reference's permissions. It does not give administrators access to private conversations. Previously cached/downloaded copies cannot be recalled. See `LEGACY_IMAGE_DELIVERY.md` for compatibility limits and verification details.
 
 ### Trust and safety
 

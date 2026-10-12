@@ -9,14 +9,36 @@ describe('permission-checked managed image rendering', () => {
     URL.createObjectURL = vi.fn(() => 'blob:permission-checked')
     URL.revokeObjectURL = vi.fn()
   })
-  it('leaves legacy external, local and Base64 sources unchanged', async () => {
-    for (const src of ['https://example.test/photo.jpg', '/uploads/existing.jpg', 'data:image/png;base64,AAAA']) {
+  it('leaves external and Base64 sources unchanged', async () => {
+    for (const src of ['https://example.test/photo.jpg', 'data:image/png;base64,AAAA']) {
       const wrapper = mount(ManagedImage, { props: { src }, attrs: { alt: 'Fictional pet' } })
       expect(wrapper.get('img').attributes('src')).toBe(src)
       expect(wrapper.get('img').attributes('alt')).toBe('Fictional pet')
       wrapper.unmount()
     }
     expect(mocks.readManagedImage).not.toHaveBeenCalled()
+  })
+  it('loads legacy local photos through authenticated blob delivery without putting tokens in URLs', async () => {
+    localStorage.setItem('token', 'fictional-legacy-session')
+    mocks.readManagedImage.mockResolvedValue(new Blob(['safe'], { type: 'image/webp' }))
+    const wrapper = mount(ManagedImage, { props: { src: '/uploads/existing.webp' }, attrs: { alt: 'Fictional sighting' } })
+    await flushPromises()
+    expect(mocks.readManagedImage).toHaveBeenCalledWith('/uploads/legacy/existing.webp', expect.any(AbortSignal))
+    expect(wrapper.get('img').attributes('src')).toBe('blob:permission-checked')
+    expect(wrapper.html()).not.toContain('fictional-legacy-session')
+    expect(wrapper.html()).not.toContain('/uploads/existing.webp')
+    wrapper.unmount()
+  })
+  it('account switching revokes the old legacy blob and ignores a stale completion', async () => {
+    let finish!: (value: Blob) => void
+    mocks.readManagedImage.mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    mocks.readManagedImage.mockRejectedValueOnce(new Error('Unavailable to the new account'))
+    const wrapper = mount(ManagedImage, { props: { src: '/uploads/private.webp' } })
+    window.dispatchEvent(new Event('auth:changed')); await flushPromises()
+    finish(new Blob(['obsolete'])); await flushPromises()
+    expect(wrapper.get('img').attributes('src')).toBeUndefined()
+    expect(URL.createObjectURL).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
   it('renders attached images from an authenticated backend blob without provider URLs', async () => {
     mocks.readManagedImage.mockResolvedValue(new Blob(['safe'], { type: 'image/webp' }))

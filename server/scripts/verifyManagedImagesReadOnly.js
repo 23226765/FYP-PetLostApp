@@ -57,6 +57,7 @@ try {
   for (const name of ['auth', 'pets', 'strays', 'chat', 'notifications', 'analytics', 'uploads', 'matches', 'safety', 'moderation']) {
     app.use(`/api/${name}`, (await import(`../routes/${name}.js`)).default)
   }
+  app.use('/uploads', (await import('../routes/legacyImages.js')).default)
   app.use(errorHandler)
   server = app.listen(0, '127.0.0.1')
   await new Promise((resolve) => server.once('listening', resolve))
@@ -85,6 +86,7 @@ try {
   const { default: Pet } = await import('../models/Pet.js')
   const pet = await Pet.findOne({ seedBatch: 'fyp-demo-v1', name: 'Maple', moderationStatus: { $ne: 'hidden' } }).select('_id').lean()
   if (pet) { await get(`/pets/${pet._id}`); await get(`/pets/${pet._id}/sightings`) }
+  const legacyActors = [undefined]
   for (const email of ['fyp.owner@pawradar.test', 'fyp.finder@pawradar.test', 'fyp.shelter@pawradar.test']) {
     stage = `read-only seeded login (${email})`
     if (!process.env.SEED_USER_PASSWORD) { console.log(`SKIP read-only login: ${email} (no locally configured test password).`); continue }
@@ -92,11 +94,14 @@ try {
     if (response.status === 401) { console.log(`SKIP read-only role check: ${email} (configured password not accepted; no reset attempted).`); continue }
     assert.equal(response.status, 200, 'Read-only login failed')
     const { token, user } = await response.json()
+    legacyActors.push({ token, user: { _id: user.id, role: user.role } })
     assert.ok(token); await get('/pets?limit=5', token); await get('/strays?limit=5', token)
     await get('/chat/inbox', token); await get('/notifications', token)
     if (pet) { await get(`/pets/${pet._id}`, token); await get(`/pets/${pet._id}/sightings`, token) }
     console.log(`PASS read-only login and browse/inbox/notifications: ${email} (${user.role}).`)
   }
+  stage = 'protected legacy image delivery (read-only)'
+  await (await import('./verifyLegacyImagesReadOnly.js')).verifyLegacyImagesReadOnly({ base, actors: legacyActors })
   assert.equal(writes, 0, 'Unexpected database write observed')
   console.log('PASS zero database write/index commands; no Cloudinary writes. Managed-image creation/transactions still require isolated or approved live verification.')
 } catch (error) {

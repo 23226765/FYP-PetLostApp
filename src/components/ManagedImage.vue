@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { readManagedImage } from '../services/api'
-import { managedImagePath } from '../utils/managedImages'
+import { protectedImagePath } from '../utils/managedImages'
 defineOptions({ inheritAttrs: false })
 const props = defineProps<{ src?: string }>()
 const emit = defineEmits<{ error: [event: Event] }>()
@@ -17,7 +17,7 @@ function clear() {
 }
 async function load() {
   clear()
-  const path = props.src ? managedImagePath(props.src) : null
+  const path = props.src ? protectedImagePath(props.src) : null
   if (!path) { resolved.value = props.src || ''; return }
   const current = version
   controller = new AbortController()

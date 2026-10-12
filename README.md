@@ -135,6 +135,8 @@ The opt-in `npm.cmd --prefix server run verify:images -- --confirm-temporary-clo
 - Registration, authenticated mutations, and uploads have bounded user/IP rate limits with standard response headers.
 - Helmet applies CSP, clickjacking, MIME-sniffing, referrer and cross-origin resource protections; HSTS is enabled only in production.
 - API responses use `Cache-Control: no-store`; uploaded images retain an explicit cross-origin resource policy for the frontend.
+- Legacy `/uploads/...` images now use permission-checked, private/no-store delivery instead of static serving. Vue and Leaflet load protected images through authenticated backend blobs; tokens never enter image URLs.
+- Files and stored URLs are preserved. Previously downloaded/cached copies cannot be recalled; see [LEGACY_IMAGE_DELIVERY.md](LEGACY_IMAGE_DELIVERY.md) for access rules and compatibility limits.
 - CORS uses an exact origin allowlist with credentials. Production startup requires `CORS_ORIGINS` explicitly.
 - Proxy trust defaults to disabled and rejects blanket `true`/wildcard trust. Production deployments must identify their proxy by subnet/address or a controlled hop count.
 - Express body limits support profile and messaging images while preserving explicit validation.
