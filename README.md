@@ -123,6 +123,16 @@ node server/scripts/verifyManagedImagesReadOnly.js
 
 The last command starts a loopback read-only API harness with index/collection creation disabled, pins `petlostapp`, runs health/smoke and seeded read-only checks, then closes it. It never invokes production collection initialization, uploads, seeds, migration or cleanup. Real transaction tests skip unless `MEDIA_TEST_MONGODB_URI` names a loopback MongoDB replica set; they use a unique isolated test database and remove only exact fixture IDs. They never read the application's Atlas URI. No live image-write verification is authorized by these commands.
 
+### Isolated real MongoDB transaction verification
+
+```sh
+npm --prefix server run test:transactions
+```
+
+This development-only harness starts a real MongoDB 8.0.17 single-node WiredTiger replica set on `127.0.0.1` with an automatically allocated port. `mongodb-memory-server-core` downloads and caches the official MongoDB binary on first use; it does not mock the database. No installed MongoDB service or Docker is required. The command does not load `.env`, inherit application/provider credentials, or use `MONGODB_URI`. It generates a replica-set name and separate disposable databases named `fyp_transactions_media_<UUID>` and `fyp_transactions_sighting_<UUID>`. Configuration guards reject non-loopback hosts, credentials, application database names and unexpected connection options. An unavailable replica set fails this command rather than silently skipping verification.
+
+The two real suites cover successful commits, failures both before and after database inserts, retry/idempotency, competing image attachment destinations, simultaneous replacements, and sighting/reunion races for lost/sighted pets with and without images. Only cloned test schemas receive failure-injection hooks; normal application schemas and configuration are unchanged. Cloudinary retirement is mocked, so these tests prove MongoDB atomicity but not provider upload/deletion/delivery. Exact fixture IDs are removed and checked, then the owned temporary replica set is stopped and its disposable storage removed. Atlas, `petlostapp`, `sample_mflix`, existing image files, seeds and migrations are never used. Ordinary `npm --prefix server test` still skips the two opt-in suites; run the command above for real database verification.
+
 Remaining Phase 3: dry-run/idempotent legacy migration, resumable recovery and abandoned-upload cleanup, reviewed rollback and separately approved live end-to-end image-write verification.
 
 The opt-in `npm.cmd --prefix server run verify:images -- --confirm-temporary-cloudinary-write` probe creates one uniquely named Cloudinary test image, verifies signed delivery, and deletes that exact object. It never connects to MongoDB. Run it only with explicit permission for the temporary provider write.
