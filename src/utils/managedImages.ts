@@ -27,4 +27,16 @@ export function legacyImagePath(value: string): string | null {
   } catch { return null }
 }
 
-export const protectedImagePath = (value: string) => managedImagePath(value) || legacyImagePath(value)
+export function moderationEvidencePath(value: string): string | null {
+  try {
+    const base = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin)
+    const url = new URL(value, `${base.origin}/`)
+    if (url.origin !== base.origin || url.username || url.password || url.search || url.hash) return null
+    const prefix = `${base.pathname.replace(/\/$/, '')}/moderation/reports/`
+    const suffix = url.pathname.slice(prefix.length)
+    if (!url.pathname.startsWith(prefix) || !/^[a-f0-9]{24}\/images\/[0-5]$/i.test(suffix)) return null
+    return `/moderation/reports/${suffix}`
+  } catch { return null }
+}
+
+export const protectedImagePath = (value: string) => managedImagePath(value) || legacyImagePath(value) || moderationEvidencePath(value)

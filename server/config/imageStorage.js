@@ -8,6 +8,10 @@ export const IMAGE_LIMITS = Object.freeze({
   concurrentRequests: 2,
   dailyUploads: 100,
   pendingUploads: 10,
+  storedImages: 200,
+  uploadLeaseMs: 2 * 60 * 1000,
+  uploadHeartbeatMs: 30 * 1000,
+  recoveryGraceMs: 5 * 60 * 1000,
   pendingLifetimeMs: 24 * 60 * 60 * 1000,
 })
 

@@ -1,4 +1,6 @@
 {
+  "mediaRecovery": { "limit": "Your stored-image safety limit has been reached. Remove unused images or contact support to recover abandoned uploads." },
+  "moderationEvidence": { "image": "Reported image evidence {index}" },
   "media": {
     "uploading": "Uploading image… {percent}%",
     "progress": "Image upload progress",

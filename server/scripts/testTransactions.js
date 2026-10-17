@@ -7,8 +7,13 @@ import { validateLocalTransactionUri } from '../tests/helpers/localTransactions.
 // Never import dotenv, application startup, seeds, migration or cleanup scripts.
 // Do not inherit application/provider credentials or binary/URI overrides.
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
-  !/MONGO|CLOUDINARY|SECRET|PASSWORD|TOKEN|DOTENV|^NODE_OPTIONS$|^DEBUG$/i.test(key)))
+  !/MONGO|CLOUDINARY|SECRET|PASSWORD|TOKEN|DOTENV|^MEDIA_E2E_|^NODE_OPTIONS$|^DEBUG$/i.test(key)))
 Object.assign(env, { ALLOW_TEST_SEED: 'false', NODE_ENV: 'test' })
+const realProvider = process.argv.includes('--cloudinary')
+if (realProvider && !process.argv.includes('--confirm-isolated-cloudinary-writes')) {
+  console.error('No action taken: real provider verification requires explicit temporary upload/delete approval.')
+  process.exit(1)
+}
 for (const key of Object.keys(process.env)) {
   if (/^MONGOMS_|^DEBUG$/i.test(key)) delete process.env[key]
 }
@@ -18,7 +23,10 @@ let stopping = false
 async function stop() {
   if (stopping) return
   stopping = true
-  if (child && child.exitCode === null && child.signalCode === null) child.kill()
+  if (child && child.exitCode === null && child.signalCode === null) {
+    child.kill('SIGTERM')
+    await new Promise((resolve) => child.once('exit', resolve))
+  }
   if (replica) await replica.stop()
 }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
@@ -36,14 +44,19 @@ try {
   const uri = replica.getUri(name)
   validateLocalTransactionUri(uri)
   env.MEDIA_TEST_MONGODB_URI = uri
-  console.log('Real MongoDB 8.0.17 / single-node WiredTiger replica set / loopback only. Cloudinary mocked; no application environment loaded.')
+  if (realProvider) env.MEDIA_E2E_RUN_ID = name.slice('fyp_transactions_'.length)
+  console.log(`Real MongoDB 8.0.17 / single-node WiredTiger replica set / loopback only. Cloudinary ${realProvider ? 'real, exact temporary objects only' : 'mocked'}.`)
   const serverDirectory = fileURLToPath(new URL('../', import.meta.url))
   const code = await new Promise((resolve, reject) => {
-    child = spawn(process.execPath, ['--test', '--test-timeout=120000',
-      'tests/mediaTransactions.test.js', 'tests/sightingTransactions.test.js'], {
+    const args = realProvider
+      ? ['--experimental-test-module-mocks', 'scripts/verifyManagedImagesE2E.js', '--confirm-isolated-cloudinary-writes']
+      : ['--test', '--test-timeout=120000', 'tests/mediaTransactions.test.js', 'tests/sightingTransactions.test.js', 'tests/mediaQuotaTransactions.test.js']
+    child = spawn(process.execPath, args, {
       cwd: serverDirectory, env, stdio: 'inherit', windowsHide: true,
     })
-    const deadline = setTimeout(() => { child.kill(); reject(new Error('Transaction suite exceeded its time limit.')) }, 180000)
+    // Provider runs own a durable exact-ID ledger and handle termination through
+    // cleanup. Never stop their replica set before their cleanup finishes.
+    const deadline = realProvider ? undefined : setTimeout(() => { child.kill(); reject(new Error('Transaction suite exceeded its time limit.')) }, 180000)
     child.once('error', (error) => { clearTimeout(deadline); reject(error) })
     child.once('exit', (exitCode) => { clearTimeout(deadline); resolve(exitCode ?? 1) })
   })

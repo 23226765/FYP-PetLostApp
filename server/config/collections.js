@@ -9,6 +9,7 @@ import StrayComment from '../models/StrayComment.js'
 import ContentReport from '../models/ContentReport.js'
 import UserBlock from '../models/UserBlock.js'
 import MediaAsset from '../models/MediaAsset.js'
+import MediaUploadBudget from '../models/MediaUploadBudget.js'
 import { managedUploadsEnabled } from './imageStorage.js'
 import { DATABASE_NAME } from './database.js'
 
@@ -50,8 +51,8 @@ export async function initializeApplicationCollections(connection) {
     ),
   )
 
-  const models = managedUploadsEnabled() ? [...applicationModels, MediaAsset] : applicationModels
-  const allowedCollections = [...APPLICATION_COLLECTIONS, 'mediaassets']
+  const models = managedUploadsEnabled() ? [...applicationModels, MediaAsset, MediaUploadBudget] : applicationModels
+  const allowedCollections = [...APPLICATION_COLLECTIONS, 'mediaassets', 'mediauploadbudgets']
   for (const model of models) {
     if (!allowedCollections.includes(model.collection.name)) {
       throw new Error(`Unexpected application collection: ${model.collection.name}`)

@@ -82,6 +82,7 @@ export function translateApiError(error: unknown, fallbackKey = 'errors.generic'
     IMAGE_UPLOAD_IN_PROGRESS: 'media.unavailable',
     IMAGE_UPLOAD_RETRY_REQUIRED: 'media.unavailable',
     IMAGE_UPLOAD_QUOTA: 'errors.rateLimited',
+    IMAGE_RECOVERY_QUOTA: 'mediaRecovery.limit',
     AUTH_CONTEXT_CHANGED: 'media.authChanged',
     AUTH_SERVICE_UNAVAILABLE: 'errors.authenticationUnavailable',
     IMAGE_CANCELLED: 'media.cancelled',

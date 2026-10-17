@@ -17,7 +17,7 @@ const mediaAssetSchema = new mongoose.Schema({
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, immutable: true, select: false },
   purpose: { type: String, enum: Object.keys(IMAGE_PURPOSES), required: true, immutable: true },
   state: {
-    type: String, enum: ['uploading', 'pending', 'attached', 'delete_pending', 'deleted', 'failed'],
+    type: String, enum: ['uploading', 'pending', 'attached', 'delete_pending', 'reconciling', 'deleted', 'failed'],
     default: 'uploading', required: true, select: false,
   },
   attachedTo: {
@@ -30,6 +30,12 @@ const mediaAssetSchema = new mongoose.Schema({
   checksum: { ...privateString, required: true, match: /^[a-f0-9]{64}$/, immutable: true },
   idempotencyKey: { ...privateString, required: true, minlength: 8, maxlength: 100, immutable: true },
   expiresAt: { type: Date, required: true, select: false },
+  uploadLeaseToken: { ...privateString, maxlength: 64 },
+  uploadLeaseUntil: { type: Date, select: false },
+  recoveryToken: { ...privateString, maxlength: 64 },
+  recoveryLeaseUntil: { type: Date, select: false },
+  recoveryFrom: { ...privateString, enum: ['uploading', 'pending', 'delete_pending', 'reconciling'] },
+  lastRecoveryAt: { type: Date, select: false },
   cleanupAttempts: { type: Number, default: 0, min: 0, select: false },
   failureCode: { ...privateString, enum: ['IMAGE_STORAGE_UNAVAILABLE', 'IMAGE_DATABASE_UNAVAILABLE', 'IMAGE_STORAGE_CONFLICT'] },
 }, { timestamps: true, collection: 'mediaassets', autoCreate: false, autoIndex: false, strict: 'throw' })
@@ -50,6 +56,8 @@ mediaAssetSchema.index({ provider: 1, publicId: 1 }, { unique: true, name: 'medi
 mediaAssetSchema.index({ uploadedBy: 1, idempotencyKey: 1 }, { unique: true, name: 'media_upload_idempotency' })
 mediaAssetSchema.index({ uploadedBy: 1, createdAt: -1 })
 mediaAssetSchema.index({ state: 1, expiresAt: 1 }) // Deliberately not TTL: provider deletion must happen first.
+mediaAssetSchema.index({ state: 1, uploadLeaseUntil: 1 })
+mediaAssetSchema.index({ state: 1, recoveryLeaseUntil: 1 })
 mediaAssetSchema.index({ 'attachedTo.type': 1, 'attachedTo.id': 1 })
 
 export default mongoose.models.MediaAsset || mongoose.model('MediaAsset', mediaAssetSchema)

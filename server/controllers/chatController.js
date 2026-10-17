@@ -309,7 +309,7 @@ export async function createMessage(req, res, next) {
         return res.json({ message: (await serializeMessages([existing]))[0], duplicate: true })
       }
     }
-    const message = imageIds.length
+    const imageResult = imageIds.length
       ? (await commitContentImages({ Model: Message, type: 'message', purpose: 'message', userId: req.user._id,
           values: messageValues, imageIds, idempotencyFilter: { sentBy: req.user._id, clientRequestId: normalizedRequestId },
           authorize: async (session) => {
@@ -317,7 +317,10 @@ export async function createMessage(req, res, next) {
             if (!target || await usersBlockEachOther(req.user._id, otherUserId)) throw imageError('IMAGE_ATTACHMENT_FORBIDDEN')
             const prior = await Message.findOne({ sentBy: req.user._id, clientRequestId: normalizedRequestId }).session(session)
             if (prior && (String(prior.pet) !== String(pet._id) || String(prior.participant) !== String(participantId))) throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
-          } })).doc
+          } }))
+      : null
+    const message = imageResult
+      ? imageResult.doc
       : normalizedRequestId
       ? await Message.findOneAndUpdate(
           { sentBy: req.user._id, clientRequestId: normalizedRequestId },
@@ -334,7 +337,10 @@ export async function createMessage(req, res, next) {
         { upsert: true, new: true },
       )
     }
-    res.status(201).json({ message: (await serializeMessages([message]))[0] })
+    res.status(imageResult?.duplicate ? 200 : 201).json({
+      message: (await serializeMessages([message]))[0],
+      ...(imageResult ? { duplicate: imageResult.duplicate } : {}),
+    })
   } catch (error) {
     next(error)
   }

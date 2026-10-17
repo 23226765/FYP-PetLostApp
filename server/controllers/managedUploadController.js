@@ -7,8 +7,7 @@ import { attachedImageForViewer, authorizeMediaDestination, mediaModels } from '
 import { commitContentImages } from '../services/mediaAttachments.js'
 import { sameId } from '../services/locationPrivacy.js'
 
-export function createManagedUploadController({ storageFactory = createImageStorage, lifecycleFactory = createImageLifecycle, attachedForViewer = attachedImageForViewer } = {}) {
-  async function streamImage(asset, res) {
+export async function streamManagedImage(asset, res, storageFactory = createImageStorage) {
     const body = await storageFactory().openReadStream(asset)
     let bytes = 0
     const bounded = new Transform({ transform(chunk, _encoding, callback) {
@@ -17,7 +16,10 @@ export function createManagedUploadController({ storageFactory = createImageStor
     } })
     res.set({ 'Cache-Control': 'private, no-store, max-age=0', 'Vary': 'Authorization', 'Content-Type': 'image/webp', 'X-Content-Type-Options': 'nosniff' })
     await pipeline(Readable.fromWeb(body), bounded, res)
-  }
+}
+
+export function createManagedUploadController({ storageFactory = createImageStorage, lifecycleFactory = createImageLifecycle, attachedForViewer = attachedImageForViewer } = {}) {
+  const streamImage = (asset, res) => streamManagedImage(asset, res, storageFactory)
   return {
     async deliverManagedImage(req, res, next) {
       try { await streamImage(await attachedForViewer(req.params.id, req.user), res) }

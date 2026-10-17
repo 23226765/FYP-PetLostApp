@@ -14,6 +14,7 @@ export const IMAGE_ERRORS = Object.freeze({
   IMAGE_UPLOAD_RETRY_REQUIRED: [409, 'The previous image reservation has ended. Retry with a new upload identifier.'],
   IMAGE_IDEMPOTENCY_CONFLICT: [409, 'This upload identifier belongs to a different image.'],
   IMAGE_UPLOAD_QUOTA: [429, 'The image upload allowance has been reached.'],
+  IMAGE_RECOVERY_QUOTA: [429, 'Stored images have reached the safety limit. Remove unused images or contact support for recovery.'],
   IMAGE_PROCESSING_BUSY: [503, 'Image processing is busy. Please retry shortly.'],
   IMAGE_DATABASE_UNAVAILABLE: [503, 'Image metadata could not be saved. Please retry later.'],
   IMAGE_NOT_FOUND: [404, 'Image not found.'],

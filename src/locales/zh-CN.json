@@ -1,4 +1,6 @@
 {
+  "mediaRecovery": { "limit": "已达到图片存储安全上限。请移除不再需要的图片，或联系支持团队处理未完成的上传。" },
+  "moderationEvidence": { "image": "举报图片证据 {index}" },
   "strayAnimal": { "typeLabel": "动物种类", "typePlaceholder": "例如：鹦鹉、兔子或乌龟", "typeRequired": "请注明这是什么动物。", "fallback": "动物" },
   "smartMatch": {
     "title": "查找可能匹配", "introTitle": "发现宠物？一起辨认它。", "introHelp": "系统会按物种、品种相似度、距离和报告时间排列仍然有效的报告。",

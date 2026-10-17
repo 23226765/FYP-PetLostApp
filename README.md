@@ -133,7 +133,19 @@ This development-only harness starts a real MongoDB 8.0.17 single-node WiredTige
 
 The two real suites cover successful commits, failures both before and after database inserts, retry/idempotency, competing image attachment destinations, simultaneous replacements, and sighting/reunion races for lost/sighted pets with and without images. Only cloned test schemas receive failure-injection hooks; normal application schemas and configuration are unchanged. Cloudinary retirement is mocked, so these tests prove MongoDB atomicity but not provider upload/deletion/delivery. Exact fixture IDs are removed and checked, then the owned temporary replica set is stopped and its disposable storage removed. Atlas, `petlostapp`, `sample_mflix`, existing image files, seeds and migrations are never used. Ordinary `npm --prefix server test` still skips the two opt-in suites; run the command above for real database verification.
 
-Remaining Phase 3: dry-run/idempotent legacy migration, resumable recovery and abandoned-upload cleanup, reviewed rollback and separately approved live end-to-end image-write verification.
+### Controlled real Cloudinary end-to-end verification
+
+```sh
+npm --prefix server run verify:images:e2e
+```
+
+Run only with explicit approval for temporary Cloudinary upload/delete operations. This opt-in command reuses the isolated local replica-set harness and never connects to Atlas, `petlostapp` or `sample_mflix`. It requires Node 22.20+ for test-only module configuration injection. The child process reads only the three Cloudinary credentials from `server/.env`, generates a temporary JWT secret, and injects a disposable expected database name and real storage adapter into the unchanged production routes/controllers. It does not load the application environment or change production database configuration.
+
+Synthetic accounts and 48×32 generated PNG fixtures exercise all five categories through real multipart HTTP upload, content writes, authorized WebP delivery, retries, hidden-content and chat-blocking checks, replacement rollback after a real database write, and exact object retirement. A run permits at most ten objects under `petlostapp/test/<run-id>`; the exact MongoDB asset IDs, public IDs and provider asset IDs are written to a cleanup ledger in the OS temporary directory before upload. Provider URLs, credentials and tokens are excluded from logs/ledgers. Only exact run-owned objects and fixture IDs are cleaned, with provider lookups and database counts confirming removal before the replica set stops. Rescue posts deliberately reject removal of their last photo; replacement retires the previous object, then the synthetic post is deactivated and its remaining object is removed during exact run cleanup. No prefix/bulk deletion, migrations, seeds or application-image cleanup runs.
+
+These are backend HTTP/database/provider checks, not browser/UI verification. Browser file selection, progress/cancellation and visual rendering still need a browser-capable environment. Ordinary unit tests do not invoke this provider command. A failed/interrupted provider run retains its non-secret ledger for reviewing exact outstanding IDs; never substitute a broad provider cleanup or database deletion.
+
+Remaining Phase 3: dry-run/idempotent legacy migration, resumable recovery and abandoned-upload cleanup, reviewed rollback, and separately approved production-like browser/Atlas image-write verification. Controlled local-database/real-provider verification is now available independently.
 
 The opt-in `npm.cmd --prefix server run verify:images -- --confirm-temporary-cloudinary-write` probe creates one uniquely named Cloudinary test image, verifies signed delivery, and deletes that exact object. It never connects to MongoDB. Run it only with explicit permission for the temporary provider write.
 

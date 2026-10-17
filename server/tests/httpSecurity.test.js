@@ -50,6 +50,19 @@ test('proxy trust rejects blanket values and accepts only explicit bounded confi
   }
 })
 
+test('patched proxy resolution cannot turn a short IPv4-mapped IPv6 subnet into blanket IPv4 trust', async () => {
+  const probe = await startProbe(resolveHttpSecurityConfig({ TRUST_PROXY: '::ffff:10.0.0.0/8' }))
+  try {
+    const response = await fetch(`${probe.baseUrl}/api/probe`, {
+      headers: { 'x-forwarded-for': '198.51.100.23', 'x-forwarded-proto': 'https' },
+    })
+    assert.equal(response.status, 200)
+    const result = await response.json()
+    assert.equal(result.ip, '127.0.0.1', 'An untrusted client must not choose its rate-limit/audit IP')
+    assert.equal(result.secure, false)
+  } finally { await probe.close() }
+})
+
 test('CORS origins are exact, normalized, deduplicated, and required in production', () => {
   assert.deepEqual(parseCorsOrigins(), DEVELOPMENT_CORS_ORIGINS)
   assert.deepEqual(

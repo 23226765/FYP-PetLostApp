@@ -1,9 +1,19 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ManagedImage from '../ManagedImage.vue'
+import { moderationEvidencePath } from '../../utils/managedImages'
 const mocks = vi.hoisted(() => ({ readManagedImage: vi.fn() }))
 vi.mock('../../services/api', () => mocks)
 describe('permission-checked managed image rendering', () => {
+  it('rejects foreign, invalid or token-bearing evidence URLs', () => {
+    const path = `/api/moderation/reports/${'d'.repeat(24)}/images/0`
+    expect(moderationEvidencePath(path)).toBe(path.slice(4))
+    for (const src of [`https://foreign.test${path}`, `${path}?token=secret`, `${path}#token`,
+      path.replace('/images/0', '/images/6'), path.replace('d'.repeat(24), 'bad'),
+      `${window.location.origin.replace('://', '://user:password@')}${path}`]) {
+      expect(moderationEvidencePath(src)).toBeNull()
+    }
+  })
   beforeEach(() => {
     mocks.readManagedImage.mockReset()
     URL.createObjectURL = vi.fn(() => 'blob:permission-checked')
@@ -48,6 +58,19 @@ describe('permission-checked managed image rendering', () => {
     expect(wrapper.get('img').attributes('src')).toBe('blob:permission-checked')
     expect(wrapper.html()).not.toContain('cloudinary')
     wrapper.unmount(); expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:permission-checked')
+  })
+  it('reads report-scoped evidence through authenticated blobs and revokes it on logout', async () => {
+    const id = 'c'.repeat(24)
+    mocks.readManagedImage.mockResolvedValueOnce(new Blob(['evidence'], { type: 'image/webp' }))
+      .mockRejectedValueOnce(new Error('Moderator role required'))
+    const wrapper = mount(ManagedImage, { props: { src: `/api/moderation/reports/${id}/images/0` } })
+    await flushPromises()
+    expect(mocks.readManagedImage).toHaveBeenCalledWith(`/moderation/reports/${id}/images/0`, expect.any(AbortSignal))
+    expect(wrapper.get('img').attributes('src')).toBe('blob:permission-checked')
+    window.dispatchEvent(new Event('auth:changed')); await flushPromises()
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:permission-checked')
+    expect(wrapper.get('img').attributes('src')).toBeUndefined()
+    wrapper.unmount()
   })
   it('clears privileged blobs on logout and emits a real image error for existing fallbacks', async () => {
     mocks.readManagedImage.mockResolvedValueOnce(new Blob(['safe'])).mockRejectedValueOnce(new Error('Forbidden'))

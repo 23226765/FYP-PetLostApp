@@ -9,6 +9,7 @@ import Stray from '../models/Stray.js'
 import StrayComment from '../models/StrayComment.js'
 import User from '../models/User.js'
 import { setLocationPrivacyHeaders } from '../services/locationPrivacy.js'
+import { targetEvidenceReferences, evidenceImageUrl } from '../services/moderationEvidence.js'
 
 export const MODERATION_REPORT_STATUSES = Object.freeze([
   'pending',
@@ -81,13 +82,13 @@ async function targetPreviews(reports) {
 
   const [pets, sightings, strays, comments, messages, users] = await Promise.all([
     Pet.find({ _id: { $in: idsByType.get('pet') } })
-      .select('_id name species breed district status photo moderationStatus +moderationReason +moderatedBy +moderatedAt')
+      .select('_id name species breed district status photo photos moderationStatus +moderationReason +moderatedBy +moderatedAt')
       .lean(),
     Sighting.find({ _id: { $in: idsByType.get('sighting') } })
       .select('_id pet note photo sightedAt moderationStatus +moderationReason +moderatedBy +moderatedAt')
       .lean(),
     Stray.find({ _id: { $in: idsByType.get('stray') } })
-      .select('_id species animalType district rescueStatus description photo active moderationStatus +moderationReason +moderatedBy +moderatedAt')
+      .select('_id species animalType district rescueStatus description photo photos active moderationStatus +moderationReason +moderatedBy +moderatedAt')
       .lean(),
     StrayComment.find({ _id: { $in: idsByType.get('comment') } })
       .select('_id stray text moderationStatus +moderationReason +moderatedBy +moderatedAt')
@@ -119,7 +120,7 @@ async function targetPreviews(reports) {
       title: pet.name || '',
       subtitle: [pet.species, pet.breed, pet.district, pet.status].filter(Boolean).join(' · '),
       excerpt: '', photo: pet.photo || '', moderatable: true,
-      moderation: moderationState(pet, moderatorById),
+      moderation: moderationState(pet, moderatorById), imageCount: targetEvidenceReferences(pet, 'pet').length,
     })
   }
   for (const sighting of sightings) {
@@ -136,7 +137,7 @@ async function targetPreviews(reports) {
       title: stray.animalType || stray.species || '',
       subtitle: [stray.district, stray.rescueStatus].filter(Boolean).join(' · '),
       excerpt: text(stray.description, 240), photo: stray.photo || '', moderatable: true,
-      moderation: moderationState(stray, moderatorById),
+      moderation: moderationState(stray, moderatorById), imageCount: targetEvidenceReferences(stray, 'stray').length,
     })
   }
   for (const comment of comments) {
@@ -181,7 +182,11 @@ async function serializeReports(reports) {
   ])
   const accountById = new Map(accounts.map((account) => [String(account._id), account]))
 
-  return reports.map((report) => ({
+  return reports.map((report) => {
+    const preview = previews.get(`${report.targetType}:${objectId(report.targetId)}`) || unavailablePreview(report.targetType, report.targetId)
+    const count = preview.imageCount ?? (preview.photo ? 1 : 0)
+    const evidenceImages = Array.from({ length: count }, (_, index) => evidenceImageUrl(objectId(report), index))
+    return ({
     id: objectId(report),
     targetType: report.targetType,
     targetId: objectId(report.targetId),
@@ -192,14 +197,13 @@ async function serializeReports(reports) {
     updatedAt: report.updatedAt,
     reporter: publicAccount(accountById.get(objectId(report.reporter))),
     targetOwner: publicAccount(accountById.get(objectId(report.targetOwner))),
-    target: previews.get(`${report.targetType}:${objectId(report.targetId)}`)
-      || unavailablePreview(report.targetType, report.targetId),
+    target: { ...preview, photo: evidenceImages[0] || '', evidenceImages },
     review: {
       note: report.moderatorNote || '',
       reviewedAt: report.reviewedAt || null,
       reviewedBy: publicAccount(accountById.get(objectId(report.reviewedBy))),
     },
-  }))
+  }) })
 }
 
 function positiveInteger(value, fallback, maximum) {

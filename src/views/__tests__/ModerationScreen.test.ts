@@ -10,6 +10,7 @@ const apiMocks = vi.hoisted(() => ({
   getModerationReports: vi.fn(),
   updateContentVisibility: vi.fn(),
   updateModerationReport: vi.fn(),
+  readManagedImage: vi.fn(),
 }))
 vi.mock('../../services/api', () => apiMocks)
 
@@ -38,10 +39,47 @@ async function render(user: User | null) {
 }
 
 describe('ModerationScreen', () => {
+  it('renders authenticated evidence in all locales/themes without translating user content', async () => {
+    const id = 'a'.repeat(24)
+    apiMocks.getModerationReports.mockResolvedValue({
+      reports: [{ ...report, id, target: { ...report.target, evidenceImages: [0, 1].map((index) => `/api/moderation/reports/${id}/images/${index}`) } }],
+      pagination: { page: 1, limit: 20, total: 1 },
+    })
+    for (const language of ['en', 'zh-HK', 'zh-CN'] as const) {
+      for (const theme of ['light', 'dark'] as const) {
+        applyAccountPreferences({ language, theme })
+        const wrapper = await render(admin)
+        expect(wrapper.findAll('.evidence-gallery img')).toHaveLength(2)
+        expect(wrapper.get('.evidence-gallery img').attributes('src')).toBe('blob:moderation-evidence')
+        expect(wrapper.get('.evidence-gallery img').attributes('alt')).not.toContain('moderationEvidence.')
+        expect(wrapper.text()).toContain('Repeated misleading listing.')
+        expect(document.documentElement.dataset.theme).toBe(theme)
+        await wrapper.setProps({ user: ordinary }); await flushPromises()
+        expect(wrapper.find('.evidence-gallery').exists()).toBe(false)
+        expect(URL.revokeObjectURL).toHaveBeenCalled()
+        wrapper.unmount()
+      }
+    }
+  })
+  it('does not let an obsolete administrator request block the next administrator queue', async () => {
+    let finish!: (value: unknown) => void
+    apiMocks.getModerationReports.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+    const wrapper = await render(admin)
+    await wrapper.setProps({ user: ordinary })
+    await wrapper.setProps({ user: { ...admin, id: 'other-admin' } }); await flushPromises()
+    expect(apiMocks.getModerationReports).toHaveBeenCalledTimes(2)
+    expect(wrapper.findAll('.report-card')).toHaveLength(1)
+    finish({ reports: [], pagination: { page: 1, limit: 20, total: 0 } }); await flushPromises()
+    expect(wrapper.findAll('.report-card')).toHaveLength(1)
+    wrapper.unmount()
+  })
   beforeEach(() => {
     apiMocks.getModerationReports.mockReset()
     apiMocks.updateContentVisibility.mockReset()
     apiMocks.updateModerationReport.mockReset()
+    apiMocks.readManagedImage.mockReset().mockResolvedValue(new Blob(['safe'], { type: 'image/webp' }))
+    URL.createObjectURL = vi.fn(() => 'blob:moderation-evidence')
+    URL.revokeObjectURL = vi.fn()
     applyAccountPreferences({ language: 'en', theme: 'light' })
     apiMocks.getModerationReports.mockResolvedValue({
       reports: [report], pagination: { page: 1, limit: 20, total: 1 },

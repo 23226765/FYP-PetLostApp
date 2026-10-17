@@ -6,8 +6,9 @@ import { IMAGE_LIMITS, IMAGE_PURPOSES } from '../config/imageStorage.js'
 import { processImage } from './imageProcessing.js'
 import { imageError } from './imageErrors.js'
 import { logServerError } from '../middleware/errorHandler.js'
+import { createUploadReservation } from './mediaQuota.js'
 
-const PRIVATE_FIELDS = '+publicId +providerAssetId +secureUrl +uploadedBy +state +attachedTo +checksum +idempotencyKey +expiresAt +failureCode'
+const PRIVATE_FIELDS = '+publicId +providerAssetId +secureUrl +uploadedBy +state +attachedTo +checksum +idempotencyKey +expiresAt +failureCode +uploadLeaseUntil +uploadLeaseToken'
 export const mediaRepository = Object.freeze({
   assertDatabase() {
     if (MediaAsset.db.readyState !== 1 || MediaAsset.db.name !== DATABASE_NAME) {
@@ -17,9 +18,15 @@ export const mediaRepository = Object.freeze({
   find(filter) { return MediaAsset.findOne(filter).select(PRIVATE_FIELDS).lean() },
   count(filter) { return MediaAsset.countDocuments(filter) },
   create(values) { return MediaAsset.create(values) },
-  async update(id, states, values) {
+  reserve: createUploadReservation(),
+  async refreshLease(id, token, timestamp) {
+    const result = await MediaAsset.updateOne({ _id: id, state: 'uploading', uploadLeaseToken: token, uploadLeaseUntil: { $gt: timestamp } },
+      { $set: { uploadLeaseUntil: new Date(timestamp.getTime() + IMAGE_LIMITS.uploadLeaseMs) } })
+    return result.matchedCount === 1
+  },
+  async update(id, states, values, expected = {}) {
     const result = await MediaAsset.updateOne(
-      { _id: id, state: { $in: states } }, { $set: values }, { runValidators: true },
+      { _id: id, state: { $in: states }, ...expected }, { $set: values }, { runValidators: true },
     )
     return result.matchedCount === 1
   },
@@ -93,18 +100,8 @@ export function createImageLifecycle({
           return { image: publicPendingImage(existing), duplicate: true }
         }
         if (['deleted', 'failed', 'delete_pending', 'pending'].includes(existing.state)) throw imageError('IMAGE_UPLOAD_RETRY_REQUIRED')
+        if (existing.state === 'uploading' && new Date(existing.uploadLeaseUntil || existing.expiresAt) <= timestamp) throw imageError('IMAGE_UPLOAD_RETRY_REQUIRED')
         throw imageError('IMAGE_UPLOAD_IN_PROGRESS')
-      }
-
-      let daily, pending
-      try {
-        [daily, pending] = await Promise.all([
-          repository.count({ uploadedBy: owner, createdAt: { $gte: new Date(timestamp.getTime() - 86_400_000) } }),
-          repository.count({ uploadedBy: owner, state: { $in: ['uploading', 'pending', 'delete_pending'] } }),
-        ])
-      } catch { throw imageError('IMAGE_DATABASE_UNAVAILABLE') }
-      if (daily >= IMAGE_LIMITS.dailyUploads || pending >= IMAGE_LIMITS.pendingUploads) {
-        throw imageError('IMAGE_UPLOAD_QUOTA')
       }
 
       const reservation = {
@@ -112,13 +109,25 @@ export function createImageLifecycle({
         publicId: storage.publicIdFor(purpose, randomUUID()), uploadedBy: owner, purpose,
         checksum: processed.checksum, idempotencyKey, state: 'uploading',
         expiresAt: new Date(timestamp.getTime() + IMAGE_LIMITS.pendingLifetimeMs),
+        uploadLeaseToken: randomUUID(),
+        uploadLeaseUntil: new Date(timestamp.getTime() + IMAGE_LIMITS.uploadLeaseMs),
       }
-      try { await repository.create(reservation) }
+      try { await repository.reserve(reservation, timestamp) }
       catch (error) {
+        if (['IMAGE_UPLOAD_QUOTA', 'IMAGE_RECOVERY_QUOTA'].includes(error?.code)) throw error
         if (error?.code === 11000) throw imageError('IMAGE_UPLOAD_IN_PROGRESS')
         // Never upload if the reservation write wasn't acknowledged.
         throw imageError('IMAGE_DATABASE_UNAVAILABLE')
       }
+      let refreshing = false
+      const heartbeat = setInterval(async () => {
+        if (refreshing) return
+        refreshing = true
+        try { await repository.refreshLease(reservation._id, reservation.uploadLeaseToken, now()) }
+        catch { logger('Upload lease refresh deferred', imageError('IMAGE_DATABASE_UNAVAILABLE')) }
+        finally { refreshing = false }
+      }, IMAGE_LIMITS.uploadHeartbeatMs)
+      heartbeat.unref?.()
       let metadata
       try {
         metadata = await storage.uploadImage(processed.buffer, reservation)
@@ -137,9 +146,10 @@ export function createImageLifecycle({
         }
         await compensate(reservation, 'IMAGE_STORAGE_UNAVAILABLE')
         throw imageError('IMAGE_STORAGE_UNAVAILABLE')
-      }
+      } finally { clearInterval(heartbeat) }
       try {
-        const saved = await repository.update(reservation._id, ['uploading'], { ...metadata, state: 'pending' })
+        const saved = await repository.update(reservation._id, ['uploading'], { ...metadata, state: 'pending' },
+          { uploadLeaseToken: reservation.uploadLeaseToken, uploadLeaseUntil: { $gt: now() } })
         if (!saved) throw imageError('IMAGE_DATABASE_UNAVAILABLE')
       } catch {
         // A write may have committed despite a network error. Acknowledged

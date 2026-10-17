@@ -36,6 +36,7 @@ export interface ModerationTargetPreview {
   subtitle: string
   excerpt: string
   photo: string
+  evidenceImages?: string[]
   relatedId?: string
   moderatable?: boolean
   moderation?: {

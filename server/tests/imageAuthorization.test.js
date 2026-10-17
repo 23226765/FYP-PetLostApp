@@ -32,6 +32,8 @@ const repository = {
     return [...records.values()].find((r) => Object.entries(filter).every(([k, v]) => String(r[k]) === String(v))) || null
   },
   async create(values) { records.set(String(values._id), { ...values }) },
+  async reserve(values) { await this.create(values) },
+  async refreshLease() { return true },
   async update(id, states, values) {
     const r = records.get(String(id)); if (!r || !states.includes(r.state)) return false
     Object.assign(r, values); return true

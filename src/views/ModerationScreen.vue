@@ -64,6 +64,10 @@
           </header>
 
           <p v-if="report.target.excerpt" class="content-excerpt">{{ report.target.excerpt }}</p>
+          <div v-if="report.target.evidenceImages?.length" class="evidence-gallery">
+            <ManagedImage v-for="(image, index) in report.target.evidenceImages" :key="image" :src="image"
+              :alt="t('moderationEvidence.image', { index: index + 1 })" @error="hideBrokenImage" />
+          </div>
           <dl class="report-meta">
             <div><dt>{{ t('moderation.reason') }}</dt><dd>{{ t(`safety.reasons.${report.reason}`) }}</dd></div>
             <div><dt>{{ t('moderation.reporter') }}</dt><dd>{{ report.reporter?.name || t('moderation.unavailable') }}</dd></div>
@@ -177,6 +181,7 @@ watch(
   () => `${props.user?.id || ''}:${props.user?.role || ''}`,
   () => {
     requestSequence += 1
+    loading.value = false
     reports.value = []
     total.value = 0
     page.value = 1
@@ -333,6 +338,8 @@ function hideBrokenImage(event: Event) {
 .hide-content { background: var(--coral); color: var(--color-text-on-coral); }
 .restore-content { background: var(--teal); color: var(--color-text-on-accent); }
 .visibility-action:disabled { background: var(--color-disabled-surface); color: var(--color-disabled-text); }
+.evidence-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.evidence-gallery :deep(img) { width: 100%; height: 160px; object-fit: contain; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); }
 .note-field { display: block; margin-top: 13px; color: var(--text-primary); }
 .note-field textarea { width: 100%; min-height: 68px; padding: 10px 11px; resize: vertical; border: 1px solid var(--border); border-radius: 12px; background: var(--input-bg); color: var(--text-primary); font: inherit; font-size: 12px; line-height: 1.45; }
 .review-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }

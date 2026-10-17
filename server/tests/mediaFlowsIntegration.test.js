@@ -10,6 +10,7 @@ import Stray from '../models/Stray.js'
 import Message from '../models/Message.js'
 import Notification from '../models/Notification.js'
 import MediaAsset from '../models/MediaAsset.js'
+import MediaUploadBudget from '../models/MediaUploadBudget.js'
 import UserBlock from '../models/UserBlock.js'
 import SavedStray from '../models/SavedStray.js'
 import StrayComment from '../models/StrayComment.js'
@@ -23,7 +24,7 @@ import { resetRateLimitsForTests } from '../middleware/rateLimit.js'
 
 // Real Express/JWT/controllers/models; DB/provider are deliberately isolated mocks.
 const secret = 'Fictional!Media-Flow-Integration-Secret-2026'
-const models = [User, Pet, Sighting, Stray, Message, Notification, MediaAsset, UserBlock, SavedStray, StrayComment]
+const models = [User, Pet, Sighting, Stray, Message, Notification, MediaAsset, MediaUploadBudget, UserBlock, SavedStray, StrayComment]
 const privateKeys = new Set(['token', 'refreshToken', 'JWT_SECRET', 'MONGODB_URI', 'CLOUDINARY_API_SECRET', 'publicId', 'providerAssetId', 'secureUrl', 'uploadedBy', 'imageIds', 'apiKey', 'apiSecret', 'moderationReason'])
 function assertSafePayload(value) {
   if (!value || typeof value !== 'object') return
@@ -84,15 +85,21 @@ before(async () => {
     patch(Model, 'findOne', (filter) => query(() => read(filter)[0] || null))
     patch(Model, 'findById', (id) => query(() => read({ _id: id })[0] || null))
     patch(Model, 'exists', async (filter) => Model === UserBlock ? blocked : Boolean(read(filter)[0]))
-    patch(Model, 'countDocuments', async (filter) => read(filter).length)
+    patch(Model, 'countDocuments', (filter) => query(() => read(filter).length))
+    patch(Model, 'create', async (values) => {
+      if (Array.isArray(values)) return Promise.all(values.map(async (value) => { const doc = new Model(value); await doc.save(); return doc }))
+      const doc = new Model(values); await doc.save(); return doc
+    })
     patch(Model, 'aggregate', async () => [])
     patch(Model, 'bulkWrite', async () => ({ matchedCount: 0 }))
     patch(Model.prototype, 'save', async function () {
       if (failModel === Model) throw new Error('Fictional DB failure')
       await this.validate(); tables.get(Model).set(String(this._id), snapshot(this.toObject())); return this
     })
-    patch(Model, 'updateOne', async (filter, update) => {
-      const rows = read(filter); if (!rows.length) return { matchedCount: 0 }
+    patch(Model, 'updateOne', async (filter, update, options = {}) => {
+      const rows = read(filter)
+      if (!rows.length && options.upsert) { const doc = new Model(update.$setOnInsert); await doc.save(); return { matchedCount: 0, upsertedCount: 1 } }
+      if (!rows.length) return { matchedCount: 0 }
       const row = tables.get(Model).get(String(rows[0]._id)); Object.assign(row, snapshot(update.$set || {})); return { matchedCount: 1 }
     })
     patch(Model, 'updateMany', async (filter, update) => { read(filter).forEach((doc) => Object.assign(tables.get(Model).get(String(doc._id)), snapshot(update.$set || {}))) })
@@ -202,9 +209,12 @@ test('rescue: URLs survive serialization and guest image delivery is available f
 test('chat: image-only message is idempotent and its binary obeys conversation/blocking restrictions', async () => {
   const imageId = asset(finder, 'message'), body = { text: '', imageIds: [imageId], clientRequestId: 'fictional_message_001' }
   const first = await request(`/chat/${petId}`, finder, body), result = await first.json()
-  assert.equal(first.status, 201); messageId = result.message.id
+  assert.equal(first.status, 201); assert.equal(result.duplicate, false); messageId = result.message.id
   const again = await request(`/chat/${petId}`, finder, body)
-  assert.equal((await again.json()).message.id, messageId); assert.equal(tables.get(Message).size, 1)
+  assert.equal(again.status, 200)
+  const replay = await again.json()
+  assert.equal(replay.message.id, messageId); assert.equal(replay.duplicate, true); assert.equal(tables.get(Message).size, 1)
+  assert.equal([...tables.get(Notification).values()].filter((row) => String(row.message) === messageId).length, 1)
   for (const actor of [owner, finder]) assert.equal((await request(`/uploads/managed/${imageId}/content`, actor, undefined, 'GET')).status, 200)
   for (const actor of [undefined, unrelated, admin]) assert.equal((await request(`/uploads/managed/${imageId}/content`, actor, undefined, 'GET')).status, 404)
   blocked = true

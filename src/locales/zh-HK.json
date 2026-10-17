@@ -1,4 +1,6 @@
 {
+  "mediaRecovery": { "limit": "已達到圖片儲存安全上限。請移除不再需要的圖片，或聯絡支援團隊處理未完成的上載。" },
+  "moderationEvidence": { "image": "舉報圖片證據 {index}" },
   "strayAnimal": { "typeLabel": "動物種類", "typePlaceholder": "例如：鸚鵡、兔子或烏龜", "typeRequired": "請註明這是甚麼動物。", "fallback": "動物" },
   "smartMatch": {
     "title": "尋找可能配對",

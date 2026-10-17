@@ -47,6 +47,12 @@ function referencePath(value, origins) {
   return { key: normalizeLegacyPath(match[2]), local }
 }
 
+export function legacyImageKeyForReference(value) {
+  const reference = referencePath(value, trustedOrigins())
+  if (!reference.local) throw unavailable()
+  return reference.key
+}
+
 const samePath = (left, right) => process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right
 const escaped = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 

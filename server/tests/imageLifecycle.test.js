@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
 import { createImageLifecycle, mediaRepository } from '../services/imageLifecycle.js'
+import { assertUploadQuota } from '../services/mediaQuota.js'
 
 const userId = String(new mongoose.Types.ObjectId())
 const input = { userId, purpose: 'pet', idempotencyKey: 'fixture-upload', buffer: Buffer.from('fixture') }
@@ -21,6 +22,8 @@ function setup({ count = 0 } = {}) {
       return [...records.values()].find((record) => Object.entries(filter).every(([key, value]) => String(record[key]) === String(value))) || null
     },
     async create(record) { events.push('reserve'); records.set(String(record._id), { ...record }) },
+    async reserve(record) { assertUploadQuota({ daily: count, active: count, stored: count }); return this.create(record) },
+    async refreshLease() { return true },
     async update(id, states, values) {
       const record = records.get(String(id))
       if (!record || !states.includes(record.state)) return false
@@ -196,4 +199,36 @@ test('attached images cannot be discarded; repeated upload returns their content
   assert.equal(again.image.id, first.image.id); assert.equal(again.duplicate, true)
   assert.ok(again.image.url.endsWith('/content'))
   assert.equal(f.events.some((event) => event.startsWith('delete:')), false)
+})
+
+test('expired legacy uploading reservations require a fresh key; unexpired leases remain in progress', async () => {
+  const f = setup(), first = await f.service().upload(input), record = [...f.records.values()][0]
+  record.state = 'uploading'; record.expiresAt = new Date(0); record.uploadLeaseUntil = new Date(Date.now() + 60000)
+  await assert.rejects(f.service().upload(input), { code: 'IMAGE_UPLOAD_IN_PROGRESS' })
+  delete record.uploadLeaseUntil
+  await assert.rejects(f.service().upload(input), { code: 'IMAGE_UPLOAD_RETRY_REQUIRED' })
+  assert.equal(f.events.filter((event) => event === 'upload').length, 1)
+  assert.equal(record.publicId.includes('petlostapp/test/'), true)
+  assert.equal(String(record._id), first.image.id)
+})
+
+test('long-running uploads refresh the same lease and stop heartbeats after completion', async (t) => {
+  const f = setup()
+  t.mock.timers.enable({ apis: ['setInterval'] })
+  let release, started
+  const ready = new Promise((resolve) => { started = resolve })
+  const gate = new Promise((resolve) => { release = resolve })
+  const upload = f.storage.uploadImage
+  f.storage.uploadImage = async (...args) => { started(); await gate; return upload(...args) }
+  let refreshes = 0
+  f.repository.refreshLease = async (key, token) => {
+    const row = f.records.get(String(key)); assert.equal(row.uploadLeaseToken, token); assert.equal(row.state, 'uploading'); refreshes++
+    return true
+  }
+  const pending = f.service().upload(input)
+  await ready
+  t.mock.timers.tick(30000); await Promise.resolve(); await Promise.resolve()
+  assert.equal(refreshes, 1)
+  release(); await pending
+  t.mock.timers.tick(60000); assert.equal(refreshes, 1)
 })
