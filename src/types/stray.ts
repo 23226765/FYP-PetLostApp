@@ -32,6 +32,9 @@ export interface StrayReport {
   commentPreview?: string
   isSaved: boolean
   canManage: boolean
+  canEdit: boolean
+  canDelete: boolean
+  canUpdateStatus: boolean
 }
 
 export interface StrayComment {

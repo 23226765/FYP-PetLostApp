@@ -1,4 +1,5 @@
 {
+  "rescueRepair": { "statusFailed": "无法更新救援状态，请重试。", "editFailed": "无法保存修改，已保留你输入的内容。", "deleteFailed": "无法移除此帖子，请重试。", "deleteCommentFailed": "无法移除此评论，请重试。", "statusSaved": "已更新救援状态。", "editSaved": "已保存修改。", "moreComments": "加载更多评论", "submissionConflict": "此提交编号已用于其他内容，已保留你当前输入的文字。" },
   "mediaRecovery": { "limit": "已达到图片存储安全上限。请移除不再需要的图片，或联系支持团队处理未完成的上传。" },
   "moderationEvidence": { "image": "举报图片证据 {index}" },
   "strayAnimal": { "typeLabel": "动物种类", "typePlaceholder": "例如：鹦鹉、兔子或乌龟", "typeRequired": "请注明这是什么动物。", "fallback": "动物" },

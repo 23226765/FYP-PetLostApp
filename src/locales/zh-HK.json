@@ -1,4 +1,5 @@
 {
+  "rescueRepair": { "statusFailed": "未能更新救援狀態，請再試一次。", "editFailed": "未能儲存修改，已保留你輸入的內容。", "deleteFailed": "未能移除此帖文，請再試一次。", "deleteCommentFailed": "未能移除此留言，請再試一次。", "statusSaved": "已更新救援狀態。", "editSaved": "已儲存修改。", "moreComments": "載入更多留言", "submissionConflict": "此提交編號已用於其他內容，已保留你目前輸入的文字。" },
   "mediaRecovery": { "limit": "已達到圖片儲存安全上限。請移除不再需要的圖片，或聯絡支援團隊處理未完成的上載。" },
   "moderationEvidence": { "image": "舉報圖片證據 {index}" },
   "strayAnimal": { "typeLabel": "動物種類", "typePlaceholder": "例如：鸚鵡、兔子或烏龜", "typeRequired": "請註明這是甚麼動物。", "fallback": "動物" },

@@ -41,7 +41,7 @@ export async function retireMediaAssets(ids, { Assets = MediaAsset, storageFacto
  */
 export async function commitContentImages({
   Model, userId, purpose, type, values = {}, imageIds, existingId,
-  idempotencyFilter, authorize = async () => {}, beforeCreate = async () => {}, minimum = 0,
+  idempotencyFilter, authorize = async () => {}, beforeCreate = async () => {}, validateReplay = () => {}, minimum = 0,
 }, {
   Assets = MediaAsset, connection = Model.db, expectedDatabase = DATABASE_NAME,
   retire = retireMediaAssets, now = () => new Date(), retryDuplicate = true,
@@ -66,6 +66,7 @@ export async function commitContentImages({
       const owner = type === 'user' ? doc?._id : type === 'message' ? doc?.sentBy : doc?.reportedBy
       if (doc && String(owner) !== String(userId)) throw imageError('IMAGE_ATTACHMENT_FORBIDDEN')
       if (doc && !existingId) {
+        validateReplay(doc)
         const oldIds = (doc.imageIds || []).map(String)
         if (oldIds.join(',') !== ids.join(',')) throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
         result = { doc, duplicate: true }; return
@@ -119,7 +120,7 @@ export async function commitContentImages({
   } finally { await session.endSession() }
   // A simultaneous identical request may win the unique submission index. Read
   // it in a fresh transaction, repeating authorization and identity checks.
-  if (collided) return commitContentImages({ Model, userId, purpose, type, values, imageIds: ids, existingId, idempotencyFilter, authorize, beforeCreate, minimum },
+  if (collided) return commitContentImages({ Model, userId, purpose, type, values, imageIds: ids, existingId, idempotencyFilter, authorize, beforeCreate, validateReplay, minimum },
     { Assets, connection, expectedDatabase, retire, now, retryDuplicate: false })
   // Never delete the old provider object before the new DB state commits.
   if (detached.length) {

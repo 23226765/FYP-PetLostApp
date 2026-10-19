@@ -8,6 +8,7 @@ import Pet from '../models/Pet.js'
 import { createUploadReservation, uploadQuotaFilters } from '../services/mediaQuota.js'
 import { createMediaReconciler } from '../services/mediaReconciliation.js'
 import { IMAGE_LIMITS } from '../config/imageStorage.js'
+import { mediaRepository } from '../services/imageLifecycle.js'
 import { openTransactionDatabase } from './helpers/localTransactions.js'
 
 const uri = process.env.MEDIA_TEST_MONGODB_URI
@@ -52,6 +53,36 @@ test('real local upload quotas and exact recovery: expiry boundaries, concurrent
         values(uploader, { state: 'uploading' }),
       ])
       assert.equal(await Assets.countDocuments(uploadQuotaFilters(uploader, clock).active), 3)
+    })
+    await t.test('real heartbeat predicate extends only an active matching uploading lease', async () => {
+      const uploader = owner(), token = randomUUID()
+      const rows = [
+        values(uploader, { state: 'uploading', uploadLeaseToken: token, uploadLeaseUntil: new Date(clock.getTime() + 1), expiresAt: new Date(0) }),
+        values(uploader, { state: 'uploading', uploadLeaseToken: token, uploadLeaseUntil: clock }),
+        values(uploader, { state: 'uploading', uploadLeaseToken: token, uploadLeaseUntil: new Date(clock.getTime() - 1) }),
+        values(uploader, { state: 'uploading', uploadLeaseToken: randomUUID(), uploadLeaseUntil: new Date(clock.getTime() + 1000) }),
+        values(uploader, { state: 'pending', uploadLeaseToken: token, uploadLeaseUntil: new Date(clock.getTime() + 1000) }),
+        values(uploader, { state: 'uploading', uploadLeaseToken: token }),
+      ]
+      await Assets.insertMany(rows)
+      const originalUpdate = MediaAsset.updateOne
+      // Execute the production repository predicate unchanged, routing only its
+      // model binding to this isolated real MongoDB connection (not a DB mock).
+      MediaAsset.updateOne = (...args) => Assets.updateOne(...args)
+      try {
+        for (const [index, row] of rows.entries()) {
+          const before = await Assets.findById(row._id).select('+state +uploadLeaseToken +uploadLeaseUntil').lean()
+          assert.equal(await mediaRepository.refreshLease(row._id, token, clock), index === 0)
+          const after = await Assets.findById(row._id).select('+state +uploadLeaseToken +uploadLeaseUntil').lean()
+          if (index === 0) {
+            assert.equal(after.uploadLeaseUntil.getTime(), clock.getTime() + IMAGE_LIMITS.uploadLeaseMs)
+            assert.equal(after.uploadLeaseToken, token)
+            assert.equal(after.state, 'uploading')
+          } else assert.deepEqual(after, before)
+        }
+        assert.equal(await mediaRepository.refreshLease(rows[0]._id, token, new Date(clock.getTime() + IMAGE_LIMITS.uploadLeaseMs)), false)
+        assert.equal(await mediaRepository.refreshLease(new mongoose.Types.ObjectId(), token, clock), false)
+      } finally { MediaAsset.updateOne = originalUpdate }
     })
     await t.test('competing requests cannot reserve beyond ten active slots', async () => {
       const uploader = owner()

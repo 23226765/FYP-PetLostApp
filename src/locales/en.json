@@ -1,4 +1,5 @@
 {
+  "rescueRepair": { "statusFailed": "Unable to update the rescue status. Please try again.", "editFailed": "Unable to save your changes. Your text has been kept.", "deleteFailed": "Unable to remove this post. Please try again.", "deleteCommentFailed": "Unable to remove this comment. Please try again.", "statusSaved": "Rescue status updated.", "editSaved": "Changes saved.", "moreComments": "Load more comments", "submissionConflict": "This submission ID was already used for different content. Your current text has been kept." },
   "mediaRecovery": { "limit": "Your stored-image safety limit has been reached. Remove unused images or contact support to recover abandoned uploads." },
   "moderationEvidence": { "image": "Reported image evidence {index}" },
   "media": {

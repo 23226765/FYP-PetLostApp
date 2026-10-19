@@ -23,7 +23,7 @@ const stray: StrayReport = {
   author: { id: 'finder-id', name: 'Finder', avatar: '' }, canViewContact: false,
   reportedBy: 'finder-id', reportedAgo: '2m ago', observedAt: '2026-09-18T08:00:00.000Z',
   createdAt: '2026-09-18T08:00:00.000Z', updatedAt: '2026-09-18T08:00:00.000Z',
-  statusUpdatedAt: '2026-09-18T08:00:00.000Z', commentCount: 2, isSaved: false, canManage: true,
+  statusUpdatedAt: '2026-09-18T08:00:00.000Z', commentCount: 2, isSaved: false, canManage: true, canEdit: true, canDelete: true, canUpdateStatus: true,
 }
 
 async function render(initial: StrayReport[] = [stray]) {

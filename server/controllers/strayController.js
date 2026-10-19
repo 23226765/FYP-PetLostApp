@@ -8,6 +8,7 @@ import User from '../models/User.js'
 import { serializeContact } from '../services/contactPrivacy.js'
 import { blockedUserIdsFor, usersBlockEachOther } from '../services/trustSafety.js'
 import { visibleContentFilter } from '../services/moderationVisibility.js'
+import { assertCommentReplay, upsertSubmission } from '../services/submissionIdentity.js'
 import {
   anonymousSearchCoordinates,
   exactDistanceKm,
@@ -86,21 +87,22 @@ function relativeTime(date) {
 async function contextFor(strays, requester, { includeContact = true } = {}) {
   const strayIds = strays.map((stray) => stray._id)
   const authorIds = [...new Set(strays.map((stray) => String(stray.reportedBy || '')).filter(Boolean))]
-  const [authors, commentCounts, commentPreviews, saved, blocked] = await Promise.all([
+  const blocked = requester ? await blockedUserIdsFor(requester._id) : new Set()
+  const commentFilter = visibleCommentFilter({ stray: { $in: strayIds } }, blocked)
+  const [authors, commentCounts, commentPreviews, saved] = await Promise.all([
     User.find({ _id: { $in: authorIds } }).select(
       includeContact ? '_id name avatar phone privacy.contactVisibility' : '_id name avatar',
     ),
     StrayComment.aggregate([
-      { $match: visibleContentFilter({ stray: { $in: strayIds } }) },
+      { $match: commentFilter },
       { $group: { _id: '$stray', count: { $sum: 1 } } },
     ]),
     StrayComment.aggregate([
-      { $match: visibleContentFilter({ stray: { $in: strayIds } }) },
-      { $sort: { createdAt: -1 } },
+      { $match: commentFilter },
+      { $sort: { createdAt: -1, _id: -1 } },
       { $group: { _id: '$stray', text: { $first: '$text' } } },
     ]),
     requester ? SavedStray.find({ user: requester._id, stray: { $in: strayIds } }).select('stray') : [],
-    requester ? blockedUserIdsFor(requester._id) : new Set(),
   ])
   return {
     authors: new Map(authors.map((author) => [String(author._id), author])),
@@ -145,7 +147,10 @@ function serializeStray(
     createdAt: stray.createdAt, updatedAt: stray.updatedAt, statusUpdatedAt: stray.statusUpdatedAt,
     commentCount: context.counts.get(id) || 0, isSaved: context.saved.has(id),
     commentPreview: context.previews.get(id) || undefined,
-    canManage: Boolean(!forcePublic && requester && (String(stray.reportedBy) === String(requester._id) || requester.role === 'shelter_admin')),
+    canManage: Boolean(!forcePublic && requester && String(stray.reportedBy) === String(requester._id)),
+    canEdit: Boolean(!forcePublic && requester && String(stray.reportedBy) === String(requester._id)),
+    canDelete: Boolean(!forcePublic && requester && String(stray.reportedBy) === String(requester._id)),
+    canUpdateStatus: Boolean(!forcePublic && requester && (String(stray.reportedBy) === String(requester._id) || requester.role === 'shelter_admin')),
     distanceKm,
   }
 }
@@ -300,6 +305,13 @@ function serializeComment(comment) {
   return { id: String(comment._id), strayId: String(comment.stray), text: comment.text, author: publicAuthor(comment.author), createdAt: comment.createdAt, updatedAt: comment.updatedAt }
 }
 
+function visibleCommentFilter(base, blocked) {
+  return visibleContentFilter({ ...base, ...(blocked.size ? {
+    // Aggregations do not perform Mongoose's normal query ObjectId casting.
+    author: { $nin: [...blocked].map((id) => new mongoose.Types.ObjectId(String(id))) },
+  } : {}) })
+}
+
 export async function listComments(req, res, next) {
   try {
     setLocationPrivacyHeaders(res)
@@ -307,12 +319,8 @@ export async function listComments(req, res, next) {
     if (!await Stray.exists({ _id: req.params.id, ...ACTIVE_FILTER })) return res.status(404).json({ error: 'Stray report not found' })
     const { page, limit, skip } = pagination(req.query)
     const blocked = req.user ? await blockedUserIdsFor(req.user._id) : new Set()
-    const filter = {
-      stray: req.params.id,
-      moderationStatus: { $ne: 'hidden' },
-      ...(blocked.size ? { author: { $nin: [...blocked] } } : {}),
-    }
-    const [comments, total] = await Promise.all([StrayComment.find(filter).populate('author', 'name avatar').sort({ createdAt: 1 }).skip(skip).limit(limit), StrayComment.countDocuments(filter)])
+    const filter = visibleCommentFilter({ stray: req.params.id }, blocked)
+    const [comments, total] = await Promise.all([StrayComment.find(filter).populate('author', 'name avatar').sort({ createdAt: 1, _id: 1 }).skip(skip).limit(limit), StrayComment.countDocuments(filter)])
     res.json({ comments: comments.map(serializeComment), pagination: { page, limit, total, hasMore: skip + comments.length < total } })
   } catch (error) { next(error) }
 }
@@ -320,21 +328,22 @@ export async function listComments(req, res, next) {
 export async function createComment(req, res, next) {
   try {
     setLocationPrivacyHeaders(res)
-    const text = cleanText(req.body?.text, 501); const submissionId = cleanText(req.body?.submissionId, 100)
+    const text = cleanText(req.body?.text, 501); const submissionId = cleanText(req.body?.submissionId, 101)
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid stray report id' })
-    if (!text || text.length > 500 || !submissionId) return res.status(400).json({ error: 'Comment must be between 1 and 500 characters and include submissionId.' })
+    if (!text || text.length > 500 || !submissionId || submissionId.length > 100) return res.status(400).json({ error: 'Comment must be between 1 and 500 characters and include submissionId.' })
     const stray = await Stray.findOne({ _id: req.params.id, ...ACTIVE_FILTER })
     if (!stray) return res.status(404).json({ error: 'Stray report not found' })
     if (await usersBlockEachOther(req.user._id, stray.reportedBy)) {
       return res.status(403).json({ error: 'Commenting is unavailable on this post.', code: 'USER_BLOCKED' })
     }
-    const filter = visibleContentFilter({ author: req.user._id, submissionId })
-    const existed = Boolean(await StrayComment.exists(filter))
-    const comment = await StrayComment.findOneAndUpdate(filter, { $setOnInsert: { stray: stray._id, author: req.user._id, text, submissionId } }, { upsert: true, new: true, setDefaultsOnInsert: true }).populate('author', 'name avatar')
+    const values = { stray: stray._id, author: req.user._id, text, submissionId }
+    const { doc: comment, duplicate } = await upsertSubmission(StrayComment, { author: req.user._id, submissionId }, values,
+      (existing) => assertCommentReplay(existing, values))
+    await comment.populate('author', 'name avatar')
     if (stray.reportedBy && String(stray.reportedBy) !== String(req.user._id)) {
       await Notification.findOneAndUpdate({ user: stray.reportedBy, stray: stray._id, type: 'comment', comment: comment._id }, { $setOnInsert: { user: stray.reportedBy, stray: stray._id, comment: comment._id, type: 'comment', title: `New comment on your ${animalName(stray.species, stray.animalType).toLowerCase()} post`, body: `${req.user.name} commented: ${text.slice(0, 120)}`, photo: stray.photo || '' } }, { upsert: true, new: true })
     }
-    res.status(existed ? 200 : 201).json({ comment: serializeComment(comment), duplicate: existed })
+    res.status(duplicate ? 200 : 201).json({ comment: serializeComment(comment), duplicate })
   } catch (error) { next(error) }
 }
 

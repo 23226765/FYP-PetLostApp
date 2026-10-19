@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
 import { commitContentImages, validateImageIds, rejectImageStrings, mediaContentUrl } from '../services/mediaAttachments.js'
+import { assertMessageReplay } from '../services/submissionIdentity.js'
 
 const id = () => String(new mongoose.Types.ObjectId())
 const copy = (value) => structuredClone(value)
@@ -141,4 +142,25 @@ test('incorrect database name fails before a transaction starts', async () => {
   const f = fixture('pet', 'pet'); f.dependencies.connection.name = 'incorrect-test-database'
   await assert.rejects(f.run(), { code: 'IMAGE_DATABASE_UNAVAILABLE' })
   assert.deepEqual(f.events, [])
+})
+
+test('managed replay validates payload both directly and after a duplicate-key retry, without changing attachments', async () => {
+  const f = fixture('message', 'message')
+  await f.run()
+  const before = copy([...f.assets]), documents = copy([...f.documents])
+  const values = { ...f.options.values, text: 'Changed payload' }
+  const validateReplay = doc => assertMessageReplay(doc, values, [f.assetId])
+  await assert.rejects(f.run({ values, validateReplay }), { code: 'SUBMISSION_CONFLICT', status: 409 })
+  const originalFind = f.options.Model.findOne
+  let attempt = 0, validations = 0
+  f.options.Model.findOne = (...args) => {
+    if (attempt++ === 0) return { select() { return this }, session() { return Promise.reject({ code: 11000 }) } }
+    return originalFind(...args)
+  }
+  try {
+    await assert.rejects(f.run({ values, validateReplay: doc => { validations++; validateReplay(doc) } }), { code: 'SUBMISSION_CONFLICT' })
+    assert.equal(validations, 1); assert.equal(attempt, 2)
+    assert.deepEqual([...f.assets], before); assert.deepEqual([...f.documents], documents)
+    assert.deepEqual(f.retired, [])
+  } finally { f.options.Model.findOne = originalFind }
 })

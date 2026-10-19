@@ -55,7 +55,7 @@ function stray(id: string) {
     canViewContact: false, reportedBy: owner.id, reportedAgo: 'Today',
     observedAt: '2026-09-20T10:00:00.000Z', createdAt: '2026-09-20T10:00:00.000Z',
     updatedAt: '2026-09-20T10:00:00.000Z', statusUpdatedAt: '2026-09-20T10:00:00.000Z',
-    commentCount: 2, isSaved: true, canManage: true,
+    commentCount: 2, isSaved: true, canManage: true, canEdit: true, canDelete: true, canUpdateStatus: true,
   }
 }
 

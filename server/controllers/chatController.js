@@ -15,6 +15,7 @@ import {
 import { setLocationPrivacyHeaders } from '../services/locationPrivacy.js'
 import { blockedUserIdsFor, usersBlockEachOther } from '../services/trustSafety.js'
 import { visibleContentFilter } from '../services/moderationVisibility.js'
+import { assertMessageReplay, upsertSubmission } from '../services/submissionIdentity.js'
 
 const MAX_MESSAGE_LENGTH = 2000
 
@@ -240,7 +241,8 @@ export async function createMessage(req, res, next) {
     const { text, sharedStrayId, clientRequestId } = req.body
     const normalizedMessage = typeof text === 'string' ? text.trim() : ''
     const imageIds = validateImageIds(req.body.imageIds === undefined ? [] : req.body.imageIds, 'message')
-    const normalizedRequestId = typeof clientRequestId === 'string' ? clientRequestId.trim().slice(0, 100) : ''
+    const normalizedRequestId = typeof clientRequestId === 'string' ? clientRequestId.trim() : ''
+    if (normalizedRequestId.length > 100) return res.status(400).json({ error: 'Invalid clientRequestId.' })
     if (!normalizedMessage && !imageIds.length && !sharedStrayId) {
       return res.status(400).json({ error: 'A message requires text, a photo, or a shared post.' })
     }
@@ -302,32 +304,20 @@ export async function createMessage(req, res, next) {
       sharedStray: sharedStray?._id || null,
       clientRequestId: normalizedRequestId || undefined,
     }
-    if (normalizedRequestId && !imageIds.length) {
-      const existing = await Message.findOne({ sentBy: req.user._id, clientRequestId: normalizedRequestId })
-      if (existing) {
-        if (String(existing.pet) !== String(pet._id) || String(existing.participant) !== String(participantId)) throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
-        return res.json({ message: (await serializeMessages([existing]))[0], duplicate: true })
-      }
-    }
     const imageResult = imageIds.length
       ? (await commitContentImages({ Model: Message, type: 'message', purpose: 'message', userId: req.user._id,
           values: messageValues, imageIds, idempotencyFilter: { sentBy: req.user._id, clientRequestId: normalizedRequestId },
+          validateReplay: (existing) => assertMessageReplay(existing, messageValues, imageIds),
           authorize: async (session) => {
             const target = await Pet.findOne(visibleContentFilter({ _id: pet._id })).session(session)
             if (!target || await usersBlockEachOther(req.user._id, otherUserId)) throw imageError('IMAGE_ATTACHMENT_FORBIDDEN')
-            const prior = await Message.findOne({ sentBy: req.user._id, clientRequestId: normalizedRequestId }).session(session)
-            if (prior && (String(prior.pet) !== String(pet._id) || String(prior.participant) !== String(participantId))) throw imageError('IMAGE_IDEMPOTENCY_CONFLICT')
           } }))
       : null
-    const message = imageResult
-      ? imageResult.doc
-      : normalizedRequestId
-      ? await Message.findOneAndUpdate(
-          { sentBy: req.user._id, clientRequestId: normalizedRequestId },
-          { $setOnInsert: messageValues },
-          { upsert: true, new: true, setDefaultsOnInsert: true },
-        )
-      : await Message.create(messageValues)
+    const result = imageResult || (normalizedRequestId
+      ? await upsertSubmission(Message, { sentBy: req.user._id, clientRequestId: normalizedRequestId }, messageValues,
+        (existing) => assertMessageReplay(existing, messageValues, imageIds))
+      : { doc: await Message.create(messageValues), duplicate: false })
+    const message = result.doc
 
     const recipientId = isOwner(pet, req.user._id) ? participantId : pet.reportedBy
     if (recipientId && String(recipientId) !== String(req.user._id)) {
@@ -337,9 +327,9 @@ export async function createMessage(req, res, next) {
         { upsert: true, new: true },
       )
     }
-    res.status(imageResult?.duplicate ? 200 : 201).json({
+    res.status(result.duplicate ? 200 : 201).json({
       message: (await serializeMessages([message]))[0],
-      ...(imageResult ? { duplicate: imageResult.duplicate } : {}),
+      duplicate: result.duplicate,
     })
   } catch (error) {
     next(error)

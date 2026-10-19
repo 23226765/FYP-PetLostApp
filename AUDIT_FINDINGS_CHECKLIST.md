@@ -6,7 +6,7 @@ Source: the user-supplied original audit attachment, `abcbef8d-3ff5-40cd-9e47-8e
 
 Status vocabulary: **Fixed and verified**, **Implemented but verification pending**, **Partially addressed**, **Still open**. “Verified” identifies the specific automated/isolated evidence below; it does not claim a browser, physical-device, production-proxy or live-Atlas mutation test. Earlier approved verification is explicitly distinguished from this batch. Uncommitted implementation is included.
 
-Summary: **10 fixed and verified; 2 partially addressed; 10 still open; 0 implemented but verification pending.**
+Summary: **14 fixed and verified; 1 partially addressed; 7 still open; 0 implemented but verification pending.**
 
 ## 1. High — Smart Match exposes precise distance indirectly
 
@@ -78,6 +78,7 @@ Summary: **10 fixed and verified; 2 partially addressed; 10 still open; 0 implem
 - Recovery: exact-ID reconciliation (1–25 IDs), dry-run by default; application requires an additional environment guard and deletion requires a separate explicit option. Grace periods, compare-and-set claims, reference checks, provider identity checks and post-delete lookups protect active/referenced objects. Ledger metadata is retained.
 - Evidence: `imageLifecycle.test.js`, `imageAuthorization.test.js`, `mediaReconciliation.test.js`; real `mediaQuotaTransactions.test.js` covers expiry boundaries, concurrent slot claims, daily/storage limits, dry-run, failed recovery/cooldown and hidden references. Provider mocked.
 - Final verification: the corrected authorization fixtures passed in the complete backend rerun (258 passed, zero failed), and the real local quota/recovery suite ran without skipping. Existing assertions were preserved; see the final verification record below.
+- Follow-up verification in the #12–#15 batch: the actual `mediaRepository.refreshLease` predicate ran against real isolated MongoDB. An active matching uploading lease extends by the configured interval even when nominal reservation expiry is old; exact-boundary/expired leases, wrong tokens, wrong states, absent legacy leases and missing IDs do not extend. Rejected updates leave the complete document unchanged. This closes the previously recorded heartbeat-predicate coverage gap; provider behavior remains mocked.
 - Limitation: no existing assets were reconciled or deleted. The finite storage safety cap can intentionally block a user with unresolved provider debt; it is not bypassed by expiry. No background/bulk cleanup is enabled.
 
 ## 11. Medium — Moderators cannot retrieve some image evidence
@@ -90,27 +91,32 @@ Summary: **10 fixed and verified; 2 partially addressed; 10 still open; 0 implem
 
 ## 12. Medium — Rescue management controls exceed administrator permissions
 
-- Status: **Still open**. Confirmed code mismatch remains: `strayController.js` includes shelter administrators in `canManage`, while `StrayDetailScreen.vue` uses it for author-only editing/removal controls.
-- Evidence: current source inspection; this batch does not broaden administrator permissions.
-- Smallest next repair: separate author-edit/image/delete permission from permitted shelter rescue-status actions.
+- Status: **Fixed and verified**. The API exposes separate author-only `canEdit`/`canDelete` and author-or-shelter `canUpdateStatus`; legacy `canManage` now means author management only. Forced-public projections expose no management permissions.
+- Repair: the detail screen gates caption/image editing, deletion and status controls separately and guards the corresponding handlers. Shelter administrators see only the status actions they can actually perform; backend author-only edit/delete/image checks remain intact.
+- Evidence: `mediaFlowsIntegration.test.js` HTTP/JWT matrix covers author, unrelated users, shelter and guest (including 401/403 and image-edit denial). `rescueTransactions.test.js` uses real isolated MongoDB for role projections, permitted shelter status changes and denied shelter author mutations. `StrayDetailScreen.test.ts` proves shelter-only controls do not render author fields/image editor/delete actions.
+- Limitations: browser visual/keyboard inspection remains pending. No general administrator edit/delete privilege was introduced.
 
 ## 13. Medium — Rescue mutation failures have incomplete feedback
 
-- Status: **Still open**. Confirmed handler/error-state deficiency; `StrayDetailScreen.vue` still has mutation handlers without operation-specific catches/locks.
-- Evidence: source inspection; no new live network-failure mutation was run.
-- Smallest next repair: bounded busy/error handling per operation; retain input after failure and avoid duplicate clicks.
+- Status: **Fixed and verified**. Edit, deletion and rescue-status operations have separate busy/error states, shared management submission exclusion, visible progress/success feedback and retryable localized errors. Failed edits retain entered text; failed/cancelled deletion does not navigate away.
+- Repair: handlers validate permissions and reject duplicate clicks, and route/account/auth-generation guards ignore obsolete completions. Caption controls remain disabled while management requests are pending. Comment deletion also has a submission guard and visible failure feedback.
+- Evidence: `StrayDetailScreen.test.ts` exercises edit/status/delete failures, retained input and successful retry, repeated-click locks, cancelled deletion, successful deletion navigation, stale account failure suppression, and all three locales in both themes. Tests inject API failures; no live mutation/network outage was induced.
+- Limitations: these are component/jsdom checks, not physical-device contrast/layout or browser interaction verification.
 
 ## 14. Medium — Comment retry identity is inconsistent
 
-- Status: **Partially addressed**. The analogous chat destination/idempotency race was repaired and tested during the earlier managed-image verification batch (`chatController.js`, `mediaFlowsIntegration.test.js`). The original comment defect remains.
-- Evidence: `StrayDetailScreen.vue` still generates a fresh comment ID on each attempt; the comment controller's duplicate lookup needs destination validation.
-- Smallest next repair: retain the comment ID for an uncertain retry and reject reuse against a different rescue post. Do not conflate the chat fix with the comment fix.
+- Status: **Fixed and verified**. Comments retain their submission ID across uncertain retries of the same account/post/text; changed payloads receive a new ID. Chat likewise retains an unchanged request and rotates its ID after a payload/conversation change.
+- Backend repair: `submissionIdentity.js` validates the actual atomic upsert winner (and duplicate-key recovery), not a preflight existence assumption. Comments bind author/key to destination and text; chat binds sender/key to pet, effective participant, text, shared-post reference and ordered image IDs. Identical replay returns 200/duplicate; creation returns 201; conflicting reuse returns localized stable `SUBMISSION_CONFLICT`/409 without exposing previous content. Hidden comment replay returns 404. Existing blocking and parent/conversation visibility checks still run.
+- Managed chat repair: `commitContentImages` validates the complete replay payload before returning an existing attachment and carries the validator through a fresh-transaction duplicate-key retry. No unrelated asset is claimed/retired on conflict. Ordinary upserts timestamp inserts only, preserving existing content and timestamps even on conflicting/hidden replay.
+- Evidence: HTTP integration and attachment-service regressions cover conflicting text/post/conversation/shared/image/no-image payloads, hidden replay, no conflicting-target notification, callback propagation and unchanged attachment state. Real isolated `rescueTransactions.test.js` proves one row under identical concurrent comment/message requests and rejection of different concurrent comment payloads, changed destination/text/shared posts, and edited-comment replay without reverting the edit. Frontend tests cover lost-response retry identity and changed-text ID rotation for comments and chat.
+- Compatibility: the existing author/submission and sender/request unique indexes are unchanged; no migration. Replaying an original creation after its comment was edited conservatively returns conflict rather than returning or overwriting different content. Persistence of retry IDs across page reloads is not provided. Provider operations remain mocked, and no live messages/comments were created.
 
 ## 15. Medium — Blocked comments remain in previews and counts
 
-- Status: **Still open**. Detail comment listing has block filtering, but feed preview/count context still needs the identical visibility/block policy. Detail mutations still assign the total from `comments.value.length`.
-- Evidence: current `strayController.js` context aggregation and `StrayDetailScreen.vue` mutation handlers; existing comment-list tests do not establish correct feed totals.
-- Smallest next repair: shared count/preview/list filtering and preserve server pagination totals.
+- Status: **Fixed and verified**. One shared hidden-content/mutual-block predicate drives comment lists, aggregate previews and aggregate counts, with explicit ObjectId casting for aggregation. Stable timestamp/ID sorting preserves consistent order.
+- Repair: the API client retains pagination metadata, and detail counts come from the server total after loading/addition/deletion, never the length of one loaded page. Load-more merges by comment ID and sorts chronologically. A per-comment-request epoch prevents an older page/error/finalizer from overwriting a newer block or mutation refresh; account/route guards remain. Status/caption responses merge only their changed fields so they cannot overwrite newer counts or image state from another operation.
+- Evidence: real isolated MongoDB aggregation/query tests compare visible previews, totals and paginated rows for guests/authenticated users, hidden comments and reverse-direction blocks with more than one page of fixtures. Component tests prove totals of 123/122 are preserved with one/two loaded rows, overlapping-page IDs do not duplicate, and late pagination success/failure cannot restore blocked/deleted state or stale totals/errors.
+- Limitations: a browser/client must refetch to learn about later moderation/block changes; this does not add real-time push synchronization. Existing legacy indexes remain unchanged.
 
 ## 16. Medium — Message unread indicators and notification destinations are misleading
 
@@ -161,7 +167,7 @@ Summary: **10 fixed and verified; 2 partially addressed; 10 still open; 0 implem
 - Reconciliation was tested only with isolated fixtures; no live reconciliation command, migration, seed or bulk cleanup ran. Normal application startup can provision the newly declared budget collection/indexes; no live schema/index deployment was performed here.
 - Browser visual layout, physical mobile/macOS behavior and production reverse-proxy behavior require separate evidence. Passing automated tests is not a blanket public-release sign-off.
 
-## Final #10/#11 verification — 17 October 2026
+## Historical final #10/#11 verification — 17 October 2026
 
 This completes the pending automated rerun after the authorization fixture corrections. No new repair batch was started; finding #20 and every other open item above retain their status. Only this checklist was edited during this final-verification pass; application code, tests and routing configuration were not changed.
 
@@ -188,8 +194,35 @@ This completes the pending automated rerun after the authorization fixture corre
 
 ### Remaining boundaries and safety
 
-- Heartbeat scheduling/token consistency is unit-tested, but `mediaRepository.refreshLease`'s exact MongoDB token/expiry update predicate does not have a separate real-database exercise. This is a precise coverage gap, not a demonstrated failure. The real suite separately verifies active-lease accounting and expiry boundaries.
+- At this earlier pass, heartbeat scheduling/token consistency was unit-tested but the exact MongoDB refresh predicate still lacked a real-database exercise. The subsequent #12–#15 batch below closes that specific gap with the focused real-MongoDB test requested by the user.
 - The isolated run used replica set `fyp_transactions_58a87856a9e848ea9afaf00e530d1d98` and dedicated `fyp_transactions_quota_*`, `fyp_transactions_media_*` and `fyp_transactions_sighting_*` databases. The quota database was `fyp_transactions_quota_3d40f2547ba645b9899c0ccff953fb36`; the sighting database was `fyp_transactions_sighting_f94a03f9abf0403d834ffe76b7a54e4c`. Exact owned fixtures were removed and zero remaining tracked fixtures confirmed; the owned replica set and disposable storage were stopped/removed by the harness.
 - No Atlas connection, `petlostapp`/`sample_mflix` access, real provider operation, live cleanup, seed, migration or application startup occurred. Existing records, provider assets, original uploads and runtime environment files were preserved. The production build regenerated ignored `dist/` output only.
 - Schema/index deployment remains future operational work: the repair adds the private `mediauploadbudgets` collection with a unique user index and two MediaAsset lease indexes. Normal enabled-upload startup provisions these; this verification did not. Existing records need no migration, and legacy indexes were not removed.
 - `.codex/config.toml`, `.codex/agents/fyp_architect.toml` and `AGENTS.md` belong to the separate routing-configuration task, not the application repair. They were left unchanged. Existing repair/dependency work remains uncommitted; nothing was committed or pushed.
+
+## #12–#15 repair and #10 heartbeat follow-up — 17 October 2026
+
+Only this repair batch was implemented; new features and #16–#22 remain paused. Requested explicit-model specialist delegation (`gpt-6-astra`, `high`) reviewed retry/security semantics read-only, then final readiness. It identified the overlapping comment-fetch race; the fix and two regression tests were added and source-reviewed. No unresolved blocker remained in that bounded review. This records requested tool settings and actual agent completion, not independent serving-model metadata or automatic named-agent loading.
+
+| Verification | Result | Boundary |
+|---|---|---|
+| Complete backend regression suite | 262 passed, 0 failed, 4 opt-in skipped (266 entries) | Unit and HTTP/JWT integration; regular suite does not connect to Atlas or an application database. |
+| Real local replica-set suites | 25 passed, 0 failed, 0 skipped | All four suites ran: upload quotas/heartbeat, media transactions, sighting transactions and rescue/comment/message queries/races. Cloudinary mocked. |
+| Frontend regressions | 177 passed in 29 files | Includes operation errors/locks, retry identity, permission-specific controls, authoritative totals, stale refresh/status races and locale/theme permutations. |
+| Vue TypeScript / ESLint | Passed / passed | Zero lint warnings. |
+| Backend syntax | 123 JavaScript files passed | Excludes dependency and upload directories. |
+| Production build | Passed | Existing >500 kB main-chunk warning; approximately 739 kB before gzip. |
+| Frontend startup | HTTP 200 for `/`, `/strays/verification-only` and the transformed detail component | Temporary loopback Vite server closed cleanly; HTTP startup checks are not browser interaction evidence. |
+| Secret / whitespace checks | Passed | Working-tree and Git-index scans found no unresolved local-secret or credential-pattern matches; exact fictional redaction-test URIs were reviewed. No tracked runtime environment files; `git diff --check` passed. |
+
+The final isolated run used replica set `fyp_transactions_4ead5346e80e4a2781961d5841a38b2f`, quota database `fyp_transactions_quota_0dd2b33b719942ab87c74da1e8dc91d1` and rescue database `fyp_transactions_rescue_b2bac338a7d8490988ce98770fc6462b`, plus dedicated media/sighting databases. Exact owned fixtures were removed and absence asserted; the owned replica set and disposable storage stopped/removed cleanly. An initial new rescue fixture omitted required `reporterName`; that fixture was corrected without weakening assertions, and the full local run then passed. The metadata-bearing image-processing regressions continue to run, but real provider uploads and browser evidence were not repeated.
+
+No application schema/index migration was required for #12–#15; existing unique keys and legacy indexes are retained. No Atlas/application-record/provider-asset/original-image/environment changes, live cleanup, seed, migration, commit or push. Routing configuration is not application repair work and remains unchanged. Browser visual/keyboard/physical-device verification remains pending; mocked HTTP authorization is distinguished from actual local MongoDB query/concurrency verification above.
+
+Changed files in this batch:
+
+- Backend behavior: `server/controllers/strayController.js`, `server/controllers/chatController.js`, `server/middleware/errorHandler.js`, `server/services/mediaAttachments.js`, new `server/services/submissionIdentity.js`.
+- Backend verification: `server/scripts/testTransactions.js`, `server/tests/helpers/localTransactions.js`, `server/tests/mediaQuotaTransactions.test.js`, `server/tests/mediaAttachments.test.js`, `server/tests/mediaFlowsIntegration.test.js`, new `server/tests/rescueTransactions.test.js`.
+- Frontend behavior/contracts: `src/views/StrayDetailScreen.vue`, `src/components/Chatscreen.vue`, `src/services/api.ts`, `src/types/stray.ts`, `src/i18n/index.ts`, all three `src/locales/{en,zh-HK,zh-CN}.json` files.
+- Frontend verification: `src/views/__tests__/StrayDetailScreen.test.ts`, `src/components/__tests__/ChatscreenSharedStray.test.ts`, `src/components/__tests__/ProfileScreen.test.ts`, `src/components/__tests__/StrayRescueScreen.test.ts` (the latter two update typed permission fixtures).
+- Tracking: `AUDIT_FINDINGS_CHECKLIST.md`. No routing-configuration files changed.

@@ -22,6 +22,19 @@ async function render(message: Record<string, unknown>) {
 }
 
 describe('structured stray post messages', () => {
+  it('retains retry identity for unchanged messages and rotates it after a payload edit', async () => {
+    const { wrapper } = await render({})
+    apiMocks.sendMessage.mockRejectedValue(new Error('lost response'))
+    const input = wrapper.get('textarea, input[type="text"]')
+    await input.setValue('Hello')
+    await wrapper.get('.send-btn').trigger('click'); await flushPromises()
+    await wrapper.get('.send-btn').trigger('click'); await flushPromises()
+    expect(apiMocks.sendMessage.mock.calls[0][1].clientRequestId).toBe(apiMocks.sendMessage.mock.calls[1][1].clientRequestId)
+    await input.setValue('Changed')
+    await wrapper.get('.send-btn').trigger('click'); await flushPromises()
+    expect(apiMocks.sendMessage.mock.calls[2][1].clientRequestId).not.toBe(apiMocks.sendMessage.mock.calls[1][1].clientRequestId)
+    wrapper.unmount()
+  })
   beforeEach(() => { vi.useFakeTimers(); apiMocks.getMessages.mockReset(); apiMocks.sendMessage.mockReset() })
   afterEach(() => vi.useRealTimers())
 

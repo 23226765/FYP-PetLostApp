@@ -460,9 +460,9 @@ export async function updateStrayStatus(
   return data.stray
 }
 
-export async function getStrayComments(id: string): Promise<StrayComment[]> {
-  const { data } = await http.get<{ comments: StrayComment[] }>(`/strays/${id}/comments`, { params: { limit: 50 } })
-  return data.comments
+export async function getStrayComments(id: string, page = 1): Promise<{ comments: StrayComment[]; pagination: Pagination }> {
+  const { data } = await http.get<{ comments: StrayComment[]; pagination: Pagination }>(`/strays/${id}/comments`, { params: { limit: 50, page } })
+  return data
 }
 
 export async function addStrayComment(id: string, text: string, submissionId: string): Promise<StrayComment> {

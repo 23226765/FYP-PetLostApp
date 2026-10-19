@@ -118,6 +118,7 @@
       </button>
       <input
         v-model="draft"
+          :disabled="sending"
         class="chat-input"
         type="text"
         :placeholder="t('messages.typeMessage')"
@@ -168,6 +169,7 @@ const draft = ref('')
 const imageUpload = useImageUpload('message')
 const pendingPhoto = computed(() => imageUpload.preview)
 let clientRequestId = createImageRequestId()
+let retrySignature = ''
 const attachmentInput = ref<HTMLInputElement | null>(null)
 const feedEl = ref<HTMLElement | null>(null)
 const loading = ref(true)
@@ -265,6 +267,9 @@ async function send() {
   const text = draft.value.trim()
   const photo = pendingPhoto.value
   if ((!text && !photo) || sending.value) return
+  const signature = JSON.stringify([context.generation, petId, participantId || '', text, photo])
+  if (retrySignature && retrySignature !== signature) clientRequestId = createImageRequestId()
+  retrySignature = signature
 
   sending.value = true
   error.value = ''
@@ -283,6 +288,7 @@ async function send() {
     draft.value = ''
     imageUpload.finish()
     clientRequestId = createImageRequestId()
+    retrySignature = ''
     await scrollToBottom('smooth')
   } catch (e) {
     if (active()) error.value = translateApiError(e, 'errors.sendMessage')

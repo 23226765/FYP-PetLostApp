@@ -34,6 +34,7 @@ export function logServerError(context, err, req) {
  */
 export function errorHandler(err, req, res, _next) {
   if (Object.hasOwn(IMAGE_ERRORS, err?.code || '')) return imageErrorResponse(err, res, _next)
+  if (err?.code === 'SUBMISSION_CONFLICT') return res.status(409).json({ error: 'Submission ID was already used for different content.', code: 'SUBMISSION_CONFLICT' })
   logServerError('Unhandled API error', err, req)
 
   const error = err && typeof err === 'object' ? err : {}

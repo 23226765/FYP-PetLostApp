@@ -64,6 +64,7 @@ export function translateApiError(error: unknown, fallbackKey = 'errors.generic'
     ? (error as Error & { apiCode?: string }).apiCode
     : undefined
   const keyByCode: Record<string, string> = {
+    SUBMISSION_CONFLICT: 'rescueRepair.submissionConflict',
     IMAGE_INVALID: 'media.invalid',
     IMAGE_TOO_LARGE: 'media.tooLarge',
     IMAGE_OUTPUT_TOO_LARGE: 'media.tooLarge',

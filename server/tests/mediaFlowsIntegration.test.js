@@ -222,6 +222,64 @@ test('chat: image-only message is idempotent and its binary obeys conversation/b
   assert.equal((await request(`/chat/${petId}`, finder, { ...body, clientRequestId: 'fictional_message_002' })).status, 403)
   blocked = false
 })
+test('rescue HTTP role matrix exposes only executable author/status controls', async () => {
+  const id = [...tables.get(Stray).keys()][0]
+  for (const [actor, edit, status] of [[finder, true, true], [owner, false, false], [unrelated, false, false], [admin, false, true], [undefined, false, false]]) {
+    const res = await request(`/strays/${id}`, actor, undefined, 'GET')
+    assert.equal(res.status, 200)
+    const { stray } = await res.json()
+    assert.equal(stray.canEdit, edit); assert.equal(stray.canDelete, edit)
+    assert.equal(stray.canUpdateStatus, status); assert.equal(stray.canManage, edit)
+    if (!edit) {
+      assert.equal((await request(`/strays/${id}`, actor, { description: 'Disallowed edit' }, 'PATCH')).status, actor ? 403 : 401)
+      assert.equal((await request(`/strays/${id}`, actor, undefined, 'DELETE')).status, actor ? 403 : 401)
+      assert.equal((await request(`/uploads/managed/content/stray/${id}`, actor, { imageIds: [] }, 'PATCH')).status, actor ? 403 : 401)
+    }
+    assert.equal((await request(`/strays/${id}/status`, actor, { status: 'reported' }, 'PATCH')).status, status ? 200 : actor ? 403 : 401)
+  }
+})
+
+test('comment HTTP replay binds text/destination, hides hidden replay and never notifies a conflicting target', async () => {
+  const id = [...tables.get(Stray).keys()][0], originalPopulate = StrayComment.prototype.populate
+  StrayComment.prototype.populate = async function (field, select) { assert.equal(field, 'author'); assert.equal(select, 'name avatar'); return this }
+  try {
+    const body = { text: 'One fictional comment', submissionId: 'fictional_comment_repair' }
+    assert.equal((await request(`/strays/${id}/comments`, undefined, body)).status, 401)
+    const first = await request(`/strays/${id}/comments`, owner, body), payload = await first.json()
+    assert.equal(first.status, 201); assert.equal(payload.duplicate, false)
+    const again = await request(`/strays/${id}/comments`, owner, body), repeated = await again.json()
+    assert.equal(again.status, 200); assert.equal(repeated.duplicate, true); assert.equal(repeated.comment.id, payload.comment.id)
+    const notifications = tables.get(Notification).size
+    const changed = await request(`/strays/${id}/comments`, owner, { ...body, text: 'Changed text' })
+    assert.equal(changed.status, 409); assert.equal((await changed.json()).code, 'SUBMISSION_CONFLICT')
+    const other = put(Stray, { ...tables.get(Stray).get(id), _id: new mongoose.Types.ObjectId(), submissionId: 'fictional_other_rescue' })
+    assert.equal((await request(`/strays/${other._id}/comments`, owner, body)).status, 409)
+    assert.equal(tables.get(Notification).size, notifications)
+    tables.get(StrayComment).get(payload.comment.id).moderationStatus = 'hidden'
+    assert.equal((await request(`/strays/${id}/comments`, owner, body)).status, 404)
+    assert.equal(tables.get(StrayComment).size, 1)
+  } finally { StrayComment.prototype.populate = originalPopulate }
+})
+
+test('chat HTTP retries reject changed text, destination, shared post and image/no-image payloads', async () => {
+  const strayId = [...tables.get(Stray).keys()][0]
+  const plain = { text: 'Plain message', clientRequestId: 'fictional_plain_repair' }
+  const first = await request(`/chat/${petId}`, finder, plain)
+  assert.equal(first.status, 201)
+  const replay = await request(`/chat/${petId}`, finder, plain)
+  assert.equal(replay.status, 200); assert.equal((await replay.json()).duplicate, true)
+  const otherPet = put(Pet, { ...tables.get(Pet).get(petId), _id: new mongoose.Types.ObjectId(), submissionId: 'other-repair-pet' })
+  const changes = [plain, { ...plain, text: 'Different' }, { ...plain, sharedStrayId: strayId }, { ...plain, imageIds: [asset(finder, 'message')] }]
+  for (const [index, body] of changes.entries()) {
+    const response = await request(`/chat/${index === 0 ? otherPet._id : petId}`, finder, body)
+    assert.equal(response.status, 409); assert.equal((await response.json()).code, 'SUBMISSION_CONFLICT')
+  }
+  for (const body of [{ text: 'Image removed', clientRequestId: 'fictional_message_001' },
+    { text: 'Image text changed', imageIds: [...tables.get(Message).values()].find(row => row.clientRequestId === 'fictional_message_001').imageIds, clientRequestId: 'fictional_message_001' }]) {
+    assert.equal((await request(`/chat/${petId}`, finder, body)).status, 409)
+  }
+})
+
 test('legacy Base64/arbitrary URL public writes are rejected in every category', async () => {
   for (const [path, actor, body, method] of [['/auth/register', undefined, { avatar: 'data:image/png;base64,AAAA' }], ['/auth/me', owner, { avatar: 'data:image/png;base64,AAAA' }, 'PATCH'], ['/pets/report', owner, { photo: 'https://example.test/arbitrary.jpg' }],
     [`/pets/${petId}/sighting`, finder, { photo: 'data:image/png;base64,AAAA' }], ['/strays/report', finder, { photos: ['/uploads/new.jpg'] }], [`/chat/${petId}`, finder, { text: 'test', photo: 'https://example.test/arbitrary.jpg' }]]) {
