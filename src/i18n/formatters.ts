@@ -98,3 +98,25 @@ export function formatDateTime(value: string | Date | undefined | null) {
   const date = value instanceof Date ? value : new Date(value)
   return Number.isNaN(date.getTime()) ? String(value) : i18n.global.d(date, 'dateTime')
 }
+
+export function calendarDayKey(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (!Number.isFinite(date.getTime())) return 'unknown'
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+export function chatDayLabel(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (!Number.isFinite(date.getTime())) return i18n.global.t('common.unknown')
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (calendarDayKey(date) === calendarDayKey(today)) return i18n.global.t('common.today')
+  if (calendarDayKey(date) === calendarDayKey(yesterday)) return i18n.global.t('common.yesterday')
+  return i18n.global.d(date, 'short')
+}
+
+export function formatClockTime(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isFinite(date.getTime()) ? i18n.global.d(date, 'time') : i18n.global.t('common.unknown')
+}

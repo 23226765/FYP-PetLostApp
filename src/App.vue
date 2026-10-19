@@ -171,6 +171,7 @@
     <Transition name="page">
       <Chatscreen
         v-if="chatPet"
+        :key="`${currentUser?.id}:${chatPet.id}:${chatPet.participantId || ''}`"
         :pet="chatPet"
         :user="currentUser"
         @close="chatPet = null"
@@ -182,9 +183,11 @@
       <NotificationsPanel
         v-if="showNotifications"
         :notifications="notifications"
+        :target-error="notificationTargetError"
         @close="showNotifications = false"
         @open-pet="openPetById"
         @open-stray="openStrayFromNotification"
+        @open-chat="openChatFromNotification"
         @mark-read="handleMarkNotificationRead"
         @mark-all="handleMarkAllNotificationsRead"
       />
@@ -391,6 +394,7 @@ import type { ChatPet } from './services/api'
 import {
   getNearbyPets,
   getNotifications,
+  getChatInbox,
   getPet,
   getProfile,
   markAllNotificationsRead,
@@ -452,6 +456,7 @@ const showSmartMatch = ref(false)
 const showNotifications = ref(false)
 const showBoost = ref(false)
 const notifications = ref<AppNotification[]>([])
+const notificationTargetError = ref('')
 const selectedPet = ref<Pet | null>(null)
 const selectedSightingId = ref<string | undefined>()
 const deepLinkLoading = ref(false)
@@ -709,6 +714,7 @@ function clearAuthorizationScopedState() {
   toastPet.value = null
   chatPet.value = null
   notifications.value = []
+  notificationTargetError.value = ''
   messageUnreadCount.value = 0
   sightingPet.value = null
   sightingNote.value = ''
@@ -946,6 +952,29 @@ function openChatFromInbox(pet: ChatPet) {
   openChat(pet)
 }
 
+let notificationOpenSequence = 0
+watch(showNotifications, () => { notificationOpenSequence++; notificationTargetError.value = '' })
+async function openChatFromNotification(notification: AppNotification) {
+  const sequence = ++notificationOpenSequence
+  const context = captureAuthContext()
+  notificationTargetError.value = ''
+  if (!currentUser.value || !notification.conversation) {
+    notificationTargetError.value = t('messageRepair.unavailable')
+    return
+  }
+  const target = notification.conversation
+  try {
+    const conversations = await getChatInbox()
+    if (sequence !== notificationOpenSequence || !isAuthContextCurrent(context) || !currentUser.value || !showNotifications.value) return
+    const conversation = conversations.find((item) => item.pet.id === target.petId && item.pet.participantId === target.participantId)
+    if (!conversation) { notificationTargetError.value = t('messageRepair.unavailable'); return }
+    openChat(conversation.pet)
+    showNotifications.value = false
+  } catch (error) {
+    if (sequence === notificationOpenSequence && isAuthContextCurrent(context) && showNotifications.value) notificationTargetError.value = translateApiError(error, 'messageRepair.unavailable')
+  }
+}
+
 function confirmSmartMatch(pet: Pet) {
   showSmartMatch.value = false
   openSighting(pet)
@@ -1018,6 +1047,7 @@ async function syncNotificationPreferences() {
   })
 }
 
+function refreshChatNotifications() { void loadNotifications() }
 function startNotificationPolling() {
   stopNotificationPolling()
   notificationPollTimer = setInterval(() => {
@@ -1218,6 +1248,7 @@ function handleExternalSessionChange() {
 }
 
 onMounted(() => {
+  window.addEventListener('chat:read', refreshChatNotifications)
   window.addEventListener('auth:external-change', handleExternalSessionChange)
   void (async () => {
     const context = captureAuthContext()
@@ -1230,6 +1261,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('chat:read', refreshChatNotifications)
   deepLinkRequestSequence += 1
   petsRequestSequence += 1
   petsAbortController?.abort()

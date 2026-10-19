@@ -5,16 +5,16 @@
       <button class="back-btn" :aria-label="t('messages.backToPet')" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
-      <ManagedImage class="pet-avatar" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" />
+      <ManagedImage v-if="conversationAvailable" class="pet-avatar" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" />
       <div class="chat-title">
         <h1>
           {{
-            currentSender === 'owner'
+            !conversationAvailable ? (loading ? t('messages.loadingMessages') : t('messages.unavailable')) : currentSender === 'owner'
               ? t('messages.chattingWith', { name: pet.participantName || t('messages.finder') })
               : t('messages.chattingWith', { name: pet.owner || t('messages.petOwner') })
           }}
         </h1>
-        <p>{{ t('messages.context', { name: pet.name }) }}</p>
+        <p v-if="conversationAvailable">{{ t('messages.context', { name: pet.name }) }}</p>
       </div>
       <div v-if="ownerContactActions" class="header-contact">
         <a
@@ -43,7 +43,7 @@
       </span>
     </header>
     <SafetyActions
-      v-if="counterpartId"
+      v-if="counterpartId && conversationAvailable"
       class="chat-safety"
       target-type="user"
       :target-id="counterpartId"
@@ -55,13 +55,14 @@
 
     <!-- Chat feed -->
     <main ref="feedEl" class="chat-feed" :aria-label="t('messages.chatMessages')">
-      <p class="day-divider">{{ t('common.today') }}</p>
-
       <p v-if="loading" class="chat-state" role="status">{{ t('messages.loadingMessages') }}</p>
       <p v-else-if="error" class="chat-state error" role="alert">{{ error }}</p>
       <p v-else-if="messages.length === 0" class="chat-state">{{ t('messages.noMessages') }}</p>
 
-      <template v-for="msg in messages" :key="msg.id">
+      <p v-if="readError" class="chat-state error" role="alert">{{ readError }} <button type="button" @click="loadMessages()">{{ t('common.retry') }}</button></p>
+      <template v-for="group in messageGroups" :key="group.key">
+        <p class="day-divider">{{ chatDayLabel(group.date) }}</p>
+      <template v-for="msg in group.messages" :key="msg.id">
         <div class="bubble-row" :class="msg.sender === currentSender ? 'out' : 'in'">
           <ManagedImage
             v-if="msg.sender !== currentSender"
@@ -94,6 +95,7 @@
             />
           </div>
         </div>
+      </template>
       </template>
     </main>
 
@@ -128,7 +130,7 @@
       <button
         class="send-btn"
         :aria-label="t('messages.sendMessage')"
-        :disabled="sending || loading"
+        :disabled="sending || loading || !conversationAvailable"
         @click="send"
       >
         <AppIcon name="send" :size="19" />
@@ -140,7 +142,7 @@
 <script setup lang="ts">
 import ManagedImage from "./ManagedImage.vue"
 import ContentImageEditor from './ContentImageEditor.vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
@@ -150,6 +152,7 @@ import AppIcon from './AppIcon.vue'
 import SafetyActions from './SafetyActions.vue'
 import {
   getMessages,
+  markChatMessagesRead,
   sendMessage,
   type ChatMessage,
   type ChatPet,
@@ -157,7 +160,7 @@ import {
 import type { User } from '../types/user'
 import { createContactActions } from '../utils/contact'
 import { translateApiError, useAppI18n } from '../i18n'
-import { districtLabel, strayAnimalLabel } from '../i18n/formatters'
+import { calendarDayKey, chatDayLabel, formatClockTime, districtLabel, strayAnimalLabel } from '../i18n/formatters'
 
 const props = defineProps<{ pet: ChatPet; user?: User | null }>()
 const emit = defineEmits<{ close: [] }>()
@@ -168,13 +171,25 @@ const messages = ref<ChatMessage[]>([])
 const draft = ref('')
 const imageUpload = useImageUpload('message')
 const pendingPhoto = computed(() => imageUpload.preview)
-let clientRequestId = createImageRequestId()
+let clientRequestId = ''
 let retrySignature = ''
 const attachmentInput = ref<HTMLInputElement | null>(null)
 const feedEl = ref<HTMLElement | null>(null)
 const loading = ref(true)
 const sending = ref(false)
 const error = ref('')
+const readError = ref('')
+const conversationAvailable = ref(false)
+const messageGroups = computed(() => {
+  const groups: Array<{ key: string; date: string; messages: ChatMessage[] }> = []
+  for (const message of messages.value) {
+    const key = calendarDayKey(message.createdAt)
+    let group = groups.at(-1)
+    if (!group || group.key !== key) { group = { key, date: message.createdAt, messages: [] }; groups.push(group) }
+    group.messages.push(message)
+  }
+  return groups
+})
 const currentSender = ref<ChatMessage['sender'] | null>(null)
 const counterpartId = computed(() => currentSender.value === 'owner' ? props.pet.participantId : props.pet.reportedBy)
 const counterpartName = computed(() => currentSender.value === 'owner' ? props.pet.participantName : props.pet.owner)
@@ -187,6 +202,20 @@ const ownerContactActions = computed(() => {
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let refreshing = false
+let requestSequence = 0
+let sessionInvalidated = false
+let threadGeneration = 0
+let feedRevision = 0
+const acknowledgedIds = new Set<string>()
+
+function unavailable(cause: unknown): boolean {
+  if (![403, 404].includes((cause as { status?: number })?.status || 0)) return false
+  feedRevision++
+  messages.value = []; currentSender.value = null; conversationAvailable.value = false
+  readError.value = ''; error.value = t('messageRepair.unavailable')
+  imageUpload.reset()
+  return true
+}
 
 function mergeMessages(incoming: ChatMessage[]) {
   const byId = new Map(messages.value.map((message) => [message.id, message]))
@@ -196,30 +225,60 @@ function mergeMessages(incoming: ChatMessage[]) {
   )
 }
 
-async function scrollToBottom(behavior: ScrollBehavior = 'auto') {
+async function scrollToBottom(behavior: ScrollBehavior = 'auto', active = () => !disposed) {
+  const feed = feedEl.value
   await nextTick()
-  feedEl.value?.scrollTo({ top: feedEl.value.scrollHeight, behavior })
+  if (!active() || !feed || feed !== feedEl.value) return
+  if (typeof feed.scrollTo === 'function') feed.scrollTo({ top: feed.scrollHeight, behavior })
+  else feed.scrollTop = feed.scrollHeight
 }
 
+const threadFocused = () => document.visibilityState !== 'hidden' && document.hasFocus()
+
 async function loadMessages(showLoading = false) {
-  if (refreshing) return
+  if (refreshing || disposed || sessionInvalidated) return
+  const context = captureAuthContext()
+  const petId = props.pet.id, participantId = props.pet.participantId, userId = props.user?.id
+  const sequence = ++requestSequence
+  const revision = feedRevision
+  const active = () => !disposed && !sessionInvalidated && sequence === requestSequence && isAuthContextCurrent(context) && props.pet.id === petId && props.pet.participantId === participantId && props.user?.id === userId
   refreshing = true
   if (showLoading) loading.value = true
 
   try {
     const previousCount = messages.value.length
-    const thread = await getMessages(props.pet.id, props.pet.participantId)
+    const thread = await getMessages(petId, participantId)
+    if (!active() || feedRevision !== revision) return
     currentSender.value = thread.viewerRole
+    messages.value = []
     mergeMessages(thread.messages)
+    conversationAvailable.value = true
     error.value = ''
-    if (showLoading || messages.value.length > previousCount) await scrollToBottom()
+    if (showLoading || messages.value.length > previousCount) await scrollToBottom('auto', active)
+    await nextTick()
+    if (!active() || !threadFocused()) return
+    const incoming = thread.messages.filter((message) => message.sender !== thread.viewerRole && !acknowledgedIds.has(message.id)).map((message) => message.id)
+    for (let index = 0; index < incoming.length; index += 500) {
+      if (!active() || !threadFocused()) return
+      const ids = incoming.slice(index, index + 500)
+      try {
+        await markChatMessagesRead(petId, participantId, ids)
+        if (!active()) return
+        ids.forEach((id) => acknowledgedIds.add(id))
+        readError.value = ''
+        window.dispatchEvent(new Event('chat:read'))
+      } catch (cause) {
+        if (active() && !unavailable(cause)) readError.value = t('messageRepair.readFailed')
+        break
+      }
+    }
   } catch (e) {
-    if (showLoading) {
+    if (!active()) return
+    if (!unavailable(e) && showLoading) {
       error.value = translateApiError(e, 'errors.loadMessages')
     }
   } finally {
-    refreshing = false
-    if (showLoading) loading.value = false
+    if (active()) { refreshing = false; if (showLoading) loading.value = false }
   }
 }
 
@@ -234,15 +293,18 @@ function setPendingPhoto(dataUrl: string) {
 }
 
 async function attachPhoto() {
+  const context = captureAuthContext()
+  const generation = threadGeneration
+  const active = () => !disposed && generation === threadGeneration && !sessionInvalidated && isAuthContextCurrent(context)
   try {
     const image = await Camera.getPhoto({
       resultType: CameraResultType.DataUrl,
       quality: 70,
       allowEditing: false,
     })
-    if (image.dataUrl) setPendingPhoto(image.dataUrl)
+    if (active() && image.dataUrl) setPendingPhoto(image.dataUrl)
   } catch {
-    attachmentInput.value?.click()
+    if (active()) attachmentInput.value?.click()
   }
 }
 
@@ -262,18 +324,20 @@ function onAttachmentSelected(event: Event) {
 
 async function send() {
   const context = captureAuthContext()
+  const generation = threadGeneration
   const petId = props.pet.id, participantId = props.pet.participantId
-  const active = () => !disposed && isAuthContextCurrent(context) && props.pet.id === petId && props.pet.participantId === participantId
+  const active = () => !disposed && generation === threadGeneration && isAuthContextCurrent(context) && props.pet.id === petId && props.pet.participantId === participantId
   const text = draft.value.trim()
   const photo = pendingPhoto.value
-  if ((!text && !photo) || sending.value) return
+  if ((!text && !photo) || sending.value || loading.value || !conversationAvailable.value || sessionInvalidated) return
   const signature = JSON.stringify([context.generation, petId, participantId || '', text, photo])
-  if (retrySignature && retrySignature !== signature) clientRequestId = createImageRequestId()
+  if (retrySignature && retrySignature !== signature) clientRequestId = ''
   retrySignature = signature
 
   sending.value = true
   error.value = ''
   try {
+    clientRequestId ||= createImageRequestId()
     const imageIds = await imageUpload.ensure()
     if (!active()) return
     const message = await sendMessage(petId, {
@@ -284,22 +348,21 @@ async function send() {
     })
     if (!active()) return
     currentSender.value = message.sender
+    feedRevision++
     mergeMessages([message])
     draft.value = ''
     imageUpload.finish()
-    clientRequestId = createImageRequestId()
+    clientRequestId = ''
     retrySignature = ''
-    await scrollToBottom('smooth')
+    await scrollToBottom('smooth', active)
   } catch (e) {
-    if (active()) error.value = translateApiError(e, 'errors.sendMessage')
+    if (active() && !unavailable(e)) error.value = translateApiError(e, 'errors.sendMessage')
   } finally {
     if (active()) sending.value = false
   }
 }
 
-function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-}
+const formatTime = formatClockTime
 
 function imageUrl(value: string) {
   try { const api = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin); return new URL(value, `${api.origin}/`).href } catch { return '' }
@@ -311,7 +374,23 @@ function openSharedPost(id: string) {
 }
 
 let disposed = false
+function clearThread() {
+  threadGeneration++; feedRevision++; imageUpload.reset()
+  requestSequence++; refreshing = false; acknowledgedIds.clear()
+  messages.value = []; draft.value = ''; currentSender.value = null
+  conversationAvailable.value = false; clientRequestId = ''; retrySignature = ''
+  error.value = ''; readError.value = ''; sending.value = false; loading.value = false
+}
+function invalidateThread() { sessionInvalidated = true; clearThread() }
+function resumeVisibleThread() { if (!sessionInvalidated) void loadMessages() }
+watch(() => [props.pet.id, props.pet.participantId, props.user?.id], () => {
+  clearThread(); sessionInvalidated = false; void loadMessages(true)
+})
 onMounted(async () => {
+  window.addEventListener('auth:changed', invalidateThread)
+  window.addEventListener('auth:unauthorized', invalidateThread)
+  window.addEventListener('focus', resumeVisibleThread)
+  document.addEventListener('visibilitychange', resumeVisibleThread)
   const context = captureAuthContext()
   await loadMessages(true)
   if (disposed || !isAuthContextCurrent(context)) return
@@ -320,6 +399,11 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   disposed = true
+  requestSequence++
+  window.removeEventListener('auth:changed', invalidateThread)
+  window.removeEventListener('auth:unauthorized', invalidateThread)
+  window.removeEventListener('focus', resumeVisibleThread)
+  document.removeEventListener('visibilitychange', resumeVisibleThread)
   if (pollTimer) clearInterval(pollTimer)
 })
 </script>

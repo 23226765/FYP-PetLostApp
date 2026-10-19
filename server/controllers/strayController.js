@@ -230,9 +230,9 @@ export async function reportStray(req, res, next) {
     if (!SPECIES.has(species) || !description) return res.status(400).json({ error: 'Species and description are required.' })
     if (species === 'Other' && !animalType) return res.status(400).json({ error: 'Please specify what type of animal was seen.' })
     if (!CONDITIONS.has(condition) || !HK_DISTRICTS.has(district) || !cleanText(locationName, 200)) return res.status(400).json({ error: 'Valid condition, district, and location are required.' })
-    if (!validCoordinates(coordinates)) return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
+    if (!validCoordinates(coordinates)) return res.status(400).json({ error: '`coordinates` must be [lng, lat].', code: 'LOCATION_INVALID' })
     if (!imageIds.length) return res.status(400).json({ error: 'At least one uploaded image is required.', code: 'IMAGE_IDS_REQUIRED' })
-    if (Number.isNaN(observedAt.getTime()) || observedAt.getTime() > Date.now() + 300000) return res.status(400).json({ error: 'Observed time is invalid.' })
+    if (Number.isNaN(observedAt.getTime()) || observedAt.getTime() > Date.now() + 300000) return res.status(400).json({ error: 'Observed time is invalid.', code: 'OBSERVED_TIME_INVALID' })
     const safeSubmissionId = cleanText(submissionId, 100)
     if (!safeSubmissionId) return res.status(400).json({ error: 'A submissionId is required.' })
 
@@ -257,7 +257,7 @@ export async function updateStray(req, res, next) {
     if (!stray) return res.status(404).json({ error: 'Stray report not found' })
     if (String(stray.reportedBy) !== String(req.user._id)) return res.status(403).json({ error: 'Only the author can edit this post.' })
     const description = cleanText(req.body.description, 2000)
-    if (!description) return res.status(400).json({ error: 'Description is required.' })
+    if (!description) return res.status(400).json({ error: 'Description is required.', code: 'FIELD_REQUIRED', field: 'description' })
     if (req.body.species && !SPECIES.has(req.body.species)) return res.status(400).json({ error: 'Invalid species.' })
     if (req.body.condition && !CONDITIONS.has(req.body.condition)) return res.status(400).json({ error: 'Invalid condition.' })
     const nextSpecies = req.body.species || stray.species
@@ -330,7 +330,7 @@ export async function createComment(req, res, next) {
     setLocationPrivacyHeaders(res)
     const text = cleanText(req.body?.text, 501); const submissionId = cleanText(req.body?.submissionId, 101)
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid stray report id' })
-    if (!text || text.length > 500 || !submissionId || submissionId.length > 100) return res.status(400).json({ error: 'Comment must be between 1 and 500 characters and include submissionId.' })
+    if (!text || text.length > 500 || !submissionId || submissionId.length > 100) return res.status(400).json({ error: 'Comment must be between 1 and 500 characters and include submissionId.', code: 'COMMENT_INVALID', params: { max: 500 } })
     const stray = await Stray.findOne({ _id: req.params.id, ...ACTIVE_FILTER })
     if (!stray) return res.status(404).json({ error: 'Stray report not found' })
     if (await usersBlockEachOther(req.user._id, stray.reportedBy)) {
@@ -351,7 +351,7 @@ export async function updateComment(req, res, next) {
   try {
     setLocationPrivacyHeaders(res)
     const text = cleanText(req.body?.text, 501)
-    if (!mongoose.isValidObjectId(req.params.commentId) || !text || text.length > 500) return res.status(400).json({ error: 'A comment between 1 and 500 characters is required.' })
+    if (!mongoose.isValidObjectId(req.params.commentId) || !text || text.length > 500) return res.status(400).json({ error: 'A comment between 1 and 500 characters is required.', code: 'COMMENT_INVALID', params: { max: 500 } })
     if (!await Stray.exists({ _id: req.params.id, ...ACTIVE_FILTER })) {
       return res.status(404).json({ error: 'Stray report not found' })
     }

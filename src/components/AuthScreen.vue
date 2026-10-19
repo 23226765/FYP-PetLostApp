@@ -140,8 +140,7 @@ async function submit() {
   } catch (e) {
     if (!active()) return
     emit('failed')
-    const err = e as Error & { apiCode?: string }
-    error.value = err.apiCode ? translateApiError(e) : err.message || translateApiError(e)
+    error.value = translateApiError(e)
   } finally {
     if (request === requestSequence) loading.value = false
   }

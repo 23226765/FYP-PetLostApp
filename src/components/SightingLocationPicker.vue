@@ -9,6 +9,7 @@
         v-if="modelValue"
         class="change-location"
         type="button"
+        :disabled="disabled"
         @click="changeLocation"
       >
         {{ t('sightings.changeLocation') }}
@@ -16,7 +17,7 @@
     </header>
 
     <p class="location-guidance">
-      {{ t('sightings.pickerGuidance') }}
+      {{ guidance || t('sightings.pickerGuidance') }}
     </p>
 
     <div
@@ -29,7 +30,7 @@
     <button
       class="current-location"
       type="button"
-      :disabled="locating"
+      :disabled="locating || disabled"
       @click="useCurrentLocation"
     >
       <AppIcon name="pin" :size="18" />
@@ -44,7 +45,8 @@
           inputmode="decimal"
           autocomplete="off"
           placeholder="22.3193"
-          @change="applyCoordinateInputs"
+          :disabled="disabled"
+          @input="applyCoordinateInputs"
         />
       </label>
       <label>
@@ -54,7 +56,8 @@
           inputmode="decimal"
           autocomplete="off"
           placeholder="114.1694"
-          @change="applyCoordinateInputs"
+          :disabled="disabled"
+          @input="applyCoordinateInputs"
         />
       </label>
     </div>
@@ -73,7 +76,7 @@
     <button
       class="confirm-location"
       type="button"
-      :disabled="!draftLocation || Boolean(modelValue)"
+      :disabled="disabled || !draftLocation || Boolean(modelValue)"
       @click="confirmLocation"
     >
       <AppIcon name="check" :size="18" />
@@ -89,6 +92,7 @@ import 'leaflet/dist/leaflet.css'
 import { getCurrentLocation } from '../services/geolocation'
 import AppIcon from './AppIcon.vue'
 import { useAppI18n } from '../i18n'
+import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 
 type CoordinatePair = [number, number]
 
@@ -96,6 +100,8 @@ const props = defineProps<{
   modelValue: CoordinatePair | null
   initialCenter?: CoordinatePair | null
   title?: string
+  guidance?: string
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -114,6 +120,8 @@ const locationError = ref('')
 
 let map: L.Map | null = null
 let marker: L.Marker | null = null
+let selectionVersion = 0
+let disposed = false
 
 const formattedCoordinates = computed(() => {
   if (!draftLocation.value) return ''
@@ -148,7 +156,7 @@ function renderMarker(centerMap = false) {
   if (!map || !draftLocation.value) return
   const latLng: L.LatLngExpression = [draftLocation.value[1], draftLocation.value[0]]
   if (!marker) {
-    marker = L.marker(latLng, { draggable: true, icon: markerIcon() }).addTo(map)
+    marker = L.marker(latLng, { draggable: !props.disabled, icon: markerIcon() }).addTo(map)
     marker.on('dragend', () => {
       const position = marker?.getLatLng()
       if (position) selectDraft([position.lng, position.lat], false)
@@ -159,17 +167,25 @@ function renderMarker(centerMap = false) {
   if (centerMap) map.setView(latLng, Math.max(map.getZoom(), 16))
 }
 
-function selectDraft(coordinates: CoordinatePair, centerMap = true) {
-  if (!validCoordinates(coordinates)) return
+function selectDraft(coordinates: CoordinatePair, centerMap = true, syncInputs = true) {
+  if (disposed || props.disabled || !validCoordinates(coordinates)) return
+  selectionVersion++
+  locating.value = false
   draftLocation.value = coordinates
-  longitudeInput.value = coordinates[0].toFixed(6)
-  latitudeInput.value = coordinates[1].toFixed(6)
+  if (syncInputs) {
+    longitudeInput.value = coordinates[0].toFixed(6)
+    latitudeInput.value = coordinates[1].toFixed(6)
+  }
   locationError.value = ''
   if (props.modelValue) emit('update:modelValue', null)
   renderMarker(centerMap)
 }
 
 function applyCoordinateInputs() {
+  if (props.disabled) return
+  selectionVersion++
+  locating.value = false
+  if (props.modelValue) emit('update:modelValue', null)
   const longitude = Number(longitudeInput.value)
   const latitude = Number(latitudeInput.value)
   const coordinates: CoordinatePair = [longitude, latitude]
@@ -178,29 +194,38 @@ function applyCoordinateInputs() {
     !latitudeInput.value.trim() ||
     !validCoordinates(coordinates)
   ) {
+    draftLocation.value = null
+    marker?.off()
+    marker?.remove()
+    marker = null
     locationError.value = t('sightings.invalidCoordinates')
     return
   }
-  selectDraft(coordinates)
+  selectDraft(coordinates, true, false)
 }
 
 async function useCurrentLocation() {
-  if (locating.value) return
+  if (locating.value || props.disabled) return
+  const version = ++selectionVersion
+  const context = captureAuthContext()
+  const active = () => !disposed && version === selectionVersion && !props.disabled && isAuthContextCurrent(context)
   locating.value = true
   locationError.value = ''
   try {
     const { lng, lat } = await getCurrentLocation()
+    if (!active()) return
     const coordinates: CoordinatePair = [lng, lat]
     if (!validCoordinates(coordinates)) throw new Error('Invalid location coordinates')
     selectDraft(coordinates)
   } catch {
-    locationError.value = t('sightings.geolocationUnavailable')
+    if (active()) locationError.value = t('sightings.geolocationUnavailable')
   } finally {
-    locating.value = false
+    if (!disposed && version === selectionVersion) locating.value = false
   }
 }
 
 function confirmLocation() {
+  if (props.disabled || disposed) return
   if (!draftLocation.value) {
     locationError.value = t('sightings.selectBeforeContinue')
     return
@@ -209,6 +234,9 @@ function confirmLocation() {
 }
 
 function changeLocation() {
+  if (props.disabled) return
+  selectionVersion++
+  locating.value = false
   emit('update:modelValue', null)
   locationError.value = ''
   marker?.dragging?.enable()
@@ -237,6 +265,14 @@ function initializeMap() {
 }
 
 watch(
+  () => props.disabled,
+  (disabled) => {
+    if (disabled) marker?.dragging?.disable()
+    else marker?.dragging?.enable()
+  },
+)
+
+watch(
   () => props.modelValue,
   (coordinates) => {
     if (!validCoordinates(coordinates)) return
@@ -247,9 +283,18 @@ watch(
   },
 )
 
-onMounted(initializeMap)
+onMounted(() => {
+  try { initializeMap() }
+  catch {
+    map?.remove()
+    map = null
+    locationError.value = t('reportLocation.mapUnavailable')
+  }
+})
 
 onBeforeUnmount(() => {
+  disposed = true
+  selectionVersion++
   marker?.off()
   marker = null
   map?.remove()

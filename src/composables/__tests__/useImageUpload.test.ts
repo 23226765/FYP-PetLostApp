@@ -1,11 +1,12 @@
 import { effectScope } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useImageUpload } from '../useImageUpload'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useImageUpload, createImageRequestId } from '../useImageUpload'
 import type { ImagePurpose } from '../../services/api'
 
 const mocks = vi.hoisted(() => ({ uploadManagedImage: vi.fn(), discardManagedImage: vi.fn() }))
 vi.mock('../../services/api', () => mocks)
 describe('managed image upload state', () => {
+  afterEach(() => vi.unstubAllGlobals())
   beforeEach(() => {
     localStorage.clear(); localStorage.setItem('token', 'fictional-owner-token')
     mocks.uploadManagedImage.mockReset(); mocks.discardManagedImage.mockResolvedValue(undefined)
@@ -17,6 +18,30 @@ describe('managed image upload state', () => {
     state.select(new Blob(['fictional-raster'], { type: 'image/png' }))
     return { state, stop: () => scope.stop() }
   }
+  it('works without randomUUID using only secure getRandomValues', async () => {
+    const getRandomValues = crypto.getRandomValues.bind(crypto)
+    vi.stubGlobal('crypto', { getRandomValues })
+    expect(createImageRequestId()).toMatch(/^image_[a-f0-9]{32}$/)
+    const { state, stop } = setup('pet')
+    mocks.uploadManagedImage.mockResolvedValue({ id: 'a'.repeat(24) })
+    await state.ensure()
+    expect(mocks.uploadManagedImage).toHaveBeenCalledTimes(1)
+    state.finish(); stop()
+  })
+  it.each(['absent', 'throws'])('missing secure RNG (%s) cannot crash setup/reset/cleanup and retains the image for retry', async (mode) => {
+    const getRandomValues = crypto.getRandomValues.bind(crypto)
+    vi.stubGlobal('crypto', mode === 'absent' ? {} : { getRandomValues: () => { throw new Error('Unavailable') } })
+    const { state, stop } = setup('avatar')
+    await expect(state.ensure()).rejects.toMatchObject({ apiCode: 'SECURE_ID_UNAVAILABLE' })
+    expect(state.error).toContain('secure submission ID')
+    expect(state.preview).toBe('blob:fictional-preview')
+    expect(mocks.uploadManagedImage).not.toHaveBeenCalled()
+    vi.stubGlobal('crypto', { getRandomValues })
+    mocks.uploadManagedImage.mockResolvedValue({ id: 'a'.repeat(24) })
+    await state.ensure()
+    vi.stubGlobal('crypto', {})
+    expect(() => { state.finish(); state.reset(); window.dispatchEvent(new Event('auth:changed')); stop() }).not.toThrow()
+  })
   for (const purpose of ['avatar', 'pet', 'sighting', 'stray', 'message'] as const) {
     it(`${purpose}: sends multipart bytes, reports progress and reuses its ID on retries`, async () => {
       mocks.uploadManagedImage.mockImplementation(async (_file, requestedPurpose, _key, options) => {
@@ -79,6 +104,19 @@ describe('managed image upload state', () => {
     await expect(pending).rejects.toThrow('Cancelled')
     expect(state.id).toBe(''); expect(state.preview).toBe('')
     expect(mocks.discardManagedImage).not.toHaveBeenCalled()
+    stop()
+  })
+  it('an account switch during camera-data conversion cannot upload under the new account', async () => {
+    let finish!: (value: Response) => void
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { finish = resolve })))
+    const { state, stop } = setup('sighting')
+    state.select('data:image/png;base64,c2FmZQ==')
+    const pending = state.ensure()
+    localStorage.setItem('token', 'another-account'); window.dispatchEvent(new Event('auth:changed'))
+    finish({ blob: async () => new Blob(['fixture'], { type: 'image/png' }) } as Response)
+    await expect(pending).rejects.toMatchObject({ apiCode: 'IMAGE_CANCELLED' })
+    expect(mocks.uploadManagedImage).not.toHaveBeenCalled()
+    expect(state.id).toBe('')
     stop()
   })
   it('language/theme storage events do not reset an in-progress selection', () => {

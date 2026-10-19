@@ -1,4 +1,36 @@
 {
+  "notificationEvents": {
+    "proximityTitle": "Lost pet near you", "proximityBody": "{petName} ({animal}) was reported in {district}.",
+    "sightingTitle": "New sighting of {petName}", "sightingBody": "{petName} was spotted in {district}.",
+    "reunitedTitle": "A pet is safely home", "reunitedBody": "{petName} has been reunited with their owner.",
+    "commentTitle": "New comment on your rescue post", "commentBody": "Someone commented on your rescue post.",
+    "messageTitle": "New PawRadar message", "messageBody": "You received a new message.",
+    "photoBody": "Shared a photo.", "sharedBody": "Shared a rescue post.", "reportedArea": "the reported area"
+  },
+  "messageRepair": {
+    "credentials": "Incorrect email or password.", "emailInUse": "An account with this email address already exists.",
+    "unavailable": "This conversation is unavailable. The post may be hidden, removed, or contact may be blocked.",
+    "readFailed": "Messages loaded, but read status could not be saved. Retry to update the unread indicator.",
+    "participantRequired": "Choose a conversation from Messages to contact the correct person.",
+    "messageRequired": "Enter a message, attach a photo, or share a post.",
+    "messageTooLong": "Messages must be {max} characters or fewer.",
+    "invalidRead": "Read status could not be updated. Refresh the conversation and try again.",
+    "invalidData": "Check the form values and try again.",
+    "requiredField": "{field} is required.", "fieldTooLong": "{field} must be {max} characters or fewer.",
+    "invalidField": "Check {field} and try again.", "email": "Enter a valid email address.",
+    "password": "Password must contain at least {min} characters.",
+    "location": "Select and confirm valid coordinates for the location.",
+    "district": "Select a valid Hong Kong district.", "contact": "Enter a valid contact name and phone number.",
+    "comment": "Enter a comment between 1 and {max} characters.",
+    "observedTime": "Choose a valid observation time that is not in the future.",
+    "formField": "This field", "notFound": "This content is unavailable. It may have been removed or hidden."
+  },
+  "reportLocation": {
+    "guidance": "Choose where your pet was last seen and confirm the point. Your current GPS location is only an optional starting point, not the last-seen place.",
+    "required": "Select and confirm a valid last-seen point on the map or enter its coordinates before posting.",
+    "mapUnavailable": "The map could not load. Enter the last-seen longitude and latitude below, then confirm the point. Your form has been kept.",
+    "secureIdUnavailable": "This browser cannot create a secure submission ID. Your input has been kept. Try an updated browser or a secure HTTPS connection, then retry."
+  },
   "rescueRepair": { "statusFailed": "Unable to update the rescue status. Please try again.", "editFailed": "Unable to save your changes. Your text has been kept.", "deleteFailed": "Unable to remove this post. Please try again.", "deleteCommentFailed": "Unable to remove this comment. Please try again.", "statusSaved": "Rescue status updated.", "editSaved": "Changes saved.", "moreComments": "Load more comments", "submissionConflict": "This submission ID was already used for different content. Your current text has been kept." },
   "mediaRecovery": { "limit": "Your stored-image safety limit has been reached. Remove unused images or contact support to recover abandoned uploads." },
   "moderationEvidence": { "image": "Reported image evidence {index}" },

@@ -701,23 +701,23 @@ export async function reportPet(req, res, next) {
     const normalizedLocationName = normalizedText(locationName, 200)
     const normalizedDistrict = normalizedText(district, 80)
     if (!normalizedName || !['Dog', 'Cat', 'Other'].includes(species)) {
-      return res.status(400).json({ error: '`name` and `species` are required.' })
+      return res.status(400).json({ error: '`name` and `species` are required.', code: 'INVALID_REQUEST_DATA' })
     }
     if (!normalizedLocationName) {
-      return res.status(400).json({ error: 'Last seen location is required.' })
+      return res.status(400).json({ error: 'Last seen location is required.', code: 'FIELD_REQUIRED', field: 'locationName' })
     }
     if (!HK_DISTRICTS.has(normalizedDistrict)) {
-      return res.status(400).json({ error: 'Select a valid Hong Kong district.' })
+      return res.status(400).json({ error: 'Select a valid Hong Kong district.', code: 'DISTRICT_INVALID' })
     }
-    if (!isPoint({ type: 'Point', coordinates })) {
-      return res.status(400).json({ error: '`coordinates` must be [lng, lat].' })
+    if (validateSightingLocation({ type: 'Point', coordinates }).error) {
+      return res.status(400).json({ code: 'PET_LOCATION_INVALID', error: '`coordinates` must be finite numbers in [lng, lat] order.' })
     }
 
     // Prefer the authenticated user's identity as the owner.
     const resolvedOwnerName = normalizedText(req.user?.name || ownerName, 100)
     const resolvedOwnerPhone = normalizedText(req.user?.phone || ownerPhone, 30)
     if (!resolvedOwnerName || !isValidPhone(resolvedOwnerPhone)) {
-      return res.status(400).json({ error: 'A valid contact name and phone are required.' })
+      return res.status(400).json({ error: 'A valid contact name and phone are required.', code: 'CONTACT_INVALID' })
     }
     const values = {
       name: normalizedName,
@@ -731,7 +731,7 @@ export async function reportPet(req, res, next) {
       ownerName: resolvedOwnerName,
       ownerPhone: resolvedOwnerPhone,
       locationName: normalizedLocationName,
-      location: { type: 'Point', coordinates: coordinates.map(Number) },
+      location: { type: 'Point', coordinates: [...coordinates] },
       lastSeen: lastSeen ? new Date(lastSeen) : new Date(),
       mapX: Number.isFinite(Number(mapX)) ? Number(mapX) : 50,
       mapY: Number.isFinite(Number(mapY)) ? Number(mapY) : 50,
@@ -798,11 +798,11 @@ export async function submitSighting(req, res, next) {
     } = req.body
     const locationValidation = validateSightingLocation(location)
     if (locationValidation.error) {
-      return res.status(400).json({ error: locationValidation.error })
+      return res.status(400).json({ error: locationValidation.error, code: 'LOCATION_INVALID', field: 'locationName' })
     }
     const normalizedLocationName = normalizedText(locationName, 200)
     if (!normalizedLocationName) {
-      return res.status(400).json({ error: '`locationName` is required.' })
+      return res.status(400).json({ error: '`locationName` is required.', code: 'FIELD_REQUIRED', field: 'locationName' })
     }
     const normalizedSubmissionId = normalizedText(submissionId, 128)
     if (

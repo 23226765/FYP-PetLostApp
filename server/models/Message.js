@@ -22,6 +22,8 @@ const messageSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
     },
+    // Missing on historical messages: only incoming messages are considered unread.
+    readBy: { type: [mongoose.Schema.Types.ObjectId], ref: 'User', default: undefined },
     text: { type: String, default: '', trim: true, maxlength: 2000 },
     photo: { type: String, default: '' },
     imageIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'MediaAsset', default: undefined, select: false },

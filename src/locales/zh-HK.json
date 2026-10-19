@@ -1,4 +1,36 @@
 {
+  "notificationEvents": {
+    "proximityTitle": "附近有寵物走失", "proximityBody": "有人在{district}報告{petName}（{animal}）走失。",
+    "sightingTitle": "有人目擊{petName}", "sightingBody": "有人在{district}目擊{petName}。",
+    "reunitedTitle": "寵物已平安回家", "reunitedBody": "{petName}已與主人團聚。",
+    "commentTitle": "你的救援帖文有新留言", "commentBody": "有人在你的救援帖文留言。",
+    "messageTitle": "新的 PawRadar 訊息", "messageBody": "你收到一則新訊息。",
+    "photoBody": "分享了一張相片。", "sharedBody": "分享了一則救援帖文。", "reportedArea": "報告所屬地區"
+  },
+  "messageRepair": {
+    "credentials": "電郵或密碼不正確。", "emailInUse": "此電郵地址已註冊帳戶。",
+    "unavailable": "無法開啟此對話。帖文可能已隱藏或移除，或雙方已封鎖聯絡。",
+    "readFailed": "訊息已載入，但無法儲存已讀狀態。請重試以更新未讀提示。",
+    "participantRequired": "請在「訊息」選擇對話，以聯絡正確的對象。",
+    "messageRequired": "請輸入訊息、附加相片或分享帖文。",
+    "messageTooLong": "訊息不可超過 {max} 個字元。",
+    "invalidRead": "無法更新已讀狀態。請重新載入對話後重試。",
+    "invalidData": "請檢查表格內容後重試。",
+    "requiredField": "請填寫{field}。", "fieldTooLong": "{field}不可超過 {max} 個字元。",
+    "invalidField": "請檢查{field}後重試。", "email": "請輸入有效的電郵地址。",
+    "password": "密碼最少須有 {min} 個字元。",
+    "location": "請選擇並確認有效的位置經緯度。",
+    "district": "請選擇有效的香港地區。", "contact": "請輸入有效的聯絡人姓名及電話號碼。",
+    "comment": "請輸入 1 至 {max} 個字元的留言。",
+    "observedTime": "請選擇有效的目擊時間，不能是未來時間。",
+    "formField": "此欄位", "notFound": "無法顯示此內容，可能已移除或隱藏。"
+  },
+  "reportLocation": {
+    "guidance": "請選擇並確認寵物最後出現的位置。你目前的 GPS 位置只供選擇起點，並非寵物最後出現的地方。",
+    "required": "發佈前，請在地圖選擇有效的最後出現位置，或輸入經緯度，然後確認。",
+    "mapUnavailable": "無法載入地圖。請在下方輸入最後出現位置的經緯度，然後確認。表格內容已保留。",
+    "secureIdUnavailable": "此瀏覽器無法建立安全的提交識別碼。輸入內容已保留。請使用較新版本的瀏覽器或安全的 HTTPS 連線後重試。"
+  },
   "rescueRepair": { "statusFailed": "未能更新救援狀態，請再試一次。", "editFailed": "未能儲存修改，已保留你輸入的內容。", "deleteFailed": "未能移除此帖文，請再試一次。", "deleteCommentFailed": "未能移除此留言，請再試一次。", "statusSaved": "已更新救援狀態。", "editSaved": "已儲存修改。", "moreComments": "載入更多留言", "submissionConflict": "此提交編號已用於其他內容，已保留你目前輸入的文字。" },
   "mediaRecovery": { "limit": "已達到圖片儲存安全上限。請移除不再需要的圖片，或聯絡支援團隊處理未完成的上載。" },
   "moderationEvidence": { "image": "舉報圖片證據 {index}" },

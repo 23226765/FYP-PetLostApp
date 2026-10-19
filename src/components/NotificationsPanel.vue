@@ -22,6 +22,7 @@
     <div v-if="unread > 0" class="unread-pill">
       {{ t('notifications.unread', { count: unread }) }}
     </div>
+    <p v-if="targetError" class="notif-sub" role="alert">{{ targetError }}</p>
 
     <div class="list">
       <button
@@ -43,9 +44,9 @@
 
         <!-- Body -->
         <div class="notif-body">
-          <p class="notif-title">{{ n.title }}</p>
-          <p class="notif-sub">{{ n.body }}</p>
-          <span class="notif-time">{{ n.time }}</span>
+          <p class="notif-title">{{ notificationPresentation(n).title }}</p>
+          <p class="notif-sub">{{ notificationPresentation(n).body }}</p>
+          <span class="notif-time">{{ formatRelativeDate(n.createdAt) }}</span>
         </div>
 
         <!-- Type badge -->
@@ -67,13 +68,16 @@ import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
 import type { AppNotification } from '../types/notification'
 import { useAppI18n } from '../i18n'
+import { notificationPresentation } from '../i18n/notifications'
+import { formatRelativeDate } from '../i18n/formatters'
 
-const props = defineProps<{ notifications: AppNotification[] }>()
+const props = defineProps<{ notifications: AppNotification[]; targetError?: string }>()
 const { t } = useAppI18n()
 const emit = defineEmits<{
   close: []
   'open-pet': [petId: string, sightingId?: string]
   'open-stray': [strayId: string]
+  'open-chat': [notification: AppNotification]
   'mark-read': [notificationId: string]
   'mark-all': []
 }>()
@@ -91,7 +95,8 @@ function typeBadge(type: AppNotification['type']): string {
 
 function onTap(n: AppNotification) {
   if (!n.read) emit('mark-read', n.id)
-  if (n.strayId) emit('open-stray', n.strayId)
+  if (n.type === 'message') emit('open-chat', n)
+  else if (n.strayId) emit('open-stray', n.strayId)
   else if (n.petId) emit('open-pet', n.petId, n.sightingId)
   else emit('close')
 }

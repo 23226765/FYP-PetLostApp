@@ -1,7 +1,10 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount, enableAutoUnmount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import SightingLocationPicker from '../SightingLocationPicker.vue'
+import L from 'leaflet'
+import { setSessionToken } from '../../services/authSession'
+enableAutoUnmount(afterEach)
 
 const geolocationMocks = vi.hoisted(() => ({
   getCurrentLocation: vi.fn(),
@@ -47,12 +50,13 @@ vi.mock('leaflet', () => {
             return instance
           }),
           off: vi.fn(),
+          remove: vi.fn(),
           getLatLng: vi.fn(() => state.dragPosition || current),
           setLatLng: vi.fn((next: [number, number]) => {
             current = { lat: next[0], lng: next[1] }
             return instance
           }),
-          dragging: { enable: vi.fn() },
+          dragging: { enable: vi.fn(), disable: vi.fn() },
         }
         return instance
       }),
@@ -124,6 +128,69 @@ describe('SightingLocationPicker', () => {
 
   it('does not allow confirmation while the map only shows its initial display centre', () => {
     const wrapper = mountPicker()
+    expect(wrapper.get('.confirm-location').attributes('disabled')).toBeDefined()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('invalid coordinate edits immediately revoke the previous confirmation and cannot confirm a stale draft', async () => {
+    const wrapper = mountPicker()
+    await wrapper.setProps({ modelValue: [114.2, 22.4] })
+    await wrapper.findAll('.coordinate-fields input')[0].setValue('999')
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null])
+    await wrapper.setProps({ modelValue: null })
+    expect(wrapper.get('.confirm-location').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+  })
+
+  it('keeps manual keystrokes intact instead of rewriting partial coordinates', async () => {
+    const wrapper = mountPicker()
+    const fields = wrapper.findAll('.coordinate-fields input')
+    await fields[1].setValue('114.21')
+    for (const value of ['2', '22', '22.', '22.4', '22.41']) {
+      await fields[0].setValue(value)
+      expect((fields[0].element as HTMLInputElement).value).toBe(value)
+      expect((fields[1].element as HTMLInputElement).value).toBe('114.21')
+    }
+    await wrapper.get('.confirm-location').trigger('click')
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([[114.21, 22.41]])
+  })
+
+  it('locks marker dragging and map selection while submission is pending', async () => {
+    const wrapper = mountPicker()
+    leafletState.mapHandlers.click({ latlng: { lat: 22.4, lng: 114.2 } })
+    await nextTick()
+    const marker = vi.mocked(L.marker).mock.results.at(-1)!.value
+    await wrapper.setProps({ disabled: true })
+    expect(marker.dragging.disable).toHaveBeenCalled()
+    leafletState.mapHandlers.click({ latlng: { lat: 23, lng: 115 } })
+    expect(wrapper.get('.confirm-location').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.location-summary').text()).toContain('22.40000, 114.20000')
+    await wrapper.setProps({ disabled: false })
+    expect(marker.dragging.enable).toHaveBeenCalled()
+  })
+
+  it.each(['manual', 'unmount', 'account-switch'])('ignores a late GPS result after %s', async (action) => {
+    let finish!: (value: { lng: number; lat: number }) => void
+    geolocationMocks.getCurrentLocation.mockReturnValue(new Promise((resolve) => { finish = resolve }))
+    const wrapper = mountPicker()
+    await wrapper.get('.current-location').trigger('click')
+    if (action === 'manual') {
+      leafletState.mapHandlers.click({ latlng: { lat: 22.4, lng: 114.2 } })
+      await nextTick()
+      await wrapper.get('.confirm-location').trigger('click')
+    } else if (action === 'unmount') wrapper.unmount()
+    else setSessionToken('another-user-fixture')
+    const events = wrapper.emitted('update:modelValue')?.length || 0
+    finish({ lng: 115, lat: 23 }); await flushPromises()
+    expect(wrapper.emitted('update:modelValue')?.length || 0).toBe(events)
+    if (action === 'manual') expect(wrapper.get('.location-summary').text()).toContain('22.40000, 114.20000')
+  })
+
+  it('rejects invalid GPS coordinates without fabricating a point', async () => {
+    geolocationMocks.getCurrentLocation.mockResolvedValue({ lat: 999, lng: 114 })
+    const wrapper = mountPicker()
+    await wrapper.get('.current-location').trigger('click'); await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
     expect(wrapper.get('.confirm-location').attributes('disabled')).toBeDefined()
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })

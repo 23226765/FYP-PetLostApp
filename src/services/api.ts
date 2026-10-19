@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosRequestConfig } from 'axios'
 import { captureAuthContext, isAuthContextCurrent, authContextError, setSessionToken, type AuthContext } from './authSession'
 import type { Pet, Sighting } from '../types/pet'
 import type { AppNotification } from '../types/notification'
@@ -29,6 +29,10 @@ type AuthScopedConfig = {
   pawRadarAuthContext?: AuthContext
 }
 
+function messagingRequestConfig(): AxiosRequestConfig & AuthScopedConfig {
+  return { pawRadarAuthContext: captureAuthContext() }
+}
+
 function authContextChanged(config: unknown): boolean {
   const scoped = config as AuthScopedConfig | undefined
   return Boolean(scoped?.pawRadarAuthContext && !isAuthContextCurrent(scoped.pawRadarAuthContext))
@@ -36,7 +40,8 @@ function authContextChanged(config: unknown): boolean {
 
 // Attach the JWT to every request when a token is stored.
 http.interceptors.request.use((config) => {
-  const context = captureAuthContext()
+  const context = (config as typeof config & AuthScopedConfig).pawRadarAuthContext || captureAuthContext()
+  if (!isAuthContextCurrent(context)) throw authContextError()
   const token = context.token
   ;(config as typeof config & AuthScopedConfig).pawRadarAuthContext = context
   if (token) config.headers.Authorization = `Bearer ${token}`
@@ -50,6 +55,7 @@ http.interceptors.response.use(
     return response
   },
   (error) => {
+    if (error?.apiCode === 'AUTH_CONTEXT_CHANGED') return Promise.reject(error)
     if (authContextChanged(error?.config)) return Promise.reject(authContextError())
     const url = error?.config?.url || ''
     const status = error?.response?.status
@@ -66,9 +72,10 @@ http.interceptors.response.use(
         : error?.response
           ? `Request failed with status ${error.response.status}.`
           : 'Cannot reach the PawRadar server. Check that the backend is running.'
-    const clientError = new Error(message) as Error & { apiCode?: string; field?: string; status?: number }
-    clientError.apiCode = error?.response?.data?.code
+    const clientError = new Error(message) as Error & { apiCode?: string; field?: string; params?: Record<string, unknown>; status?: number }
+    clientError.apiCode = error?.response?.data?.code || (!error?.response ? 'NETWORK_UNAVAILABLE' : undefined)
     clientError.field = error?.response?.data?.field
+    clientError.params = error?.response?.data?.params
     clientError.status = status
     return Promise.reject(clientError)
   },
@@ -308,6 +315,7 @@ export interface ChatConversation {
   pet: ChatPet
   lastMessage: ChatMessage
   updatedAt: string
+  unreadCount: number
 }
 
 export interface ChatThread {
@@ -316,7 +324,7 @@ export interface ChatThread {
 }
 
 export async function getChatInbox(): Promise<ChatConversation[]> {
-  const { data } = await http.get<{ conversations: ChatConversation[] }>('/chat/inbox')
+  const { data } = await http.get<{ conversations: ChatConversation[] }>('/chat/inbox', messagingRequestConfig())
   return data.conversations
 }
 
@@ -325,6 +333,7 @@ export async function getMessages(
   participantId?: string,
 ): Promise<ChatThread> {
   const { data } = await http.get<ChatThread>(`/chat/${petId}`, {
+    ...messagingRequestConfig(),
     params: participantId ? { participantId } : undefined,
   })
   return data
@@ -334,8 +343,12 @@ export async function sendMessage(
   petId: string,
   payload: SendMessagePayload,
 ): Promise<ChatMessage> {
-  const { data } = await http.post<{ message: ChatMessage }>(`/chat/${petId}`, payload)
+  const { data } = await http.post<{ message: ChatMessage }>(`/chat/${petId}`, payload, messagingRequestConfig())
   return data.message
+}
+
+export async function markChatMessagesRead(petId: string, participantId: string | undefined, messageIds: string[]): Promise<void> {
+  await http.patch(`/chat/${petId}/read`, { participantId, messageIds }, messagingRequestConfig())
 }
 
 export interface ReportPetPayload {

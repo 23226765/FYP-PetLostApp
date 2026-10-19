@@ -36,14 +36,17 @@ export const i18n = createI18n({
   },
   datetimeFormats: {
     en: {
+      time: { hour: 'numeric', minute: '2-digit' },
       short: { year: 'numeric', month: 'short', day: 'numeric' },
       dateTime: { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
     },
     'zh-HK': {
+      time: { hour: '2-digit', minute: '2-digit', hour12: false },
       short: { year: 'numeric', month: 'short', day: 'numeric' },
       dateTime: { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false },
     },
     'zh-CN': {
+      time: { hour: '2-digit', minute: '2-digit', hour12: false },
       short: { year: 'numeric', month: 'short', day: 'numeric' },
       dateTime: { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false },
     },
@@ -65,6 +68,29 @@ export function translateApiError(error: unknown, fallbackKey = 'errors.generic'
     : undefined
   const keyByCode: Record<string, string> = {
     SUBMISSION_CONFLICT: 'rescueRepair.submissionConflict',
+    SECURE_ID_UNAVAILABLE: 'reportLocation.secureIdUnavailable',
+    PET_LOCATION_INVALID: 'reportLocation.required',
+    CHAT_UNAVAILABLE: 'messageRepair.unavailable',
+    NOTIFICATION_UNAVAILABLE: 'messageRepair.unavailable',
+    NETWORK_UNAVAILABLE: 'errors.network',
+    AUTH_INVALID_CREDENTIALS: 'messageRepair.credentials',
+    EMAIL_IN_USE: 'messageRepair.emailInUse',
+    CHAT_PARTICIPANT_REQUIRED: 'messageRepair.participantRequired',
+    CHAT_MESSAGE_REQUIRED: 'messageRepair.messageRequired',
+    CHAT_MESSAGE_TOO_LONG: 'messageRepair.messageTooLong',
+    CHAT_READ_INVALID: 'messageRepair.invalidRead',
+    INVALID_REQUEST_DATA: 'messageRepair.invalidData',
+    FIELD_REQUIRED: 'messageRepair.requiredField',
+    FIELD_TOO_LONG: 'messageRepair.fieldTooLong',
+    FIELD_INVALID: 'messageRepair.invalidField',
+    EMAIL_INVALID: 'messageRepair.email',
+    PASSWORD_TOO_SHORT: 'messageRepair.password',
+    LOCATION_INVALID: 'messageRepair.location',
+    DISTRICT_INVALID: 'messageRepair.district',
+    CONTACT_INVALID: 'messageRepair.contact',
+    COMMENT_INVALID: 'messageRepair.comment',
+    OBSERVED_TIME_INVALID: 'messageRepair.observedTime',
+    RESOURCE_NOT_FOUND: 'messageRepair.notFound',
     IMAGE_INVALID: 'media.invalid',
     IMAGE_TOO_LARGE: 'media.tooLarge',
     IMAGE_OUTPUT_TOO_LARGE: 'media.tooLarge',
@@ -108,5 +134,12 @@ export function translateApiError(error: unknown, fallbackKey = 'errors.generic'
     CONTENT_NOT_FOUND: 'moderation.visibilityError',
     REPORT_NOT_FOUND: 'moderation.updateError',
   }
-  return i18n.global.t(code && keyByCode[code] ? keyByCode[code] : fallbackKey)
+  const detail = error as { field?: unknown; params?: Record<string, unknown> } | null
+  const fieldKeys: Record<string, string> = { name: 'settings.displayName', realName: 'settings.realName', email: 'authentication.email', phone: 'authentication.phone', password: 'authentication.password', locationName: 'sightings.locationName', district: 'pets.districtLabel', description: 'pets.communityDetails' }
+  const field = typeof detail?.field === 'string' && fieldKeys[detail.field] ? i18n.global.t(fieldKeys[detail.field]) : i18n.global.t('messageRepair.formField')
+  const bounded = (value: unknown, fallback: number) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 10000 ? value : fallback
+  return i18n.global.t(code && keyByCode[code] ? keyByCode[code] : fallbackKey, {
+    field, max: bounded(detail?.params?.max, code === 'CHAT_MESSAGE_TOO_LONG' ? 2000 : code === 'COMMENT_INVALID' ? 500 : 100),
+    min: bounded(detail?.params?.min, 6),
+  })
 }

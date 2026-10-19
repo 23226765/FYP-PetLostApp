@@ -68,6 +68,14 @@
         </div>
       </label>
 
+      <SightingLocationPicker
+        :key="locationGeneration"
+        v-model="confirmedCoordinates"
+        :title="t('pets.lastSeenLocation')"
+        :guidance="t('reportLocation.guidance')"
+        :disabled="submitting"
+      />
+
       <label class="field">
         <span>{{ t('pets.communityDetails') }}</span>
         <textarea
@@ -99,7 +107,7 @@
         />
       </label>
 
-      <p v-if="error" class="error-msg">{{ error }}</p>
+      <p v-if="error" class="error-msg" role="alert">{{ error }}</p>
       <button type="submit" class="submit" :disabled="submitting">
         <AppIcon name="radar" :size="20" />
         {{ submitting ? t('pets.posting') : t('pets.postAction') }}
@@ -125,8 +133,9 @@ import { useImageUpload, createImageRequestId } from '../composables/useImageUpl
 import ImageUploadStatus from './ImageUploadStatus.vue'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
+import SightingLocationPicker from './SightingLocationPicker.vue'
 import { reportLostPet } from '../services/api'
-import { getCurrentLocation } from '../services/geolocation'
+import { isValidSightingCoordinates } from '../utils/sightingSubmission'
 import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import type { User } from '../types/user'
 import { HK_DISTRICTS } from '../types/pet'
@@ -144,9 +153,16 @@ const error = ref('')
 const imageUpload = useImageUpload('pet')
 const photo = computed(() => imageUpload.preview)
 const photoInput = ref<HTMLInputElement | null>(null)
-const submissionId = createImageRequestId()
+let submissionId = ''
+const confirmedCoordinates = ref<[number, number] | null>(null)
+const locationGeneration = ref(0)
 let disposed = false
-onBeforeUnmount(() => { disposed = true })
+onBeforeUnmount(() => {
+  disposed = true
+  window.removeEventListener('auth:changed', clearSessionForm)
+  window.removeEventListener('auth:unauthorized', clearSessionForm)
+  window.removeEventListener('storage', clearSessionForm)
+})
 const form = reactive({
   name: '',
   species: 'Dog' as (typeof species)[number],
@@ -159,7 +175,23 @@ const form = reactive({
   ownerPhone: props.user?.phone || '',
 })
 
+function clearSessionForm(event: Event) {
+  if (event instanceof StorageEvent && event.key !== null && event.key !== 'token') return
+  submissionId = ''
+  confirmedCoordinates.value = null
+  locationGeneration.value++
+  submitted.value = false
+  submitting.value = false
+  error.value = ''
+  Object.assign(form, { name: '', species: 'Dog', breed: '', district: '', location: '', details: '', reward: '', ownerName: '', ownerPhone: '' })
+}
+window.addEventListener('auth:changed', clearSessionForm)
+window.addEventListener('auth:unauthorized', clearSessionForm)
+window.addEventListener('storage', clearSessionForm)
+
 async function addPhoto() {
+  const context = captureAuthContext()
+  const active = () => !disposed && isAuthContextCurrent(context)
   error.value = ''
   try {
     const image = await Camera.getPhoto({
@@ -167,9 +199,9 @@ async function addPhoto() {
       quality: 85,
       allowEditing: false,
     })
-    if (image.dataUrl) imageUpload.select(image.dataUrl)
+    if (active() && image.dataUrl) imageUpload.select(image.dataUrl)
   } catch (e) {
-    if (!/cancel/i.test(e instanceof Error ? e.message : '')) photoInput.value?.click()
+    if (active() && !/cancel/i.test(e instanceof Error ? e.message : '')) photoInput.value?.click()
   }
 }
 function selectFile(event: Event) {
@@ -179,15 +211,6 @@ function selectFile(event: Event) {
   if (file) imageUpload.select(file)
 }
 
-async function currentCoordinates(): Promise<[number, number]> {
-  try {
-    const { lat, lng } = await getCurrentLocation()
-    return [lng, lat]
-  } catch {
-    return [114.1694, 22.3193]
-  }
-}
-
 async function submit() {
   if (submitting.value) return
   const context = captureAuthContext()
@@ -195,23 +218,28 @@ async function submit() {
   submitting.value = true
   error.value = ''
   try {
-    const coordinates = await currentCoordinates()
-    if (!active()) return
+    if (!isValidSightingCoordinates(confirmedCoordinates.value)) {
+      error.value = t('reportLocation.required')
+      return
+    }
+    const coordinates: [number, number] = [...confirmedCoordinates.value]
+    const values = { ...form }
+    submissionId ||= createImageRequestId()
     const imageIds = await imageUpload.ensure()
     if (!active()) return
     await reportLostPet({
-      name: form.name,
-      species: form.species,
-      breed: form.breed,
-      district: form.district,
+      name: values.name,
+      species: values.species,
+      breed: values.breed,
+      district: values.district,
       imageIds,
       submissionId,
-      description: form.details,
-      details: form.details,
-      reward: form.reward,
-      ownerName: form.ownerName,
-      ownerPhone: form.ownerPhone,
-      locationName: form.location || 'Current location',
+      description: values.details,
+      details: values.details,
+      reward: values.reward,
+      ownerName: values.ownerName,
+      ownerPhone: values.ownerPhone,
+      locationName: values.location,
       coordinates,
     })
     if (!active()) return

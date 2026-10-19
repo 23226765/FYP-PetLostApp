@@ -11,7 +11,7 @@ import Pet from '../models/Pet.js'
 import Message from '../models/Message.js'
 import Notification from '../models/Notification.js'
 import { createComment, getStray, listComments, updateStray, deleteStray, updateRescueStatus } from '../controllers/strayController.js'
-import { createMessage } from '../controllers/chatController.js'
+import { createMessage, markMessagesRead, listConversations } from '../controllers/chatController.js'
 import { openTransactionDatabase } from './helpers/localTransactions.js'
 
 const uri = process.env.MEDIA_TEST_MONGODB_URI
@@ -35,7 +35,7 @@ test('real local rescue permissions, visible comment totals and submission races
       const Local = connection.model(Global.modelName, Global.schema.clone())
       models.set(Global, Local); ledger.set(Global, [])
       await Local.createCollection(); await Local.createIndexes()
-      for (const method of ['find', 'findOne', 'findOneAndUpdate', 'findById', 'exists', 'countDocuments', 'aggregate']) {
+      for (const method of ['find', 'findOne', 'findOneAndUpdate', 'findById', 'exists', 'countDocuments', 'aggregate', 'updateMany']) {
         const original = Global[method]; originals.push(() => { Global[method] = original })
         Global[method] = (...args) => Local[method](...args)
       }
@@ -103,6 +103,22 @@ test('real local rescue permissions, visible comment totals and submission races
       assert.equal(racing.filter(r => r.status === 'fulfilled').length, 1)
       assert.equal(racing.find(r => r.status === 'rejected').reason.code, 'SUBMISSION_CONFLICT')
       assert.equal(await models.get(StrayComment).countDocuments({ author: owner._id, submissionId: conflictId }), 1)
+    })
+    await t.test('real MongoDB read acknowledgments converge without marking outgoing/other-thread/later messages seen', async () => {
+      const pet = await create(Pet, { name: 'Synthetic read fixture', species: 'Dog', reportedBy: owner._id, location: postValues.location })
+      const incoming = await create(Message, { pet: pet._id, participant: finder._id, sender: 'finder', sentBy: finder._id, text: 'First incoming' })
+      const outgoing = await create(Message, { pet: pet._id, participant: finder._id, sender: 'owner', sentBy: owner._id, text: 'Outgoing preview' })
+      const otherThread = await create(Message, { pet: pet._id, participant: blocked._id, sender: 'finder', sentBy: blocked._id, text: 'Other thread' })
+      const request = { user: owner, params: { petId: String(pet._id) }, body: { participantId: String(finder._id), messageIds: [incoming, outgoing, otherThread].map(row => String(row._id)) } }
+      await Promise.all([invoke(markMessagesRead, request), invoke(markMessagesRead, request)])
+      const rows = await models.get(Message).find({ _id: { $in: [incoming._id, outgoing._id, otherThread._id] } }).lean()
+      assert.deepEqual(rows.find(row => String(row._id) === String(incoming._id)).readBy.map(String), [String(owner._id)])
+      for (const row of rows.filter(row => String(row._id) !== String(incoming._id))) assert.equal(row.readBy, undefined)
+      const late = await create(Message, { pet: pet._id, participant: finder._id, sender: 'finder', sentBy: finder._id, text: 'Unseen arrival after snapshot' })
+      await invoke(markMessagesRead, request)
+      assert.equal((await models.get(Message).findById(late._id)).readBy, undefined)
+      const inbox = await invoke(listConversations, { user: owner })
+      assert.equal(inbox.body.conversations.find(row => row.id === `${pet._id}:${finder._id}`).unreadCount, 1)
     })
     await t.test('ordinary chat concurrency binds destination, text, shared-post payload and empty-image state', async () => {
       const pet = await create(Pet, { name: 'Synthetic pet', species: 'Dog', reportedBy: owner._id, location: postValues.location })

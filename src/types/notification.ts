@@ -9,4 +9,7 @@ export interface AppNotification {
   petId?: string
   sightingId?: string
   strayId?: string
+  createdAt?: string
+  event?: { code: string; params: Record<string, string | number> }
+  conversation?: { petId: string; participantId: string; messageId: string }
 }

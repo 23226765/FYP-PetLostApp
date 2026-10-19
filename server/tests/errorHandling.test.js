@@ -84,3 +84,39 @@ test('notification logging uses the same sanitized representation', () => {
   assert.equal(serialized.includes('private-password'), false)
   assert.equal(serialized.includes('Notification delivery failed'), true)
 })
+
+test('validation responses expose stable fields and bounded constraints but never rejected values or messages', () => {
+  const original = console.error
+  console.error = () => {}
+  try {
+    for (const [kind, max, code] of [['required', undefined, 'FIELD_REQUIRED'], ['maxlength', 100, 'FIELD_TOO_LONG'], ['maxlength', Infinity, 'FIELD_INVALID']]) {
+      const response = responseRecorder()
+      errorHandler({ name: 'ValidationError', errors: { realName: { kind, value: 'private-name', message: 'private-name', properties: { maxlength: max } } } }, {}, response, () => {})
+      assert.equal(response.statusCode, 400)
+      assert.equal(response.payload.code, code)
+      assert.equal(response.payload.field, 'realName')
+      if (code === 'FIELD_TOO_LONG') assert.deepEqual(response.payload.params, { max: 100 })
+      assert.equal(JSON.stringify(response.payload).includes('private-name'), false)
+    }
+  } finally { console.error = original }
+})
+
+test('registration and profile validation return localizable codes and useful limits before database access', async () => {
+  const { register, updateMe } = await import('../controllers/authController.js')
+  const cases = [
+    [register, { name: 'Fictional', email: 'invalid-email', password: 'fictional-password' }, 'EMAIL_INVALID', 'email', undefined],
+    [register, { name: 'Fictional', email: 'fictional@example.test', password: 'short' }, 'PASSWORD_TOO_SHORT', 'password', { min: 6 }],
+    [updateMe, { name: '' }, 'FIELD_REQUIRED', 'name', { max: 100 }],
+    [updateMe, { realName: 'x'.repeat(101) }, 'FIELD_TOO_LONG', 'realName', { max: 100 }],
+    [updateMe, { phone: '1'.repeat(31) }, 'FIELD_TOO_LONG', 'phone', { max: 30 }],
+  ]
+  for (const [handler, body, code, field, params] of cases) {
+    const response = responseRecorder()
+    await handler({ body }, response, error => { throw error })
+    assert.equal(response.statusCode, 400)
+    assert.equal(response.payload.code, code)
+    assert.equal(response.payload.field, field)
+    assert.deepEqual(response.payload.params, params)
+    assert.equal(JSON.stringify(response.payload).includes('fictional-password'), false)
+  }
+})

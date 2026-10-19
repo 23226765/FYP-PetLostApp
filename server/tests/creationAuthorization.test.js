@@ -78,6 +78,17 @@ test('invalid bearer tokens cannot reach protected creation routes', async () =>
   assert.deepEqual(await response.json(), { error: 'Invalid or expired token' })
 })
 
+test('message read acknowledgments require authentication before any database access', async () => {
+  const petId = new mongoose.Types.ObjectId().toString()
+  for (const token of [undefined, 'invalid-read-token']) {
+    const response = await fetch(`${baseUrl}/api/chat/${petId}/read`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ messageIds: [new mongoose.Types.ObjectId().toString()] }),
+    })
+    assert.equal(response.status, 401)
+  }
+})
+
 test('authentication accepts the relevant role matrix without granting anonymous access', async () => {
   const roles = [
     ['owner', 'user'],

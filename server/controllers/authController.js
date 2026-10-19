@@ -46,11 +46,11 @@ function normalizeRealName(value) {
 
 /**
  * @param {unknown} body
- * @returns {{ value?: { name: string, email: string, password: string, phone: string }, error?: string }}
+ * @returns {{ value?: { name: string, email: string, password: string, phone: string }, error?: string, code?: string, field?: string, params?: object }}
  */
 function validateRegistration(body) {
   if (!body || typeof body !== 'object') {
-    return { error: 'Name, email and password are required.' }
+    return { error: 'Name, email and password are required.', code: 'INVALID_REQUEST_DATA' }
   }
 
   const { name, email, password, phone } = body
@@ -58,19 +58,19 @@ function validateRegistration(body) {
   const normalizedEmail = normalizeEmail(email)
 
   if (!normalizedName || !normalizedEmail || typeof password !== 'string') {
-    return { error: 'Name, email and password are required.' }
+    return { error: 'Name, email and password are required.', code: 'INVALID_REQUEST_DATA' }
   }
   if (normalizedName.length > MAX_NAME_LENGTH) {
-    return { error: `Name must be ${MAX_NAME_LENGTH} characters or fewer.` }
+    return { error: `Name must be ${MAX_NAME_LENGTH} characters or fewer.`, code: 'FIELD_TOO_LONG', field: 'name', params: { max: MAX_NAME_LENGTH } }
   }
   if (normalizedEmail.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(normalizedEmail)) {
-    return { error: 'Enter a valid email address.' }
+    return { error: 'Enter a valid email address.', code: 'EMAIL_INVALID', field: 'email' }
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` }
+    return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, code: 'PASSWORD_TOO_SHORT', field: 'password', params: { min: MIN_PASSWORD_LENGTH } }
   }
   if (phone !== undefined && phone !== null && typeof phone !== 'string') {
-    return { error: 'Phone must be a string.' }
+    return { error: 'Phone must be a string.', code: 'FIELD_INVALID', field: 'phone' }
   }
 
   return {
@@ -191,12 +191,12 @@ export async function register(req, res, next) {
   try {
     rejectImageStrings(req.body)
     const validation = validateRegistration(req.body)
-    if (!validation.value) return res.status(400).json({ error: validation.error })
+    if (!validation.value) return res.status(400).json({ error: validation.error, code: validation.code, field: validation.field, params: validation.params })
     const { name, email, password, phone } = validation.value
 
     const existing = await User.findOne({ email })
     if (existing) {
-      return res.status(409).json({ error: 'An account with this email already exists.' })
+      return res.status(409).json({ error: 'An account with this email already exists.', code: 'EMAIL_IN_USE' })
     }
 
     const hashed = await bcrypt.hash(password, 10)
@@ -231,32 +231,32 @@ export async function login(req, res, next) {
 
     if (retryAfter > 0) {
       res.set('Retry-After', String(retryAfter))
-      return res.status(429).json({ error: 'Too many login attempts. Please try again later.' })
+      return res.status(429).json({ error: 'Too many login attempts. Please try again later.', code: 'RATE_LIMITED' })
     }
 
     if (!email || !password) {
       recordLoginFailure([keys[0]], now)
-      return res.status(400).json({ error: 'Email and password are required.' })
+      return res.status(400).json({ error: 'Email and password are required.', code: 'INVALID_REQUEST_DATA' })
     }
     if (email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
       recordLoginFailure(keys, now)
-      return res.status(400).json({ error: 'Enter a valid email address.' })
+      return res.status(400).json({ error: 'Enter a valid email address.', code: 'EMAIL_INVALID', field: 'email' })
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
       recordLoginFailure(keys, now)
-      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` })
+      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, code: 'PASSWORD_TOO_SHORT', field: 'password', params: { min: MIN_PASSWORD_LENGTH } })
     }
 
     const user = await User.findOne({ email }).select('+password +realName')
     if (!user) {
       recordLoginFailure(keys, now)
-      return res.status(401).json({ error: 'Invalid email or password.' })
+      return res.status(401).json({ error: 'Invalid email or password.', code: 'AUTH_INVALID_CREDENTIALS' })
     }
 
     const ok = await bcrypt.compare(password, user.password)
     if (!ok) {
       recordLoginFailure(keys, now)
-      return res.status(401).json({ error: 'Invalid email or password.' })
+      return res.status(401).json({ error: 'Invalid email or password.', code: 'AUTH_INVALID_CREDENTIALS' })
     }
 
     clearLoginFailures(keys)
@@ -304,30 +304,30 @@ export async function updateMe(req, res, next) {
     const realName = normalizeRealName(body.realName)
 
     if (!hasName && !hasEmail && !hasPhone && !hasRealName && !hasAvatar) {
-      return res.status(400).json({ error: 'Provide at least one profile field to update.' })
+      return res.status(400).json({ error: 'Provide at least one profile field to update.', code: 'INVALID_REQUEST_DATA' })
     }
     if (hasName && (!resolvedName || resolvedName.length > MAX_NAME_LENGTH)) {
-      return res.status(400).json({ error: `Name is required and must be ${MAX_NAME_LENGTH} characters or fewer.` })
+      return res.status(400).json({ error: `Name is required and must be ${MAX_NAME_LENGTH} characters or fewer.`, code: resolvedName ? 'FIELD_TOO_LONG' : 'FIELD_REQUIRED', field: 'name', params: { max: MAX_NAME_LENGTH } })
     }
     if (hasEmail && (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email))) {
-      return res.status(400).json({ error: 'Enter a valid email address.' })
+      return res.status(400).json({ error: 'Enter a valid email address.', code: 'EMAIL_INVALID', field: 'email' })
     }
     if (hasPhone && typeof body.phone !== 'string') {
-      return res.status(400).json({ error: 'Phone must be a string.' })
+      return res.status(400).json({ error: 'Phone must be a string.', code: 'FIELD_INVALID', field: 'phone' })
     }
     if (hasPhone && phone.length > 30) {
-      return res.status(400).json({ error: 'Phone must be 30 characters or fewer.' })
+      return res.status(400).json({ error: 'Phone must be 30 characters or fewer.', code: 'FIELD_TOO_LONG', field: 'phone', params: { max: 30 } })
     }
     if (hasRealName && typeof body.realName !== 'string') {
-      return res.status(400).json({ error: 'Real name must be a string.' })
+      return res.status(400).json({ error: 'Real name must be a string.', code: 'FIELD_INVALID', field: 'realName' })
     }
     if (realName.length > MAX_REAL_NAME_LENGTH) {
-      return res.status(400).json({ error: `Real name must be ${MAX_REAL_NAME_LENGTH} characters or fewer.` })
+      return res.status(400).json({ error: `Real name must be ${MAX_REAL_NAME_LENGTH} characters or fewer.`, code: 'FIELD_TOO_LONG', field: 'realName', params: { max: MAX_REAL_NAME_LENGTH } })
     }
 
     if (hasEmail) {
       const existing = await User.findOne({ email, _id: { $ne: req.user._id } }).select('_id')
-      if (existing) return res.status(409).json({ error: 'That email address is already in use.' })
+      if (existing) return res.status(409).json({ error: 'That email address is already in use.', code: 'EMAIL_IN_USE' })
     }
 
     const values = {

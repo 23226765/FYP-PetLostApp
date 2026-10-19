@@ -36,7 +36,36 @@ describe('structured stray post messages', () => {
     wrapper.unmount()
   })
   beforeEach(() => { vi.useFakeTimers(); apiMocks.getMessages.mockReset(); apiMocks.sendMessage.mockReset() })
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
+
+  it('mounts safely without secure RNG and retains an unsent draft with a useful error', async () => {
+    vi.stubGlobal('crypto', {})
+    const { wrapper } = await render({})
+    const input = wrapper.get('textarea, input[type="text"]')
+    await input.setValue('Keep this draft')
+    await wrapper.get('.send-btn').trigger('click'); await flushPromises()
+    expect(apiMocks.sendMessage).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('secure submission ID')
+    expect((input.element as HTMLInputElement).value).toBe('Keep this draft')
+    wrapper.unmount()
+  })
+
+  it('successful sends need no fresh random identity during post-send cleanup', async () => {
+    const getRandomValues = crypto.getRandomValues.bind(crypto)
+    vi.stubGlobal('crypto', { getRandomValues })
+    const { wrapper } = await render({})
+    apiMocks.sendMessage.mockImplementation(async () => {
+      vi.stubGlobal('crypto', {})
+      return { id: 'new-message', petId: pet.id, sender: 'finder', text: 'Sent', createdAt: new Date().toISOString() }
+    })
+    const input = wrapper.get('textarea, input[type="text"]')
+    await input.setValue('Sent')
+    await wrapper.get('.send-btn').trigger('click'); await flushPromises()
+    expect(apiMocks.sendMessage).toHaveBeenCalledTimes(1)
+    expect((input.element as HTMLInputElement).value).toBe('')
+    expect(wrapper.text()).not.toContain('secure submission ID')
+    wrapper.unmount()
+  })
 
   it('opens the canonical stray route from a message preview', async () => {
     const { wrapper, router } = await render({ sharedStray: { id: 'stray-one', species: 'Cat', animalType: '', description: 'Ginger cat', photo: '', location: 'Market', district: 'Wan Chai', rescueStatus: 'reported' } })

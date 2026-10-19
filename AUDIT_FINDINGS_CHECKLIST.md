@@ -6,7 +6,7 @@ Source: the user-supplied original audit attachment, `abcbef8d-3ff5-40cd-9e47-8e
 
 Status vocabulary: **Fixed and verified**, **Implemented but verification pending**, **Partially addressed**, **Still open**. “Verified” identifies the specific automated/isolated evidence below; it does not claim a browser, physical-device, production-proxy or live-Atlas mutation test. Earlier approved verification is explicitly distinguished from this batch. Uncommitted implementation is included.
 
-Summary: **14 fixed and verified; 1 partially addressed; 7 still open; 0 implemented but verification pending.**
+Summary: **18 fixed and verified; 1 partially addressed; 3 still open; 0 implemented but verification pending.**
 
 ## 1. High — Smart Match exposes precise distance indirectly
 
@@ -120,21 +120,26 @@ Summary: **14 fixed and verified; 1 partially addressed; 7 still open; 0 impleme
 
 ## 16. Medium — Message unread indicators and notification destinations are misleading
 
-- Status: **Still open**. Confirmed code defect: timestamp-only inbox unread logic can count outgoing messages; notification taps lack the correct conversation destination.
-- Evidence: `ChatInboxScreen.vue` and `NotificationsPanel.vue`; no new live message sent.
-- Smallest next repair: incoming/read-state semantics and authorized conversation context, with component/API regressions.
+- Status: **Fixed and verified** in isolated automated tests, including real local MongoDB operations. Originally confirmed timestamp-only inbox logic could count outgoing messages, and message-notification taps lacked the correct conversation context.
+- Repair: optional internal `Message.readBy` and authenticated/rate-limited `PATCH /api/chat/:petId/read` acknowledge only explicit incoming message IDs in the authorized owner/participant conversation. Server unread counts consider all incoming unseen messages, even if the latest message is outgoing. GET remains read-only; opening the inbox does not prematurely clear unread state. Active/focused thread rendering drives acknowledgments. Successful acknowledgments derive the matching notification as read, including notifications created later; marking a notification read never marks a message seen.
+- Navigation/privacy: message references determine authorized `{ petId, participantId, messageId }` context. Ordinary administrators gain no conversation access. Missing, conflicting, hidden, inactive or blocked targets are omitted or shown as unavailable. A shared rescue post never takes precedence over the conversation destination. Fresh authorized inbox resolution precedes navigation; stale account/target continuations cannot reopen the wrong thread. Permission failures clear transcript/header/attachment state. Thread generations and feed revisions protect A→B→A changes and poll/send races.
+- Evidence: `messageReadNotifications.test.js`, `creationAuthorization.test.js`, `MessagingState.test.ts`, `NotificationPresentation.test.ts`, `AppCreationAuth.test.ts` and real-Axios-adapter `apiAuthContext.test.ts` exercise incoming/outgoing/read identity, guest/owner/reporter/unrelated/shelter-admin boundaries, legacy references, selected conversation, read failures, hidden/blocking cases and account switching. Four same-tick Axios dispatch reproductions failed before request-start pinning and passed afterward, without live transport. `rescueTransactions.test.js` verifies real concurrent `$addToSet` acknowledgments, one reader entry, outgoing/other-thread exclusion and unseen later arrivals against a disposable local replica set.
+- Compatibility/limits: missing historical `readBy` is conservatively unread until an authorized conversation is opened; old local timestamp keys are no longer authoritative. No bulk backfill or new index. Conversations lacking a safe participant and message notifications without resolvable references cannot be guessed. Conversation-open read semantics cover loaded bubbles, not per-bubble viewport tracking. Other devices learn changes on polling; no push feature was added. Actual browser/device and live Atlas verification were not performed.
 
 ## 17. Medium — Some generated text and dates ignore the selected language
 
-- Status: **Still open**. Existing localization is extensive and this batch adds translated recovery/evidence labels, but the original English notification metadata, browser-locale chat time/“Today” label and incomplete stable validation codes remain.
-- Evidence: `notificationController.js`, `Chatscreen.vue`; locale/component regressions establish existing supported behavior, not full removal of these defects.
-- Smallest next repair: localize generated metadata and date grouping centrally; do not translate user-written content.
+- Status: **Fixed and verified** for the audited generated-notification/chat-date/validation paths through automated coverage in English, Traditional Chinese and Simplified Chinese.
+- Repair: notification reads reconstruct safe, stable `event.code`/`params` and `createdAt` from current permitted references. Frontend presentation translates system templates and known district/species labels rather than rendering stored English title/body/time. Actual message/comment text and pet/user names remain authored content. Legacy records receive presentation metadata on read without rewriting MongoDB. Unresolvable legacy references fail safely; missing dates display a localized unknown state rather than fabricated time.
+- Dates/errors: chat groups actual calendar dates (Today, Yesterday, or localized historical date); clock times use the selected app locale, not browser language. Registration/profile/report/sighting/comment/chat validation supplies relevant stable codes, field names and bounded constraints. Central Mongoose validation exposes known fields/limits only, not rejected values or private driver messages. Auth/network failures use localized presentation while preserving authentication versus temporary-service semantics.
+- Evidence: `NotificationPresentation.test.ts` checks reactive switching across all three locales, localized modern/legacy system text, unchanged names/authored text, and useful validation limits; `MessagingState.test.ts` checks historical day groups and clock formatting in all three locales. Backend notification/privacy tests verify district-only presentation and actual authorized authored text; `errorHandling.test.js` verifies codes/limits and non-disclosure of rejected values. Existing locale/theme and privacy/image regressions remain enabled.
+- Limits: this does not translate user-generated content or rewrite persisted English compatibility fields. Browser-native form-validation wording follows the browser; application error states are localized. Browser visual layout, screen-reader pronunciation and physical-device time-zone behavior remain unverified.
 
 ## 18. Medium — Lost-pet coordinates can contradict the entered location
 
-- Status: **Still open**. Confirmed source behavior: `PostPetScreen.vue` submits current GPS or a fixed fallback, which may disagree with the entered place.
-- Evidence: current coordinate resolution/submission inspection; no genuine report created.
-- Smallest next repair: explicit last-seen location selection and validation; never silently fabricate coordinates.
+- Status: **Fixed and verified** within automated component/controller coverage. Originally a confirmed source defect; no genuine report was created to reproduce it.
+- Repair: `PostPetScreen.vue` reuses the explicit location picker and submits only a confirmed last-seen point. GPS is optional and still requires confirmation. The initial Hong Kong map viewport is display-only, never a submitted fallback. Backend validation rejects nonnumeric, nonfinite, malformed and out-of-range pairs without coercion, preserving `[longitude, latitude]`.
+- Evidence: `PostPetImages.test.ts` covers no confirmation, GPS denial/unavailability/timeout, offline map/manual entry, form retention, exact submitted coordinates, retries and stale upload completions; `SightingLocationPicker.test.ts` covers click/drag confirmation, invalidation, partial typing, disabled interaction and late GPS results; `petController.test.js` asserts invalid pairs are rejected before persistence and valid coordinates remain in order.
+- Boundary: geolocation, Leaflet and API writes are mocked in these tests. Actual browser/physical-device location and visual behavior were not verified; historical records are unchanged.
 
 ## 19. Medium — Hotspot totals silently truncate larger datasets
 
@@ -156,14 +161,15 @@ Summary: **14 fixed and verified; 1 partially addressed; 7 still open; 0 impleme
 
 ## 22. Low — Plain-HTTP mobile development can fail during image initialization
 
-- Status: **Still open**. Confirmed code risk, **not reproduced on a phone**.
-- Evidence: `useImageUpload.ts` still calls `crypto.randomUUID()` directly; insecure LAN origins may not provide it.
-- Smallest next repair: guard availability and provide/document an appropriate secure development origin. No unsupported claim of a physical-device failure or fix.
+- Status: **Fixed and verified** for the confirmed initialization defect through automated capability tests; **not reproduced or verified on a phone**.
+- Repair: `secureRequestId.ts` uses 128 cryptographically generated bits from `getRandomValues`, without depending on `randomUUID` or weak randomness. Upload, pet-report and chat identities are allocated lazily inside guarded action paths, never during setup/reset/finish/disposal. Missing or throwing secure randomness yields a localized, recoverable error, preserving input. Uncertain retries retain identity; successful chat cleanup needs no new ID. Camera conversion is checked again before dispatch after an account switch.
+- Evidence: `useImageUpload.test.ts` covers absent `randomUUID`, absent/throwing secure RNG, safe lifecycle methods, retries and stale camera/upload responses across all existing purpose regressions. `PostPetImages.test.ts` checks retained form data and capability errors in English, Traditional Chinese and Simplified Chinese. `ChatscreenSharedStray.test.ts` checks safe mount, retained draft, stable retry IDs and successful cleanup after randomness becomes unavailable.
+- Boundary: frontend capability/HTTP mocks, not actual LAN-browser/device or real-provider verification. GPS may still require HTTPS/browser permission; manual point selection remains available. A browser without secure randomness must use a supported browser/secure origin before submitting; there is deliberately no weak fallback.
 
 ## Verification boundaries
 
-- This repair batch: frontend unit/component suites, backend unit/HTTP/authorization suites, real local MongoDB transaction suites, TypeScript, ESLint, backend syntax and production build. Test totals/results belong in the completion report; regular backend tests intentionally skip opt-in real suites, which are run separately.
-- Provider operations in this batch are mocked. Real local database fixtures use uniquely named disposable databases, exact tracked fixture removal and owned replica-set shutdown. Atlas, `petlostapp`, `sample_mflix`, runtime environment files and existing images/records are untouched.
+- Earlier #10–15 repair batches: frontend unit/component suites, backend unit/HTTP/authorization suites, real local MongoDB transaction suites, TypeScript, ESLint, backend syntax and production build. Their exact totals and boundaries are recorded below. The #18/#22 batch has its own verification section; it did not rerun real database/provider operations.
+- Earlier isolated provider operations are mocked. Real local database fixtures use uniquely named disposable databases, exact tracked fixture removal and owned replica-set shutdown. Atlas, `petlostapp`, `sample_mflix`, runtime environment files and existing images/records are untouched by the current batch.
 - Reconciliation was tested only with isolated fixtures; no live reconciliation command, migration, seed or bulk cleanup ran. Normal application startup can provision the newly declared budget collection/indexes; no live schema/index deployment was performed here.
 - Browser visual layout, physical mobile/macOS behavior and production reverse-proxy behavior require separate evidence. Passing automated tests is not a blanket public-release sign-off.
 
@@ -226,3 +232,72 @@ Changed files in this batch:
 - Frontend behavior/contracts: `src/views/StrayDetailScreen.vue`, `src/components/Chatscreen.vue`, `src/services/api.ts`, `src/types/stray.ts`, `src/i18n/index.ts`, all three `src/locales/{en,zh-HK,zh-CN}.json` files.
 - Frontend verification: `src/views/__tests__/StrayDetailScreen.test.ts`, `src/components/__tests__/ChatscreenSharedStray.test.ts`, `src/components/__tests__/ProfileScreen.test.ts`, `src/components/__tests__/StrayRescueScreen.test.ts` (the latter two update typed permission fixtures).
 - Tracking: `AUDIT_FINDINGS_CHECKLIST.md`. No routing-configuration files changed.
+
+## #18/#22 repair verification — 19 October 2026
+
+Only the approved accurate last-seen location and mobile image-initialization repairs were implemented. No other finding or new feature was started. A real read-only specialist agent was created and completed with the explicitly requested `gpt-6-astra` / `high` fallback; named configuration loading remains unverified. It confirmed the original defects and identified two intermediate picker problems (partial coordinate typing and draggable markers while disabled); both received focused fixes and regression tests. The specialist edited no files or external data.
+
+| Verification | Final result | Evidence / boundary |
+|---|---|---|
+| Frontend, `npm run test:frontend -- --maxWorkers=1` | 197 passed in 29 files; 0 failed | jsdom/component tests, mocked Leaflet/geolocation/API/provider requests. Includes existing privacy/image/session regressions and all three new localized capability messages. |
+| Backend, `node --test --test-concurrency=1 tests/*.test.js` in `server/` | 263 passed, 0 failed, 4 opt-in skipped (267 entries) | Controller/model and real loopback HTTP/JWT tests with mocked persistence/provider operations. Existing real-database transaction suites were not invoked in this batch. |
+| Vue TypeScript / ESLint | Passed / passed | Final application/test sources; zero lint warnings. |
+| Backend syntax | 123 JavaScript modules passed | Parsed with Node's `vm.SourceTextModule`, without executing server modules; dependencies/uploads excluded. |
+| Production build | Passed | Existing >500 kB main-chunk warning remains (approximately 743 kB before gzip). |
+| Frontend startup | HTTP 200 for `/report` and transformed PostPet/picker/secure-ID modules | Owned loopback Vite server stopped cleanly. This is not browser interaction evidence. |
+| Tracked-secret / whitespace audit | Passed | Working tree and Git index scanned against local secrets and credential/JWT patterns; exact fictional redaction-test URIs reviewed. No tracked runtime environment file; `git diff --check` passed. |
+| Browser / device / live database / real provider | Not performed | No visual, physical-phone, GPS-hardware, real database-transaction or provider-delivery pass is claimed for this batch. |
+
+Initial parallel runs encountered Vitest worker-start timeouts and the existing provider-harness child-process timeout. Final serial runs passed without changing timeouts or weakening assertions. A frontend run overlapped the final stale-camera guard edit and failed the new regression; the complete final rerun above passed after the source stopped changing. The former PostPet GPS-paused auth test now pauses an actual image upload, preserving its account-switch/unmount assertions after submission no longer requests GPS.
+
+There are no schema/index changes, migrations or historical-coordinate rewrites. No application backend/Atlas connection, `petlostapp` or `sample_mflix` access, live upload, seed, migration, reconciliation or cleanup command ran. No database records or provider assets changed. Baseline checksums confirm existing environment files, original images/uploads, manifests/lockfiles and routing instructions/configuration are unchanged. The build regenerated ignored `dist/` output only; no commit or push occurred.
+
+Changed files:
+
+- Backend: `server/controllers/petController.js`, `server/tests/petController.test.js`.
+- Frontend: `src/components/PostPetScreen.vue`, `src/components/SightingLocationPicker.vue`, `src/components/Chatscreen.vue`, `src/composables/useImageUpload.ts`, new `src/utils/secureRequestId.ts`.
+- Localization: `src/i18n/index.ts`, `src/locales/en.json`, `src/locales/zh-HK.json`, `src/locales/zh-CN.json` (four shared keys per locale).
+- Regressions: `src/components/__tests__/PostPetImages.test.ts`, `src/components/__tests__/SightingLocationPicker.test.ts`, `src/components/__tests__/ChatscreenSharedStray.test.ts`, `src/composables/__tests__/useImageUpload.test.ts`.
+- Tracking: this checklist. No routing-configuration changes.
+
+## #16/#17 repair verification — 19 October 2026
+
+Only the approved messaging/unread/notification-destination and generated-language/date/validation repairs were implemented. Prior uncommitted #18/#22 work was retained. A real specialist agent (`/root/fyp_architect_message_read`) was created and completed using explicitly requested `gpt-6-astra` / `high` parameters and manually supplied specialist instructions. Named configuration loading and independent serving-model metadata remain unverified. Backend implementation ownership was bounded; follow-up security/session reviews were read-only. The reviews identified poll/send overwrite, A→B→A lifecycle and authorization-error cache issues; fixes and targeted regressions were integrated.
+
+| Verification | Final result | Evidence / boundary |
+|---|---|---|
+| Complete frontend, `npm run test:frontend -- --maxWorkers=1` | 228 passed in 31 files; 0 failed | jsdom/component tests plus real Axios interceptors with an isolated adapter. Covers prior privacy/image regressions, all three languages, unread/read failure, historical grouping, notification navigation, account changes and stale asynchronous responses. No real browser transport or provider uploads. |
+| Complete backend, `npm --prefix server test` | 280 passed, 0 failed, 4 opt-in skipped (284 entries) | Standard parallel run passed; controller/model mocks and real loopback HTTP/JWT boundaries. Includes guest acknowledgment rejection and owner/reporter/unrelated/shelter-admin policy fixtures. |
+| `npm --prefix server run test:transactions` | 26 passed, 0 failed, 0 skipped across all four suites | Actual MongoDB 8.0.17 loopback-only replica set. New simultaneous acknowledgment test proves one reader entry, excluded outgoing/other-thread IDs, and a later unseen message remaining unread. Existing media/sighting/quota/rescue transactions still pass. Cloudinary mocked. |
+| Vue TypeScript / ESLint | Passed / passed | Final source; zero lint warnings. |
+| Backend syntax | 124 JavaScript modules passed | Node `vm.SourceTextModule` parsing without executing application startup; dependencies/uploads excluded. |
+| Production build | Passed | Existing main-chunk size warning remains, approximately 755 kB before gzip. |
+| Frontend startup | HTTP 200 for `/` and changed chat/inbox/notification/presentation modules | Owned loopback Vite server stopped cleanly. No browser interaction pass implied. |
+| Secret / whitespace checks | Passed | Working tree and Git index compared against local secrets and credential/JWT patterns; exact fictional redaction-test URIs reviewed. No tracked runtime environment file. `git diff --check` passed. |
+| Browser / physical device / live Atlas / real provider | Not performed | Browser inventory returned no apps or browser surfaces. No screenshots, visual accessibility, actual device, live account or real-provider verification is claimed. |
+
+### Schema, compatibility and safety
+
+- `Message.readBy` is optional, internal and language-independent. Existing conversation indexes suffice; no new indexes, collection, migration, bulk rewrite or historical date/read-state backfill. Reader arrays are omitted from ordinary message and notification DTOs; they are not public read receipts.
+- Read acknowledgment is an authenticated, mutation-rate-limited PATCH for up to 500 explicit IDs, with current visible parent, conversation ownership and bilateral blocking checks. Atomic `$addToSet` is idempotent; no timestamp watermark can accidentally include an unseen concurrent arrival. Acknowledgment is never a GET side effect or automatic form submission.
+- Missing legacy read state means incoming unread until opened; outgoing-only conversations remain read. Unresolvable legacy message/participant references cannot safely produce a conversation destination and are omitted, not deleted. Existing local timestamp markers remain untouched but are no longer authoritative. Seen-message notifications are derived as read; notification mark-read does not acknowledge a message.
+- Structured presentation is reconstructed on read, so valid existing notification records need no rewrite. All five notification types and text/photo/shared-message variants use localized templates. There are 34 new repair keys per supported locale (102 translations); names and actual authored text remain unchanged. Known validation fields and bounded constraints provide useful localized detail without returning rejected values or raw private error messages.
+- Messaging request wrappers capture the initiating authentication context before Axios queues its interceptor. Four isolated-adapter tests first reproduced unintended same-tick dispatch under a replacement account; the fixed wrappers reject before transport, preserve `AUTH_CONTEXT_CHANGED`, and retain existing post-dispatch response guards. This request-start pinning is scoped to messaging, not a new universal audit of unrelated write wrappers.
+- Read semantics are conversation-open/loaded messages in a focused visible page, not per-bubble viewport tracking. Other tabs/devices synchronize through existing polling; no push mechanism was added. Legacy notifications missing dates use a localized unknown state. Browser-native validation wording follows the browser. Visual/mobile/time-zone/keyboard/screen-reader checks remain separate from automated coverage.
+
+The isolated run used replica set `fyp_transactions_571a3faaeabb4565ab3dd9cfd03c61fb` and dedicated quota/media/sighting/rescue databases; the new acknowledgment test ran in `fyp_transactions_rescue_12cf43ff3c4c4765863c0ae6dd7bf296`. Exact owned fixture removal and absence were asserted, then the owned replica set/disposable storage stopped/removed. This was test-harness fixture teardown, not a live cleanup command. No Atlas, `petlostapp`, `sample_mflix`, real provider, live upload, seed, migration, reconciliation or application cleanup access occurred. Existing application records, provider assets, images/uploads and runtime environment files were untouched. Baseline checksums also confirm manifests/lockfiles, routing configuration and instructions are unchanged. No commit or push.
+
+### Previous serial rerun and remaining test instability
+
+The prior #18/#22 backend failure was the existing `managedImagesHarness.test.js` safety test: its `spawnSync` child had a 15,000 ms deadline and returned `status: null`, not the expected refusal exit code `1`, after approximately 15.2 seconds. It was not a failed coordinate/privacy assertion. The same test passed in the serial full rerun. Heavy Windows child-process/import startup under parallel load is a plausible explanation, but sandbox versus resource/startup cost was not conclusively isolated; the timeout risk therefore remains recorded rather than claimed fixed.
+
+This batch's two fresh standard parallel full backend runs passed (279 and, after the final validation test, 280 passes). No timeout was increased, advisory suppressed or safety assertion weakened. Frontend runs use one worker following the previously observed worker-start timeout. A new fixture initially attempted to spy on jsdom's absent `scrollTo`; the fixture assumption was removed and the application now safely falls back to `scrollTop`. Intermediate same-tick dispatch tests intentionally failed before the repair; the final complete run was performed after application/test source changes stopped and passed 228/228. There are no unresolved assertion failures, but cold/overloaded child-process timing remains an environmental test risk.
+
+### Files changed in this batch
+
+- Backend behavior/contracts: `server/controllers/authController.js`, `server/controllers/chatController.js`, `server/controllers/notificationController.js`, `server/controllers/petController.js`, `server/controllers/strayController.js`, `server/middleware/errorHandler.js`, `server/models/Message.js`, `server/routes/chat.js`.
+- Backend verification: `server/tests/creationAuthorization.test.js`, `server/tests/errorHandling.test.js`, `server/tests/rescueTransactions.test.js`, new `server/tests/messageReadNotifications.test.js`.
+- Frontend behavior/contracts: `src/App.vue`, `src/components/AuthScreen.vue`, `src/components/ChatInboxScreen.vue`, `src/components/Chatscreen.vue`, `src/components/NotificationsPanel.vue`, `src/services/api.ts`, `src/types/notification.ts`.
+- Localization: `src/i18n/index.ts`, `src/i18n/formatters.ts`, new `src/i18n/notifications.ts`, `src/locales/en.json`, `src/locales/zh-HK.json`, `src/locales/zh-CN.json`.
+- Frontend verification: `src/components/__tests__/AppCreationAuth.test.ts`, `src/services/__tests__/apiAuthContext.test.ts`, new `src/components/__tests__/MessagingState.test.ts`, new `src/components/__tests__/NotificationPresentation.test.ts`.
+- Tracking: this checklist. In total, 26 existing files changed relative to this batch's starting snapshot and four files were added. Earlier #18/#22-only files remain preserved; there are no deletions or routing-configuration changes.

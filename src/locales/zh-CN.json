@@ -1,4 +1,36 @@
 {
+  "notificationEvents": {
+    "proximityTitle": "附近有宠物走失", "proximityBody": "有人在{district}报告{petName}（{animal}）走失。",
+    "sightingTitle": "有人目击{petName}", "sightingBody": "有人在{district}目击{petName}。",
+    "reunitedTitle": "宠物已平安回家", "reunitedBody": "{petName}已与主人团聚。",
+    "commentTitle": "你的救援帖子有新评论", "commentBody": "有人在你的救援帖子评论。",
+    "messageTitle": "新的 PawRadar 消息", "messageBody": "你收到一条新消息。",
+    "photoBody": "分享了一张照片。", "sharedBody": "分享了一条救援帖子。", "reportedArea": "报告所属地区"
+  },
+  "messageRepair": {
+    "credentials": "邮箱或密码不正确。", "emailInUse": "此邮箱地址已注册账户。",
+    "unavailable": "无法打开此对话。帖子可能已隐藏或移除，或双方已屏蔽联系。",
+    "readFailed": "消息已加载，但无法保存已读状态。请重试以更新未读提示。",
+    "participantRequired": "请在“消息”选择对话，以联系正确的对象。",
+    "messageRequired": "请输入消息、附加照片或分享帖子。",
+    "messageTooLong": "消息不能超过 {max} 个字符。",
+    "invalidRead": "无法更新已读状态。请重新加载对话后重试。",
+    "invalidData": "请检查表单内容后重试。",
+    "requiredField": "请填写{field}。", "fieldTooLong": "{field}不能超过 {max} 个字符。",
+    "invalidField": "请检查{field}后重试。", "email": "请输入有效的电子邮箱地址。",
+    "password": "密码至少需要 {min} 个字符。",
+    "location": "请选择并确认有效的位置经纬度。",
+    "district": "请选择有效的香港地区。", "contact": "请输入有效的联系人姓名及电话号码。",
+    "comment": "请输入 1 至 {max} 个字符的评论。",
+    "observedTime": "请选择有效的目击时间，不能是未来时间。",
+    "formField": "此字段", "notFound": "无法显示此内容，可能已移除或隐藏。"
+  },
+  "reportLocation": {
+    "guidance": "请选择并确认宠物最后出现的位置。你当前的 GPS 位置仅供选择起点，并非宠物最后出现的地方。",
+    "required": "发布前，请在地图选择有效的最后出现位置，或输入经纬度，然后确认。",
+    "mapUnavailable": "无法加载地图。请在下方输入最后出现位置的经纬度，然后确认。表单内容已保留。",
+    "secureIdUnavailable": "此浏览器无法创建安全的提交标识。输入内容已保留。请使用较新版本的浏览器或安全的 HTTPS 连接后重试。"
+  },
   "rescueRepair": { "statusFailed": "无法更新救援状态，请重试。", "editFailed": "无法保存修改，已保留你输入的内容。", "deleteFailed": "无法移除此帖子，请重试。", "deleteCommentFailed": "无法移除此评论，请重试。", "statusSaved": "已更新救援状态。", "editSaved": "已保存修改。", "moreComments": "加载更多评论", "submissionConflict": "此提交编号已用于其他内容，已保留你当前输入的文字。" },
   "mediaRecovery": { "limit": "已达到图片存储安全上限。请移除不再需要的图片，或联系支持团队处理未完成的上传。" },
   "moderationEvidence": { "image": "举报图片证据 {index}" },

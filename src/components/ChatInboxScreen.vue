@@ -135,6 +135,7 @@ import { getChatInbox, type ChatConversation, type ChatPet } from '../services/a
 import type { User } from '../types/user'
 import { translateApiError, useAppI18n } from '../i18n'
 import { formatRelativeDate } from '../i18n/formatters'
+import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 
 const props = defineProps<{ user: User | null }>()
 const { t } = useAppI18n()
@@ -149,15 +150,15 @@ const conversations = ref<ChatConversation[]>([])
 const loading = ref(false)
 const error = ref('')
 const failedPhotos = ref<Set<string>>(new Set())
-const readStateVersion = ref(0)
 
 const POLL_INTERVAL_MS = 30_000
 let requestSequence = 0
 let pollTimer: ReturnType<typeof setInterval> | null = null
 const refreshing = ref(false)
+const authInvalidated = ref(false)
 
 const isAuthenticated = computed(() => {
-  if (!props.user) return false
+  if (!props.user || authInvalidated.value) return false
   try {
     return Boolean(localStorage.getItem('token'))
   } catch {
@@ -192,47 +193,17 @@ function conversationName(conversation: ChatConversation): string {
     : conversation.pet.owner || t('messages.petOwner')
 }
 
-function readStateKey(conversationId: string): string {
-  return `pawradar:chat-read:${props.user?.id || 'guest'}:${conversationId}`
-}
-
-function readAt(conversationId: string): number {
-  try {
-    const stored = Number(localStorage.getItem(readStateKey(conversationId)))
-    return Number.isFinite(stored) ? stored : 0
-  } catch {
-    return 0
-  }
-}
-
 function isConversationUnread(conversation: ChatConversation): boolean {
-  void readStateVersion.value
-  if (!props.user) return false
-  const updatedAt = new Date(conversation.updatedAt).getTime()
-  return Number.isFinite(updatedAt) && updatedAt > readAt(conversation.id)
+  return Boolean(props.user && conversation.unreadCount > 0)
 }
 
 const unreadCount = computed(
-  () => conversations.value.filter((conversation) => isConversationUnread(conversation)).length,
+  () => conversations.value.reduce((total, conversation) => total + (Number.isFinite(conversation.unreadCount) ? Math.max(0, Math.trunc(conversation.unreadCount)) : 0), 0),
 )
 
 watch(unreadCount, (count) => emit('unread-change', count), { immediate: true })
 
-function markConversationRead(conversation: ChatConversation) {
-  const updatedAt = new Date(conversation.updatedAt).getTime()
-  try {
-    localStorage.setItem(
-      readStateKey(conversation.id),
-      String(Number.isFinite(updatedAt) ? updatedAt : Date.now()),
-    )
-  } catch {
-    // The thread still opens when browser storage is unavailable.
-  }
-  readStateVersion.value += 1
-}
-
 function openConversation(conversation: ChatConversation) {
-  markConversationRead(conversation)
   emit('open-chat', conversation.pet)
 }
 
@@ -251,22 +222,23 @@ async function loadInbox(showLoading = false) {
   }
   if (refreshing.value) return
 
+  const context = captureAuthContext()
   const sequence = ++requestSequence
+  const active = () => sequence === requestSequence && isAuthContextCurrent(context)
   refreshing.value = true
   if (showLoading) loading.value = true
   error.value = ''
 
   try {
     const result = await getChatInbox()
-    if (sequence === requestSequence) conversations.value = result
+    if (active()) conversations.value = result
   } catch (cause) {
-    if (sequence === requestSequence) {
+    if (active()) {
       if (showLoading) conversations.value = []
       error.value = translateApiError(cause, 'errors.loadConversations')
     }
   } finally {
-    if (sequence === requestSequence && showLoading) loading.value = false
-    refreshing.value = false
+    if (active()) { if (showLoading) loading.value = false; refreshing.value = false }
   }
 }
 
@@ -280,23 +252,35 @@ function refreshInbox() {
 
 const relativeTime = formatRelativeDate
 
+function clearInbox() {
+  requestSequence++
+  refreshing.value = false
+  conversations.value = []; failedPhotos.value = new Set(); error.value = ''; loading.value = false
+}
+function invalidateInbox() { authInvalidated.value = true; clearInbox() }
+function refreshReadState() { clearInbox(); if (props.user) void loadInbox() }
+
 watch(
   () => props.user?.id,
   () => {
-    requestSequence += 1
-    conversations.value = []
-    failedPhotos.value = new Set()
-    error.value = ''
+    clearInbox()
+    authInvalidated.value = false
     void loadInbox(true)
   },
   { immediate: true },
 )
 
 onMounted(() => {
+  window.addEventListener('chat:read', refreshReadState)
+  window.addEventListener('auth:changed', invalidateInbox)
+  window.addEventListener('auth:unauthorized', invalidateInbox)
   pollTimer = setInterval(() => void loadInbox(false), POLL_INTERVAL_MS)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('chat:read', refreshReadState)
+  window.removeEventListener('auth:changed', invalidateInbox)
+  window.removeEventListener('auth:unauthorized', invalidateInbox)
   requestSequence += 1
   if (pollTimer) clearInterval(pollTimer)
 })

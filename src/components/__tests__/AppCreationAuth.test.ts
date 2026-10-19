@@ -11,6 +11,7 @@ import type { Pet } from '../../types/pet'
 const apiMocks = vi.hoisted(() => ({
   getNearbyPets: vi.fn(),
   getNotifications: vi.fn(),
+  getChatInbox: vi.fn(),
   getPet: vi.fn(),
   getProfile: vi.fn(),
   markAllNotificationsRead: vi.fn(),
@@ -53,9 +54,9 @@ const pet: Pet = {
 }
 
 const RadarStub = defineComponent({
-  emits: ['found'],
+  emits: ['found', 'notifications'],
   setup(_, { emit }) {
-    return () => h('button', { class: 'stub-found', onClick: () => emit('found', pet) }, 'Found')
+    return () => h('div', [h('button', { class: 'stub-found', onClick: () => emit('found', pet) }, 'Found'), h('button', { class: 'stub-notifications', onClick: () => emit('notifications') }, 'Notifications')])
   },
 })
 
@@ -113,8 +114,8 @@ async function renderApp(token?: string) {
         AuthScreen: AuthStub,
         SmartMatchScreen: { template: '<div />' },
         PosterModal: { template: '<div />' },
-        Chatscreen: { template: '<div />' },
-        NotificationsPanel: { template: '<div />' },
+        Chatscreen: { props: ['pet'], template: '<p class="stub-chat-target">{{ pet.id }}:{{ pet.participantId }}</p>' },
+        NotificationsPanel: { props: ['notifications', 'targetError'], emits: ['open-chat', 'close'], template: '<div class="stub-notification-panel"><p class="stub-target-error">{{ targetError }}</p><button class="stub-message-notification" @click="$emit(\'open-chat\', notifications[0])">Open conversation</button></div>' },
         BoostScreen: { template: '<div />' },
         SightingLocationPicker: { emits: ['update:modelValue'], template: '<button class="sighting-location-stub" @click="$emit(\'update:modelValue\', [114.18, 22.3])">Choose location</button>' },
       },
@@ -140,6 +141,7 @@ describe('authenticated creation entry points', () => {
     apiMocks.getNearbyPets.mockResolvedValue([pet])
     apiMocks.getPet.mockResolvedValue(pet)
     apiMocks.getNotifications.mockResolvedValue([])
+    apiMocks.getChatInbox.mockResolvedValue([])
     apiMocks.updateNotificationPreferences.mockResolvedValue(undefined)
   })
 
@@ -152,6 +154,30 @@ describe('authenticated creation entry points', () => {
     expect(source).toContain("openLogin({ type: 'post-pet' })")
     expect(source).toContain('return')
     expect(guard).toBeLessThan(mutation)
+  })
+
+  it.each(['available', 'unavailable', 'account-switch'])('message notification target is authorized and stale-safe: %s', async state => {
+    apiMocks.getProfile.mockResolvedValue({ id: 'owner-id', name: 'Owner', email: 'owner@example.test', alertsEnabled: false })
+    apiMocks.getNotifications.mockResolvedValue([{ id: 'notice', type: 'message', read: false, conversation: { petId: pet.id, participantId: 'finder-two', messageId: 'message' } }])
+    const { wrapper } = await renderApp('owner-fixture')
+    await wrapper.get('.stub-notifications').trigger('click'); await flushPromises()
+    let finish!: (value: unknown) => void
+    if (state === 'available') apiMocks.getChatInbox.mockResolvedValue([
+      { pet: { ...pet, participantId: 'finder-one' } }, { pet: { ...pet, participantId: 'finder-two' } },
+    ])
+    else if (state === 'account-switch') apiMocks.getChatInbox.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    await wrapper.get('.stub-message-notification').trigger('click'); await flushPromises()
+    if (state === 'available') expect(wrapper.get('.stub-chat-target').text()).toBe(`${pet.id}:finder-two`)
+    else if (state === 'unavailable') {
+      expect(wrapper.find('.stub-chat-target').exists()).toBe(false)
+      expect(wrapper.get('.stub-target-error').text()).toContain('conversation is unavailable')
+    } else {
+      localStorage.setItem('token', 'another-fixture')
+      window.dispatchEvent(new StorageEvent('storage', { key: 'token', oldValue: 'owner-fixture', newValue: 'another-fixture' }))
+      finish([{ pet: { ...pet, participantId: 'finder-two' } }]); await flushPromises()
+      expect(wrapper.find('.stub-chat-target').exists()).toBe(false)
+    }
+    wrapper.unmount()
   })
 
   it('opens authentication instead of a sighting form for a guest', () => {

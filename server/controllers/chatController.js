@@ -18,6 +18,7 @@ import { visibleContentFilter } from '../services/moderationVisibility.js'
 import { assertMessageReplay, upsertSubmission } from '../services/submissionIdentity.js'
 
 const MAX_MESSAGE_LENGTH = 2000
+const MAX_READ_MESSAGES = 500
 
 function strayReferenceId(message) {
   return message.sharedStray?._id || message.sharedStray || null
@@ -136,9 +137,12 @@ export async function listConversations(req, res, next) {
       $and: [{ $or: filters }, { participant: { $ne: null } }],
     })
     const lastMessageByConversation = new Map()
+    const messagesByConversation = new Map()
     for (const message of messages) {
       const key = `${message.pet}:${message.participant}`
       lastMessageByConversation.set(key, message)
+      if (!messagesByConversation.has(key)) messagesByConversation.set(key, [])
+      messagesByConversation.get(key).push(message)
     }
 
     const conversationKeys = [...lastMessageByConversation.keys()]
@@ -181,6 +185,11 @@ export async function listConversations(req, res, next) {
           ),
           lastMessage: serializedLastMessages.get(String(lastMessage._id)),
           updatedAt: lastMessage.createdAt,
+          unreadCount: messagesByConversation.get(conversationId).filter((message) =>
+            message.sender === (isOwner(pet, req.user._id) ? 'finder' : 'owner')
+            && String(message.sentBy || '') !== String(req.user._id)
+            && !(message.readBy || []).some((reader) => String(reader) === String(req.user._id)),
+          ).length,
         }
       })
       .filter(Boolean)
@@ -203,11 +212,11 @@ export async function getMessages(req, res, next) {
     const pet = await Pet.findOne(
       visibleContentFilter({ _id: req.params.petId }),
     ).select('reportedBy')
-    if (!pet) return res.status(404).json({ error: 'Pet not found' })
+    if (!pet) return res.status(404).json({ error: 'Pet not found', code: 'CHAT_UNAVAILABLE' })
 
     const participantId = participantIdForRequest(req, pet, req.query)
     if (!participantId) {
-      return res.status(400).json({ error: 'A valid conversation participant is required.' })
+      return res.status(400).json({ error: 'A valid conversation participant is required.', code: 'CHAT_PARTICIPANT_REQUIRED' })
     }
 
     const otherUserId = isOwner(pet, req.user._id) ? participantId : pet.reportedBy
@@ -223,6 +232,40 @@ export async function getMessages(req, res, next) {
       messages: await serializeMessages(messages),
       viewerRole: isOwner(pet, req.user._id) ? 'owner' : 'finder',
     })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Acknowledge only messages displayed in this thread, never a client timestamp.
+export async function markMessagesRead(req, res, next) {
+  try {
+    setLocationPrivacyHeaders(res)
+    const ids = req.body?.messageIds
+    if (!mongoose.isValidObjectId(req.params.petId)
+      || !Array.isArray(ids) || ids.length === 0 || ids.length > MAX_READ_MESSAGES
+      || ids.some((id) => typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id))) {
+      return res.status(400).json({ error: 'Invalid message read request.', code: 'CHAT_READ_INVALID', params: { max: MAX_READ_MESSAGES } })
+    }
+    const pet = await Pet.findOne(visibleContentFilter({ _id: req.params.petId })).select('reportedBy')
+    if (!pet) return res.status(404).json({ error: 'Pet not found', code: 'CHAT_UNAVAILABLE' })
+    const participantId = participantIdForRequest(req, pet, req.body)
+    if (!participantId) {
+      return res.status(400).json({ error: 'A valid conversation participant is required.', code: 'CHAT_PARTICIPANT_REQUIRED' })
+    }
+    const otherUserId = isOwner(pet, req.user._id) ? participantId : pet.reportedBy
+    if (!otherUserId) return res.status(404).json({ error: 'Conversation not found', code: 'CHAT_UNAVAILABLE' })
+    if (await usersBlockEachOther(req.user._id, otherUserId)) {
+      return res.status(403).json({ error: 'Messaging is unavailable for this conversation.', code: 'USER_BLOCKED' })
+    }
+    await Message.updateMany({
+      _id: { $in: [...new Set(ids)] },
+      pet: req.params.petId,
+      participant: participantId,
+      sender: isOwner(pet, req.user._id) ? 'finder' : 'owner',
+      sentBy: { $ne: req.user._id },
+    }, { $addToSet: { readBy: req.user._id } })
+    res.json({ success: true })
   } catch (error) {
     next(error)
   }
@@ -244,21 +287,21 @@ export async function createMessage(req, res, next) {
     const normalizedRequestId = typeof clientRequestId === 'string' ? clientRequestId.trim() : ''
     if (normalizedRequestId.length > 100) return res.status(400).json({ error: 'Invalid clientRequestId.' })
     if (!normalizedMessage && !imageIds.length && !sharedStrayId) {
-      return res.status(400).json({ error: 'A message requires text, a photo, or a shared post.' })
+      return res.status(400).json({ error: 'A message requires text, a photo, or a shared post.', code: 'CHAT_MESSAGE_REQUIRED' })
     }
     if (normalizedMessage.length > MAX_MESSAGE_LENGTH) {
-      return res.status(400).json({ error: 'Message is too long.' })
+      return res.status(400).json({ error: 'Message is too long.', code: 'CHAT_MESSAGE_TOO_LONG', params: { max: MAX_MESSAGE_LENGTH } })
     }
     if (imageIds.length && !normalizedRequestId) throw imageError('IMAGE_REQUEST_INVALID')
 
     const pet = await Pet.findOne(
       visibleContentFilter({ _id: req.params.petId }),
     ).select('reportedBy')
-    if (!pet) return res.status(404).json({ error: 'Pet not found' })
+    if (!pet) return res.status(404).json({ error: 'Pet not found', code: 'CHAT_UNAVAILABLE' })
 
     const participantId = participantIdForRequest(req, pet, req.body)
     if (!participantId) {
-      return res.status(400).json({ error: 'A valid conversation participant is required.' })
+      return res.status(400).json({ error: 'A valid conversation participant is required.', code: 'CHAT_PARTICIPANT_REQUIRED' })
     }
     const otherUserId = isOwner(pet, req.user._id) ? participantId : pet.reportedBy
     if (await usersBlockEachOther(req.user._id, otherUserId)) {
@@ -279,7 +322,7 @@ export async function createMessage(req, res, next) {
             reportedBy: participantId,
           }))
       if (!conversationExists && !participantReportedSighting) {
-        return res.status(404).json({ error: 'Conversation not found' })
+        return res.status(404).json({ error: 'Conversation not found', code: 'CHAT_UNAVAILABLE' })
       }
     }
 

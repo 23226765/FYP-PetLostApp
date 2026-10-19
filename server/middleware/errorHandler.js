@@ -43,7 +43,15 @@ export function errorHandler(err, req, res, _next) {
     return res.status(409).json({ error: 'A record with these details already exists.' })
   }
   if (error.name === 'ValidationError') {
-    return res.status(400).json({ error: 'Invalid request data.' })
+    // Only expose known field names and bounded validation constraints, never
+    // Mongoose messages/values (which may contain private submitted data).
+    const fields = ['name', 'realName', 'email', 'phone', 'password', 'locationName', 'district', 'description']
+    const field = fields.find((name) => error.errors?.[name])
+    const detail = field ? error.errors[field] : undefined
+    const max = detail?.properties?.maxlength
+    const code = !field ? 'INVALID_REQUEST_DATA' : detail?.kind === 'required' ? 'FIELD_REQUIRED'
+      : ['maxlength', 'maxLength'].includes(detail?.kind) && Number.isFinite(max) && max >= 0 && max <= 10000 ? 'FIELD_TOO_LONG' : 'FIELD_INVALID'
+    return res.status(400).json({ error: 'Invalid request data.', code, ...(field ? { field } : {}), ...(code === 'FIELD_TOO_LONG' ? { params: { max } } : {}) })
   }
   if (error.name === 'CastError') {
     return res.status(400).json({ error: 'Invalid identifier' })

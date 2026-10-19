@@ -448,12 +448,32 @@ test('pet reports are owned by the authenticated user and ignore spoofed ownersh
     assert.equal(String(createdData.reportedBy), String(ownerId))
     assert.equal(createdData.ownerName, 'Authenticated Owner')
     assert.equal(createdData.ownerPhone, '+852 5555 0111')
+    assert.deepEqual(createdData.location, { type: 'Point', coordinates: [114.188, 22.381] })
   } finally {
     Pet.create = originalCreate
     User.find = originalUserFind
     User.aggregate = originalUserAggregate
     Notification.bulkWrite = originalBulkWrite
   }
+})
+
+test('pet reports reject invalid/coercible coordinate pairs before any persistence', async () => {
+  const originalCreate = Pet.create
+  const originalFind = Pet.findOne
+  let writes = 0
+  try {
+    Pet.create = async () => { writes++; throw new Error('Must not write') }
+    Pet.findOne = async () => { throw new Error('Must reject before DB queries') }
+    for (const coordinates of [undefined, null, [], [114], [114, 22, 1], [null, null], ['', ''], ['114', 22], [true, false], [NaN, 22], [114, Infinity], [181, 22], [114, -91], [22, 114]]) {
+      const response = responseRecorder()
+      await reportPet({ user: { _id: new mongoose.Types.ObjectId() }, body: {
+        name: 'Fictional pet', species: 'Dog', district: 'Sha Tin', locationName: 'Selected park', coordinates,
+      } }, response, failOnNext)
+      assert.equal(response.statusCode, 400, JSON.stringify(coordinates))
+      assert.equal(response.payload.code, 'PET_LOCATION_INVALID')
+    }
+    assert.equal(writes, 0)
+  } finally { Pet.create = originalCreate; Pet.findOne = originalFind }
 })
 
 test('valid selected coordinates preserve lng/lat order and retries create one sighting', async () => {

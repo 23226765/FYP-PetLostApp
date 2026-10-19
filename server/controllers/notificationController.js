@@ -69,50 +69,87 @@ function coarseNotificationBody(notification, petById, strayById) {
   return notification.body
 }
 
-function serializeNotification(notification, petById = new Map(), strayById = new Map()) {
+function serializeNotification(notification, petById, strayById, context = {}) {
+  const petId = notificationReferenceId(notification.pet || context.message?.pet || context.sighting?.pet)
+  const strayId = notificationReferenceId(notification.stray || context.comment?.stray || context.message?.sharedStray)
+  const pet = petById.get(petId)
+  const stray = strayById.get(strayId)
+  const params = {
+    petName: pet?.name || '',
+    district: pet?.district || stray?.district || '',
+    species: pet?.species || '',
+    breed: pet?.breed || '',
+  }
+  let code = notification.type
+  let body = coarseNotificationBody({ type: notification.type, pet: petId, stray: strayId }, petById, strayById)
+  if (notification.type === 'message') {
+    const message = context.message
+    code = message.text ? 'message.text' : message.sharedStray ? 'message.sharedPost' : 'message.photo'
+    if (message.text) params.text = message.text
+    body = message.text || (message.sharedStray ? 'Shared a stray animal post.' : 'Shared a photo.')
+  } else if (notification.type === 'comment') {
+    params.text = context.comment?.text || ''
+    body = params.text
+  } else if (notification.type === 'reunited') {
+    body = pet ? `${pet.name} has been reunited.` : 'A pet has been reunited.'
+  }
+  const titles = { proximity: 'Lost pet near you', sighting: pet ? `New sighting of ${pet.name}` : 'New pet sighting', message: 'New PawRadar message', reunited: 'Pet reunited', comment: 'New comment' }
   return {
     id: String(notification._id),
     type: notification.type,
-    title: notification.title,
-    body: coarseNotificationBody(notification, petById, strayById),
+    title: titles[notification.type],
+    body,
+    event: { code, params },
+    createdAt: notification.createdAt,
+    conversation: context.conversation,
     photo: typeof notification.photo === 'string' && notification.photo.startsWith('/api/uploads/managed/')
       ? petById.get(notificationReferenceId(notification.pet))?.photo || strayById.get(notificationReferenceId(notification.stray))?.photo || undefined
       : notification.photo || undefined,
-    petId: notification.pet ? String(notification.pet?._id || notification.pet) : undefined,
-    strayId: notification.stray ? String(notification.stray?._id || notification.stray) : undefined,
+    petId: petId || undefined,
+    strayId: strayId || undefined,
     sightingId: notification.sighting ? String(notification.sighting?._id || notification.sighting) : undefined,
     time: relativeTime(notification.createdAt),
-    read: Boolean(notification.read),
+    read: Boolean(notification.read) || Boolean(context.message?.readBy?.some((reader) => String(reader) === String(notification.user))),
   }
 }
 
-async function serializeNotifications(notifications) {
+async function serializeNotifications(notifications, userId) {
+  const viewerId = String(userId)
+  const blocked = await blockedUserIdsFor(userId)
+  const messageIds = [...new Set(notifications
+    .filter((item) => item.type === 'message')
+    .map((item) => notificationReferenceId(item.message)).filter(Boolean))]
   const sightingIds = [...new Set(
     notifications.map((item) => notificationReferenceId(item.sighting)).filter(Boolean),
   )]
   const commentIds = [...new Set(
     notifications.map((item) => notificationReferenceId(item.comment)).filter(Boolean),
   )]
-  const [sightings, comments] = await Promise.all([
+  const [sightings, comments, messages] = await Promise.all([
     sightingIds.length
       ? Sighting.find(visibleContentFilter({ _id: { $in: sightingIds } })).select('_id pet')
       : [],
     commentIds.length
-      ? StrayComment.find(visibleContentFilter({ _id: { $in: commentIds } })).select('_id stray')
+      ? StrayComment.find(visibleContentFilter({ _id: { $in: commentIds } })).select('_id stray author text')
+      : [],
+    messageIds.length
+      ? Message.find({ _id: { $in: messageIds } }).select('_id pet participant sender sentBy text sharedStray readBy')
       : [],
   ])
   const petIds = [...new Set([
     ...notifications.map((item) => notificationReferenceId(item.pet)),
     ...sightings.map((item) => notificationReferenceId(item.pet)),
+    ...messages.map((item) => notificationReferenceId(item.pet)),
   ].filter(Boolean))]
   const strayIds = [...new Set([
     ...notifications.map((item) => notificationReferenceId(item.stray)),
     ...comments.map((item) => notificationReferenceId(item.stray)),
+    ...messages.map((item) => notificationReferenceId(item.sharedStray)),
   ].filter(Boolean))]
   const [pets, strays] = await Promise.all([
     petIds.length
       ? Pet.find(visibleContentFilter({ _id: { $in: petIds } }))
-          .select('_id name species breed district photo')
+          .select('_id name species breed district photo reportedBy')
       : [],
     strayIds.length
       ? Stray.find(visibleContentFilter({
@@ -125,7 +162,10 @@ async function serializeNotifications(notifications) {
   const strayById = new Map(strays.map((stray) => [String(stray._id), stray]))
   const sightingById = new Map(sightings.map((sighting) => [String(sighting._id), sighting]))
   const commentById = new Map(comments.map((comment) => [String(comment._id), comment]))
+  const messageById = new Map(messages.map((message) => [String(message._id), message]))
+  const contextById = new Map()
   const visibleNotifications = notifications.filter((notification) => {
+    if (notificationReferenceId(notification.user) !== viewerId) return false
     const petId = notificationReferenceId(notification.pet)
     const strayId = notificationReferenceId(notification.stray)
     const sightingId = notificationReferenceId(notification.sighting)
@@ -135,43 +175,42 @@ async function serializeNotifications(notifications) {
     if (sightingId) {
       const sighting = sightingById.get(sightingId)
       if (!sighting || !petById.has(notificationReferenceId(sighting.pet))) return false
+      if (petId && petId !== notificationReferenceId(sighting.pet)) return false
     }
     if (commentId) {
       const comment = commentById.get(commentId)
       if (!comment || !strayById.has(notificationReferenceId(comment.stray))) return false
+      if (strayId && strayId !== notificationReferenceId(comment.stray)) return false
+      if (notification.type === 'comment' && blocked.has(notificationReferenceId(comment.author))) return false
     }
+    if (notification.type === 'comment' && !commentId) return false
+    const context = { comment: commentById.get(commentId), sighting: sightingById.get(sightingId) }
+    if (notification.type === 'message') {
+      const message = messageById.get(notificationReferenceId(notification.message))
+      if (!message) return false
+      const messagePetId = notificationReferenceId(message.pet)
+      const participantId = notificationReferenceId(message.participant)
+      const pet = petById.get(messagePetId)
+      const ownerId = notificationReferenceId(pet?.reportedBy)
+      if (!pet || !mongoose.isValidObjectId(participantId) || !ownerId || ownerId === participantId) return false
+      if (petId && petId !== messagePetId) return false
+      if (!['finder', 'owner'].includes(message.sender)) return false
+      const senderId = message.sender === 'finder' ? participantId : ownerId
+      const recipientId = message.sender === 'finder' ? ownerId : participantId
+      if (recipientId !== viewerId || blocked.has(senderId)) return false
+      if (message.sentBy && notificationReferenceId(message.sentBy) !== senderId) return false
+      const sharedStrayId = notificationReferenceId(message.sharedStray)
+      if (sharedStrayId && !strayById.has(sharedStrayId)) return false
+      if (strayId && strayId !== sharedStrayId) return false
+      context.message = message
+      context.conversation = { petId: messagePetId, participantId, messageId: String(message._id) }
+    }
+    contextById.set(String(notification._id), context)
     return true
   })
   return visibleNotifications.map((notification) =>
-    serializeNotification(notification, petById, strayById),
+    serializeNotification(notification, petById, strayById, contextById.get(String(notification._id))),
   )
-}
-
-async function removeBlockedInteractionNotifications(notifications, userId) {
-  const blocked = await blockedUserIdsFor(userId)
-  if (blocked.size === 0) return notifications
-
-  const messageIds = notifications
-    .filter((item) => item.type === 'message' && item.message)
-    .map((item) => item.message)
-  const commentIds = notifications
-    .filter((item) => item.type === 'comment' && item.comment)
-    .map((item) => item.comment)
-  const [messages, comments] = await Promise.all([
-    messageIds.length ? Message.find({ _id: { $in: messageIds } }).select('_id sentBy') : [],
-    commentIds.length ? StrayComment.find({ _id: { $in: commentIds } }).select('_id author') : [],
-  ])
-  const hiddenMessageIds = new Set(
-    messages.filter((item) => blocked.has(String(item.sentBy || ''))).map((item) => String(item._id)),
-  )
-  const hiddenCommentIds = new Set(
-    comments.filter((item) => blocked.has(String(item.author || ''))).map((item) => String(item._id)),
-  )
-  return notifications.filter((item) => {
-    if (item.type === 'message') return !hiddenMessageIds.has(notificationReferenceId(item.message))
-    if (item.type === 'comment') return !hiddenCommentIds.has(notificationReferenceId(item.comment))
-    return true
-  })
 }
 
 async function findAlertRecipients(origin, excludedUserId) {
@@ -281,11 +320,7 @@ export async function listNotifications(req, res, next) {
       notifications = notifications.slice(0, 50)
     }
 
-    const visibleNotifications = await removeBlockedInteractionNotifications(
-      notifications,
-      req.user._id,
-    )
-    res.json({ notifications: await serializeNotifications(visibleNotifications) })
+    res.json({ notifications: await serializeNotifications(notifications, req.user._id) })
   } catch (error) {
     next(error)
   }
@@ -343,13 +378,14 @@ export async function markRead(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid notification id' })
     }
-    const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, user: req.user._id },
-      { $set: { read: true } },
-      { new: true },
-    )
+    const filter = { _id: req.params.id, user: req.user._id }
+    const notification = await Notification.findOne(filter)
     if (!notification) return res.status(404).json({ error: 'Notification not found' })
-    res.json({ notification: (await serializeNotifications([notification]))[0] })
+    const serialized = (await serializeNotifications([notification], req.user._id))[0]
+    if (!serialized) return res.status(404).json({ error: 'Notification not found', code: 'NOTIFICATION_UNAVAILABLE' })
+    const updated = await Notification.findOneAndUpdate(filter, { $set: { read: true } }, { new: true })
+    if (!updated) return res.status(404).json({ error: 'Notification not found', code: 'NOTIFICATION_UNAVAILABLE' })
+    res.json({ notification: { ...serialized, read: true } })
   } catch (error) {
     next(error)
   }
