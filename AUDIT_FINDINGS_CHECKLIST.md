@@ -1,12 +1,12 @@
 # PetLostApp — original 22-finding audit checklist
 
-Updated: 17 October 2026 (Hong Kong). New feature development remains paused.
+Updated: 20 October 2026 (Hong Kong). New feature development remains paused.
 
 Source: the user-supplied original audit attachment, `abcbef8d-3ff5-40cd-9e47-8efa4b448d04/Pasted text.txt`, whose baseline was commit `5ad3276`. Numbers, titles, severities and meanings below preserve that audit. This is a repair-status record, not a replacement audit or public-release sign-off.
 
 Status vocabulary: **Fixed and verified**, **Implemented but verification pending**, **Partially addressed**, **Still open**. “Verified” identifies the specific automated/isolated evidence below; it does not claim a browser, physical-device, production-proxy or live-Atlas mutation test. Earlier approved verification is explicitly distinguished from this batch. Uncommitted implementation is included.
 
-Summary: **18 fixed and verified; 1 partially addressed; 3 still open; 0 implemented but verification pending.**
+Summary: **21 fixed and verified; 1 partially addressed; 0 still open; 0 implemented but verification pending.**
 
 ## 1. High — Smart Match exposes precise distance indirectly
 
@@ -143,21 +143,25 @@ Summary: **18 fixed and verified; 1 partially addressed; 3 still open; 0 impleme
 
 ## 19. Medium — Hotspot totals silently truncate larger datasets
 
-- Status: **Still open**. Confirmed capped aggregation; live high-volume impact remains unmeasured.
-- Evidence: `analyticsController.js` still applies `MAX_POINTS_PER_SOURCE = 750` before cell aggregation. The earlier inactive/hidden-content filtering repairs do not fix truncation.
-- Smallest next repair: aggregate before limiting output or explicitly disclose sampled/capped totals, with >750-record isolated tests.
+- Status: **Fixed and verified** for the confirmed source-truncation defect through actual isolated MongoDB aggregation, not only mocked pipelines. Live Atlas volume/performance was not measured.
+- Repair: eligible sightings and active/legacy rescue posts are grouped into the existing public grid in MongoDB; both sources are merged before applying a deterministic 1,500-cell display limit. Summary report/source/cell totals include every eligible record, never a nearest-750 sample. Explicit returned-cell/returned-report counts and a truncation flag distinguish displayed coverage. Radar displays the limit notice in all three languages when needed.
+- Evidence: `server/tests/hotspotMongo.test.js` verifies 860 sightings + 865 rescue reports, a formerly omitted distant cell, and 3,210 mixed-source reports across 1,600 cells, with complete totals and exactly 1,500 returned cells. It checks visibility/inactive exclusions, legacy data, inclusive time/radius boundaries, signed grid math, integer per-record weights and deterministic ordering. Existing controller/public-projection/privacy tests also pass. See the dated verification section below.
+- Limits: radius/time validation and the 750-metre privacy grid remain unchanged. A 10-second deadline and disabled disk spill may reject oversized/slow queries rather than silently sample them; no partial result is represented as complete. Existing blocking policy preserves public emergency discovery, not personalized analytics. No records, schema or indexes were migrated.
 
 ## 20. Medium — Long passwords are silently truncated by bcrypt
 
-- Status: **Still open**. Original isolated bcrypt reproduction confirmed equivalent authentication after the first 72 bytes; registration still lacks the corresponding maximum-byte policy.
-- Evidence: auth validation/schema inspection; no password resets or seeded-account changes performed.
-- Smallest next repair: explicit UTF-8 byte limit with a considered compatibility policy for existing accounts.
+- Status: **Fixed and verified** for the approved new-password validation repair, with the retained login compatibility limitation below. The original real-bcrypt truncation reproduction was a confirmed defect, not a suspected risk.
+- Repair: registration and the existing development seed password gate share authoritative UTF-8 validation before hashing: at least the existing six JavaScript characters and at most 72 UTF-8 bytes. Registration sends `PASSWORD_TOO_LONG`, `field: password`, and `params.maxBytes: 72`. The registration UI counts bytes, preserves input, and displays guidance and server errors in English, Traditional Chinese and Simplified Chinese. No change/reset flow exists or was added. No schema hash-length constraint, password transformation, algorithm change or rehash was introduced.
+- Evidence: `server/tests/passwordPolicy.test.js` runs real bcrypt hashing/comparison and real loopback Express auth routes with mocked User persistence. `AuthPasswordPolicy.test.ts`, `passwordPolicy.test.ts` and existing session/cancellation regressions cover boundaries, Unicode, localized errors, retries and stale completions. See the dated verification section below.
+- Compatibility limitation: login deliberately retains raw bcrypt comparison without the new maximum. An existing hash cannot identify the original password length or distinguish suffixes after byte 72. Such suffixes still compare equally, including suffixes appended to a newly created password of exactly 72 bytes. Selectively eliminating this ambiguity requires additional scheme/version metadata or a different approved password strategy; silently rejecting historical long inputs would risk lockout. No existing account/hash was changed.
 
 ## 21. Low — Saved-pet state and failures are inconsistent
 
-- Status: **Still open**. Confirmed current source: browser-global `pawradar_saved_pets` remains shared between accounts; failed saved-pet fetches can be discarded as if unavailable/empty.
-- Evidence: `useSavedPets.ts`, `SavedScreen.vue`. Authentication-generation improvements (#6) do not partition this persisted key.
-- Smallest next repair: account-scoped state and distinct empty/unavailable/network-error results; account-backed saving remains separate approved product work.
+- Status: **Fixed and verified** for local saved-pet account isolation and retrieval through component/session/API-interceptor tests. The original global-key and false-empty behavior were confirmed defects, not merely suspected risks. Actual browser/device verification remains unavailable.
+- Repair: validated IDs only in separate v2 guest/confirmed-user namespaces. Unverified sessions expose no namespace; logout/switch/storage invalidation synchronously clear view data and invalidate requests. Verified identity is activated only after guarded login/profile success. Same-token cancellation can retain the confirmed principal, but external changes always discard that binding, including rapid A→B→A transitions. Queued/stale storage payloads cannot select an account or override current stored IDs.
+- Retrieval: distinguish empty, unavailable and retryable failures; retain every saved ID, preserve successful branches, bound pet requests to four workers and 20 IDs per page, and retain server rescue pagination/total including unavailable pages. Profile unsave refreshes page one after offset changes; stale unsave completions cannot alter another account.
+- Evidence: new `useSavedPets.test.ts`, `SavedScreen.test.ts`, `SavedRescuePostsTab.test.ts`; extended `AppCreationAuth.test.ts`, `apiAuthContext.test.ts`, and `ProfileScreen.test.ts`. Real Axios interception is exercised with an isolated transport; component APIs are mocked, not live Atlas writes. See the dated batch evidence and all-22 summary below.
+- Legacy policy: leave browser-global `pawradar_saved_pets` untouched and unread. Its ownership cannot be determined; nothing is automatically assigned to guest or the next logged-in user. Account-backed/cross-device pet saves remain outside this repair.
 
 ## 22. Low — Plain-HTTP mobile development can fail during image initialization
 
@@ -301,3 +305,158 @@ This batch's two fresh standard parallel full backend runs passed (279 and, afte
 - Localization: `src/i18n/index.ts`, `src/i18n/formatters.ts`, new `src/i18n/notifications.ts`, `src/locales/en.json`, `src/locales/zh-HK.json`, `src/locales/zh-CN.json`.
 - Frontend verification: `src/components/__tests__/AppCreationAuth.test.ts`, `src/services/__tests__/apiAuthContext.test.ts`, new `src/components/__tests__/MessagingState.test.ts`, new `src/components/__tests__/NotificationPresentation.test.ts`.
 - Tracking: this checklist. In total, 26 existing files changed relative to this batch's starting snapshot and four files were added. Earlier #18/#22-only files remain preserved; there are no deletions or routing-configuration changes.
+
+## #20 password-byte policy verification — 20 October 2026
+
+### Supported limit, scope and compatibility decision
+
+- Installed `bcryptjs`: **3.0.3**, unchanged. Its [official security guidance](https://github.com/dcodeIO/bcrypt.js#security-considerations) specifies a 72-byte UTF-8 input limit and explains that the library does not enforce it automatically. The installed implementation and `bcrypt.truncates` agree with the new boundary tests.
+- The only existing password-setting paths found by repository-wide bcrypt/password-flow searches were registration (`authController.js`) and test-user creation (`seedTestData.js`). Both now call the same side-effect-free `validateNewPassword` service. Seed validation happens before connection; the seed entry point was neither imported nor executed. There are no password-change/reset routes. Profile updates still whitelist profile fields and cannot set passwords. Stored hashes remain opaque and unchanged.
+- The server uses `Buffer.byteLength(password, 'utf8')`; the UI uses `TextEncoder`, with a matching code-point counter for older webviews. Tests include lone surrogates, surrogate pairs, whitespace and decomposed Unicode. Neither layer truncates, trims, normalizes or otherwise changes password text. No character-based `maxlength` was added.
+- The explicit-model fallback specialist (`gpt-6-astra`, high reasoning; standalone specialist instructions manually supplied, named loading not claimed) completed a read-only compatibility review and a final implementation review. Both recommended preserving raw login comparison; the final review found no substantive defect. The parent performed the executed verification below.
+- This patch prevents silent truncation when setting new passwords. It cannot infer or repair historical input lengths from bcrypt hashes. Login continues to accept historical inputs over 72 bytes and retains bcrypt's ignored-suffix behavior, even for a new exact-72-byte password. Existing hashes/accounts are preserved; no forced reset, migration, algorithm change or new password-management feature is included.
+
+### Automated checks in this batch
+
+| Check | Result | Evidence boundary |
+| --- | --- | --- |
+| Focused password backend suite | **16 passed** | Actual bcrypt 3.0.3 at 71/72/73 bytes for ASCII/CJK/emoji, a split-multibyte boundary, accepted raw Unicode/whitespace, rejection before lookup/hash/persistence, historical logins, ignored-suffix ambiguity, and real Express HTTP routes. User persistence is mocked, not a live database registration. Seed guard wiring is checked statically without executing the entry point. |
+| Focused frontend password/session suites | **25 passed** in 3 files | Mounted Vue components, mocked auth API, registration-only limits, all three locales, unchanged payloads, retry/form preservation, absent TextEncoder fallback, and late auth completion after cancellation/account switching. |
+| Complete frontend | **248 passed**, 33 files | `npm run test:frontend -- --maxWorkers=1`; includes existing privacy, image and session regressions. jsdom is not physical-device/browser verification. |
+| Complete backend | **296 passed**, 0 failed, **4 opt-in skipped** (300 test entries) | `npm --prefix server test`; standard parallel run passed without fixture/assertion weakening or a serial rerun. The skipped tests are explicitly opt-in, not reported as passed here. |
+| Real isolated MongoDB regressions | **26 passed**, 0 skipped | `npm --prefix server run test:transactions`: actual MongoDB 8.0.17 single-node WiredTiger replica set on loopback; fresh `fyp_transactions_*` databases, provider mocked. Exact synthetic fixture teardown and replica-set/storage shutdown completed. These existing transaction tests do not turn the mocked registration tests into real persisted-account verification. |
+| Vue TypeScript / ESLint | **Passed** | `npm run typecheck`; `npm run lint`, zero lint warnings. |
+| Backend syntax | **126 modules parsed** | Parse-only VM syntax check; no application startup or seed execution. |
+| Production build | **Passed** | Existing main-chunk size warning remains (~757 kB minified); no unrelated optimization undertaken. |
+| Frontend startup | **Passed** | Temporary loopback Vite server returned HTTP 200 for `/`, `AuthScreen.vue` and the password policy module, then stopped. This is a server/transform check, not browser verification. |
+| Diff / secret checks | **Passed** | `git diff --check`; all 303 nonignored worktree files and 298 index files checked against local credential values and generic secret patterns. Eight occurrences of precisely reviewed fictional URI fixtures (worktree/index) are not actual secrets; no findings or tracked runtime environment files. |
+
+### Preservation and limitations
+
+No live Atlas connection or writes, real provider operations, account/password resets, seeds, migration, live cleanup, image changes or environment changes were performed. The only database writes were the existing isolated local transaction fixtures, with exact harness teardown. `sample_mflix` was not accessed. No model, index, runtime dependency, package manifest, lockfile, routing configuration or permission change was required. The development seed script change is validation code only; seeded records and passwords were not changed.
+
+Actual browser/phone visual appearance, autofill behavior and live persisted-account registration/login were not verified in this batch. Existing frontend tests cover state transitions and all locales but cannot certify visual contrast or mobile keyboard behavior. The prior cold/overloaded Windows child-start timeout remains a known environmental risk; it did not recur in this full backend run. Follow-up work remains limited to the still-open/partial findings above, not new features.
+
+### Changed files and Git state
+
+- Modified: this checklist; `server/controllers/authController.js`; `server/scripts/seedTestData.js` (validation only); `src/components/AuthScreen.vue`; `src/i18n/index.ts`; `src/locales/en.json`, `zh-HK.json`, `zh-CN.json`.
+- Added: `server/services/passwordPolicy.js`; `server/tests/passwordPolicy.test.js`; `src/utils/passwordPolicy.ts`; `src/utils/__tests__/passwordPolicy.test.ts`; `src/components/__tests__/AuthPasswordPolicy.test.ts`.
+- Git state: eight modified and five untracked files, no deletions, no staged changes, no commit/push. File-hash comparison against the clean starting snapshot confirms the environment, uploads/public assets, routing instructions/configuration, manifests and lockfiles were preserved.
+
+## #19 complete hotspot totals verification — 20 October 2026
+
+### Implementation and API contract
+
+- Removed the nearest-750 raw-record limit. Each source begins with indexed `$geoNear`, including the existing visibility, time and active-rescue constraints; sightings additionally require an existing, non-hidden parent pet. Each source groups into the existing 750-metre Web Mercator grid before `$unionWith`; matching cells merge globally before the sole display limit. There is no sampling.
+- `summary.total`, `sightings`, `strays` and `cellCount` describe the complete eligible aggregation. `returnedCellCount`, `returnedTotal`, `cellsTruncated` and `maxCells` distinguish the returned subset. At most **1,500 globally ranked cells** are returned (count descending, then integer grid X/Y ascending). This retains the previous maximum possible payload of two 750-record source samples without retaining their bias. A translated Radar notice discloses reduced map coverage; complete report totals remain displayed.
+- Public cells still contain only approximate centre coordinates, location precision, counts and saturating intensity. No source IDs, individual timestamps, contact fields, notes, distances or internal weights leave the API. All roles use the same snapped search centre and public projection. Personal blocking continues to restrict contact/social interactions rather than removing public emergency discovery; the analytics route had no personalized blocked-author exclusion, and no such policy was added or removed.
+- Shared grid constants and centre conversion preserve existing projection arithmetic and six-decimal rounding. Mongo uses the same operation order for recency and nonnegative cent rounding as the existing JS rules. Per-record integer hundredths are summed before calculating aggregate saturation. Sparse-cell tests compare the internal per-record units, not merely already-saturated output.
+- Existing coordinate validation, 1–50 km radius and 1–365 day clamping remain unchanged. Queries have a **10,000 ms** deadline and **no disk spill**. Resource/timeout failures propagate as errors, never partially complete totals. MongoDB's [union](https://www.mongodb.com/docs/manual/reference/operator/aggregation/unionwith/) and [facet](https://www.mongodb.com/docs/manual/reference/operator/aggregation/facet/) semantics were checked against official documentation. This read aggregation is not run inside a transaction.
+- The explicitly selected Astra/high specialist completed bounded read-only design and implementation reviews. One suggested arithmetic-fidelity adjustment was applied and covered by a fresh real-Mongo rerun. No other repair was undertaken.
+
+### Verification performed
+
+| Check | Result | Scope |
+| --- | --- | --- |
+| Focused analytics/privacy unit and controller tests | **15 passed** | Existing weighting/projection rules, public role matrix (guest/owner/reporter/unrelated/admin), source selection, input bounds, resource options, no raw limits, public response whitelist and error propagation. Model aggregation is mocked in these controller tests. |
+| Real isolated MongoDB suite | **32 passed**, 0 failed/skipped, across five suites | MongoDB **8.0.17**, loopback-only single-node replica set. Includes the five new actual geospatial subtests below, plus existing image/quota/rescue/sighting transactions. Cloudinary mocked. |
+| New real geospatial case: over 750/source | **Passed** | **860 eligible sightings + 865 eligible rescue posts = 1,725** reports in two cells; distant cell contains **115** reports previously omitted. Hidden sightings/parents, missing parents, hidden/inactive rescues, old/out-of-radius records are excluded. Missing moderation/active values remain eligible. Single-source queries also match complete counts. |
+| New real geospatial case: capped output | **Passed** | **3,210 reports in 1,600 cells**; exactly **1,500** cells representing **3,010** reports returned, while full totals remain **3,210/1,600**. The global mixed-source winner is selected only after merging. Ties and repeated queries match the JS reference ordering. |
+| New real boundaries and weight cases | **Passed** | Inclusive time cutoff and one millisecond outside it; Mongo-measured radius just below/at/above its actual metre boundary; future timestamps retained consistently with existing rules. **144 separate sparse cells** check exact integer weights and public intensity across ages, confirmations, urgency/status and legacy fallbacks. Zero, positive/negative longitude and latitude cell boundaries and polar clamps match the existing JS projection. |
+| Real-controller database privacy check | **Passed** | Controller uses the real isolated collections; strict top-level/summary/cell whitelists and private-field/ID sentinels checked recursively. No actual live account or Atlas role test. |
+| Focused Radar/map frontend | **9 passed**, two files | All three localized coverage notices, complete summary versus displayed cells, no notice when complete, clearing old totals/cells after failure and existing heat rendering. Mounted jsdom components; API/Leaflet mocked. |
+| Complete frontend | **252 passed**, 34 files | Includes previous password, image, session, localization and privacy regressions. |
+| Complete backend | **295 passed**, 0 failed, **5 opt-in skipped** (300 test entries) | Standard parallel run passed. Previously separate mocked hotspot cases were consolidated; their inactive/hidden and source assertions are also exercised by actual isolated aggregation. The new geospatial suite is skipped without the isolated URI, but was explicitly run successfully by the local runner above. |
+| TypeScript / ESLint / backend syntax | **Passed** | Vue type checking, lint with zero warnings, and **127 backend modules** parsed without execution. |
+| Production build / frontend startup | **Passed** | Existing ~757 kB main-chunk warning remains. Temporary loopback Vite server served root and Radar transform with HTTP 200, then stopped. |
+| Diff / tracked-secret audit | **Passed** | No whitespace errors or secret findings. Runtime environment files remain untracked; precisely reviewed fictional credential URI fixtures are not actual secrets. |
+
+### Database safety, limitations and Git scope
+
+The geospatial fixture database in the final real-Mongo run was `fyp_transactions_analytics_d2febd7992884603895975a6524da849` on replica set `fyp_transactions_16bb83e5e72f4c8fa79f28a3e5062a37`. Only dedicated `fyp_transactions_*` databases were used. Every inserted synthetic document was recorded by exact ID; exact fixture teardown was verified, and the owned replica set/disposable storage were stopped and removed by the existing harness. No application cleanup, seed, migration, Atlas access, provider operation or existing-record write occurred. `sample_mflix` was not accessed.
+
+No schema/index or dependency changes are required; existing `2dsphere` location indexes and parent `_id` lookups are reused. Declared/redundant legacy indexes were not removed. Runtime environment, provider assets, original images, lockfiles and routing configuration remain unchanged. Prior uncommitted #20 work is preserved, including its password validation, tests and localization.
+
+The ten-second/memory limits deliberately reject extreme workloads; maximum-radius/high-volume production performance was not measured on Atlas. Totals describe the database reads for the request, not a guaranteed transaction snapshot across concurrent writes. The 750-metre singleton-cell privacy policy is unchanged, not a newly added anonymity guarantee. No browser surface was available (inventory returned no apps/browsers); visual layout/contrast on actual devices is unverified. All three locale notices and theme-token inheritance were checked through component tests/code, not claimed browser screenshots.
+
+Changed for #19: `server/controllers/analyticsController.js`; `server/services/hotspotAnalytics.js`; `server/services/locationPrivacy.js`; `server/scripts/testTransactions.js`; `server/tests/helpers/localTransactions.js`; `server/tests/hotspotAnalytics.test.js`; new `server/tests/hotspotMongo.test.js`; `src/components/RadarScreen.vue`; new `src/components/__tests__/RadarHotspots.test.ts`; `src/types/analytics.ts`; three locale files; and this checklist. No deletions, commits or pushes. The overall worktree also contains the preserved #20 changes; these are not attributed to this batch.
+
+## #21 local saved-state repair verification — 20 October 2026
+
+### Identity, storage and legacy policy
+
+- Lost-pet bookmarks remain local; no backend schema, endpoint, index or account-synchronization feature was added. Only validated, deduplicated ID arrays are written to `pawradar_saved_pets:v2:guest` or `pawradar_saved_pets:v2:user:<stable-account-ID>`. No cached pet documents, precise coordinates, contact information, image data or credentials are stored with saves.
+- An existing token without a verified current user is a **pending** state: no saved namespace or save action is available. Only App's successful context-checked profile restore or login activates the server-confirmed stable ID, after existing auth clearing. No ID is inferred from JWT decoding, route props or storage-event payloads.
+- Auth invalidation synchronously changes the saved revision and clears displayed pet/rescue objects. A memory-only, previously verified exact-token identity can rehydrate the same account after generation-only invalidation such as cancelling authentication; logout/token replacement drops that identity. External invalidation explicitly discards it before notifying consumers, including rapid external A→B→A changes whose queued events arrive after the final token write.
+- Storage events cannot activate accounts. Other namespaces/sessionStorage are ignored; current storage is reread rather than trusting stale `newValue`. IDs and requests from earlier namespaces/revisions are rejected. Unmount aborts/invalidate requests and clears view references.
+- **Unattributable legacy saves:** `pawradar_saved_pets` remains untouched and unread. It may contain several previous users' or guests' saves; ownership cannot be safely reconstructed. Do not automatically copy it into a guest namespace or assign it to the next login. Any future recovery/import needs a separately approved, explicit attribution process, not an automatic migration.
+- Malformed/unavailable browser storage shows localized persistence feedback. An explicit bookmark action can keep validated IDs in scoped memory if storage is blocked/full, but this may last only for the current visit; no silent durable-persistence guarantee is made. Merely reading malformed contents does not rewrite them.
+
+### Retrieval, pagination and API safety
+
+- SavedScreen resolves pet/rescue branches independently. A network/5xx failure is retryable, preserves IDs and successful cards, and cannot masquerade as an empty list. Confirmed 404/410 pet results use generic unavailable feedback and keep their IDs; hidden-content reasons are not displayed. A mismatched response ID is treated as a failed retrieval, not another saved post.
+- Pet pages contain at most **20 IDs**, with at most **four requests in flight**. Failed first-page IDs do not hide later-page controls. Retry reuses failed IDs without duplicating successful entries or advancing the saved-ID cursor incorrectly.
+- Rescue results use the existing paged API, retaining its actual saved-record total and `hasMore`, including pages with no visible records. Unavailable counts are recorded once per accepted page; later-page failure retries the same page and retains successful earlier pages. The old first-50 wrapper is no longer used by SavedScreen.
+- The profile saved-rescue tab now exposes unavailable counts and paging even with zero visible posts; account/auth changes clear state even while inactive. Unsave is request/context guarded. A successful unsave shifts offset pagination, so page one must refresh successfully before appending later pages; a refresh failure preserves remaining cards and exposes retry.
+- Saved-related API wrappers capture the existing auth context synchronously **before** Axios queues the request. A queued save/unsave cannot be issued with a replacement account's token, and a late old 401 cannot log out the new account. The existing messaging context helper was renamed generically without changing its behavior.
+- All new interface copy uses the three existing locales and semantic theme tokens. No backend contact/location/moderation policy was changed.
+
+### Verification
+
+| Check | Result | Evidence boundary |
+| --- | --- | --- |
+| Focused saved/profile/App/session/API regressions | **79 passed** in six files | jsdom mounted Vue components and actual Axios interceptors with an isolated transport. Includes guest/A/B/logout transitions, verified restore/login activation, same-token cancellation (including profile refresh), rapid cross-tab transitions, stale storage/requests/401s, malformed/blocked storage, partial failures, retries, unmount, and profile unsave refresh failure. No live HTTP mutation. |
+| Complete frontend | **291 passed**, 37 files, 0 failed | Final complete rerun after the final locale wording and verified same-token profile-refresh changes; previous image/privacy/session/localization regressions remain passing. |
+| Complete backend | **295 passed**, 0 failed, **5 opt-in skipped** (300 entries) | Standard parallel rerun; no backend application code changed. Existing isolated role/privacy/hidden-content regressions remain passing. |
+| Real isolated MongoDB regressions | **32 passed**, 0 failed/skipped | Existing loopback MongoDB 8.0.17 harness, including transactions and new #19 geospatial suite. Cloudinary mocked; exact synthetic teardown and replica-set shutdown confirmed. This does not turn mocked saved-component API calls into live browser/Atlas verification. |
+| Vue TypeScript / ESLint / backend syntax | **Passed** | `npm run typecheck`, `npm run lint`; **127** backend modules parsed, none executed by syntax checking. |
+| Production build / startup | **Passed** | Existing main-chunk size warning remains (~764 kB). Temporary loopback Vite served `/saved`, SavedScreen and the saved composable with HTTP 200, then stopped. |
+| Diff / tracked-secret audit | **Passed** | `git diff --check`; local-credential and generic-secret scanning of worktree/index, with only precisely reviewed fictional URI fixtures excepted. No tracked runtime environment files or secret findings. |
+
+Meaningful pagination fixtures include **45 pet IDs** (first 20 failing, later pages reachable, retry yielding all 45), and **61 rescue saves**, whose first page has **20 unavailable records** and later pages are retrievable beyond 50. Server totals remain 61, not the 41 visible posts. All-three-locale tests keep user-generated pet/post content unchanged and never expose a hidden reason. The existing ProfileScreen unsave fixture was updated to model the real server's post-removal page-one response; its original assertion that the selected row disappears was retained, with an added refresh-call assertion.
+
+The explicitly selected Astra/high specialist completed bounded read-only design and final reviews. Review recommendations for external identity invalidation and offset/failure paging were implemented and covered by focused tests; no remaining blocker was identified. No review claimed test execution or browser proof.
+
+### Safety, limitations and changed files
+
+No Atlas connection, application-record write, provider operation, environment edit, image change, seed, migration or live cleanup occurred. The only database changes were the existing harness's exact disposable local fixtures, followed by verified exact fixture teardown. The real-run replica set was `fyp_transactions_850e81ebfe9f4e6c9503bad5a6d08df6`; application database names were never selected. No schema/index/dependency/lockfile/routing-configuration change was needed. Prior #19/#20 work remains preserved; no commits or pushes.
+
+Browser inventory returned no apps/browsers. Native browser refresh/autofill, actual cross-window event timing and light/dark/mobile visual appearance were not exercised on a physical browser/device. The automated rehydration, synthetic StorageEvent and session tests cover the corresponding state logic, not native-browser scheduling. Local storage remains browser/origin-local, readable by same-origin scripts and subject to browser clearing; account namespacing is not encryption or cross-device synchronization. Concurrent writes retain last-write-wins localStorage semantics; no transactional merge or synchronization service was added. Offset pagination can still reflect concurrent remote changes; successful removals force page-one refresh, and server pagination is not presented as a transactional snapshot.
+
+Changed for #21:
+- Application: `src/App.vue`; `src/composables/useSavedPets.ts`; `src/views/SavedScreen.vue`; `src/components/profile/SavedRescuePostsTab.vue`; `src/services/api.ts`; `src/services/authSession.ts`.
+- Localization: `src/locales/en.json`, `zh-HK.json`, `zh-CN.json`.
+- Extended tests: `src/components/__tests__/AppCreationAuth.test.ts`; `ProfileScreen.test.ts`; `src/services/__tests__/apiAuthContext.test.ts`.
+- New tests: `src/composables/__tests__/useSavedPets.test.ts`; `src/views/__tests__/SavedScreen.test.ts`; `src/components/__tests__/SavedRescuePostsTab.test.ts`.
+- Tracking: this checklist. This batch modifies **13 existing files** and adds **three test files**; no deletion. Overall Git status also includes preserved #19/#20 work, not attributed to this batch.
+
+### All 22 findings — current scoped status
+
+The status below applies to each original audited defect/verification gap and its evidence above. It does not certify a bug-free application, fresh dependency audit, production deployment or every browser/device path. **21 fixed and verified; one partially addressed (#8); none still open or implemented-but-pending.** All earlier documented boundaries remain, including #20's legacy bcrypt compatibility ambiguity and physical-device/production verification gaps.
+
+| # | Original finding | Status |
+| --- | --- | --- |
+| 1 | High — Smart Match exposes precise distance indirectly | Fixed and verified |
+| 2 | High — Sighting content permissions disagree with image permissions | Fixed and verified |
+| 3 | High — Legacy uploads bypass content permissions | Fixed and verified |
+| 4 | High — A sighting removes the owner’s reunion action | Fixed and verified |
+| 5 | High — Concurrent sightings can undo “Reunited” | Fixed and verified |
+| 6 | High — Session changes do not consistently invalidate existing state | Fixed and verified |
+| 7 | High — Managed-image atomicity remains a release-verification blocker | Fixed and verified |
+| 8 | High — Dependency advisories remain unresolved | Partially addressed |
+| 9 | Medium — A database outage is treated as an invalid login session | Fixed and verified |
+| 10 | Medium — Abandoned uploads can permanently exhaust the pending quota | Fixed and verified |
+| 11 | Medium — Moderators cannot retrieve some image evidence | Fixed and verified |
+| 12 | Medium — Rescue management controls exceed administrator permissions | Fixed and verified |
+| 13 | Medium — Rescue mutation failures have incomplete feedback | Fixed and verified |
+| 14 | Medium — Comment retry identity is inconsistent | Fixed and verified |
+| 15 | Medium — Blocked comments remain in previews and counts | Fixed and verified |
+| 16 | Medium — Message unread indicators and notification destinations are misleading | Fixed and verified |
+| 17 | Medium — Some generated text and dates ignore the selected language | Fixed and verified |
+| 18 | Medium — Lost-pet coordinates can contradict the entered location | Fixed and verified |
+| 19 | Medium — Hotspot totals silently truncate larger datasets | Fixed and verified |
+| 20 | Medium — Long passwords are silently truncated by bcrypt | Fixed and verified |
+| 21 | Low — Saved-pet state and failures are inconsistent | Fixed and verified |
+| 22 | Low — Plain-HTTP mobile development can fail during image initialization | Fixed and verified |
+
+Finding #8 remains partially addressed: the previously documented development/native-tool advisory paths require separate supported-upstream/major-change review. They were not upgraded or re-audited in this saved-state repair.

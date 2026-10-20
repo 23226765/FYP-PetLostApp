@@ -19,6 +19,7 @@ import Stray from '../models/Stray.js'
 import StrayComment from '../models/StrayComment.js'
 import SavedStray from '../models/SavedStray.js'
 import User from '../models/User.js'
+import { validateNewPassword } from '../services/passwordPolicy.js'
 
 export const SEED_BATCH = 'fyp-demo-v1'
 
@@ -50,8 +51,8 @@ function seedConfiguration() {
   }
 
   const password = process.env.SEED_USER_PASSWORD
-  if (typeof password !== 'string' || password.length < 6 || password.length > 128) {
-    const error = new Error('SEED_USER_PASSWORD must contain between 6 and 128 characters.')
+  if (validateNewPassword(password)) {
+    const error = new Error('SEED_USER_PASSWORD must contain at least 6 characters and at most 72 UTF-8 bytes.')
     error.code = 'TEST_SEED_PASSWORD_INVALID'
     throw error
   }

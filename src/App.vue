@@ -404,6 +404,7 @@ import {
 } from './services/api'
 import { getCurrentLocation } from './services/geolocation'
 import { captureAuthContext, isAuthContextCurrent, invalidateAuthContext, setSessionToken, storedSessionToken } from './services/authSession'
+import { activateSavedPetsAccount } from './composables/useSavedPets'
 import { buildSightingPayload } from './utils/sightingSubmission'
 import AppIcon from './components/AppIcon.vue'
 import RadarScreen from './components/RadarScreen.vue'
@@ -630,6 +631,7 @@ async function restoreSession() {
     const user = await getProfile()
     if (!isAuthContextCurrent(context)) return
     currentUser.value = user
+    activateSavedPetsAccount(user.id, context)
     applyAccountPreferences(user.preferences)
     alertsEnabled.value = user.alertsEnabled !== false
     radiusKm.value = user.alertRadiusKm || radiusKm.value
@@ -663,6 +665,7 @@ function handleAuth(user: User) {
   clearAuthorizationScopedState()
   currentUser.value = user
   const context = captureAuthContext()
+  activateSavedPetsAccount(user.id, context)
   applyAccountPreferences(user.preferences)
   alertsEnabled.value = user.alertsEnabled !== false
   radiusKm.value = user.alertRadiusKm || radiusKm.value

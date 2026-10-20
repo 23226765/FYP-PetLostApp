@@ -158,6 +158,7 @@
           <div>
             <strong>{{ t('radar.recentReports', { count: hotspotSummary.total }, hotspotSummary.total) }}</strong>
             <span>{{ t('radar.hotspotSummary', { sightings: hotspotSummary.sightings, strays: hotspotSummary.strays }) }}</span>
+            <span v-if="hotspotSummary.cellsTruncated" class="hotspot-limit">{{ t('hotspotCoverage.limited', { shown: hotspotSummary.returnedCellCount, total: hotspotSummary.cellCount }) }}</span>
           </div>
           <span class="analytics-window">{{ t('radar.dayWindow', { count: hotspotSummary.windowDays }) }}</span>
         </template>

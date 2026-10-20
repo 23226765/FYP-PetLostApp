@@ -10,13 +10,20 @@ export interface HotspotCell {
 }
 
 export interface HotspotSummary {
+  /** Complete eligible totals, before the public cell output limit. */
   total: number
+  /** All occupied eligible cells, including cells not returned for display. */
   cellCount: number
   sightings: number
   strays: number
   gridSizeMeters: number
   radiusKm: number
   windowDays: number
+  returnedCellCount: number
+  /** Reports represented by returned cells, not a replacement for total. */
+  returnedTotal: number
+  cellsTruncated: boolean
+  maxCells: number
 }
 
 export interface HotspotResponse {

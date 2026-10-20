@@ -1,4 +1,17 @@
 {
+  "savedRepair": {
+    "fetchFailed": "部分收藏帖子暂时无法加载，收藏记录未更改。请重试。",
+    "storageIssue": "无法在此浏览器完整读取或保存收藏。更改可能只会保留至本次浏览结束。",
+    "petCount": "已显示 {shown} 篇宠物帖子 · 共收藏 {total} 篇",
+    "strayCount": "已显示 {shown} 篇可用救援帖子 · 共收藏 {total} 篇（包括暂时无法查看的帖子）"
+  },
+  "hotspotCoverage": {
+    "limited": "地图显示 {total} 个热点网格中的 {shown} 个。报告总数包括所有符合条件的记录。"
+  },
+  "passwordPolicy": {
+    "guidance": "请使用至少 6 个字符，且不超过 {maxBytes} 个 UTF-8 字节。中文字符和表情符号会占用多个字节。",
+    "tooLong": "密码不能超过 {maxBytes} 个 UTF-8 字节。中文字符和表情符号会占用多个字节。"
+  },
   "notificationEvents": {
     "proximityTitle": "附近有宠物走失", "proximityBody": "有人在{district}报告{petName}（{animal}）走失。",
     "sightingTitle": "有人目击{petName}", "sightingBody": "有人在{district}目击{petName}。",

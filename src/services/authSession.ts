@@ -17,9 +17,9 @@ export function isAuthContextCurrent(context: AuthContext): boolean {
   return context.generation === generation && context.token === storedSessionToken()
 }
 
-export function invalidateAuthContext() {
+export function invalidateAuthContext({ external = false }: { external?: boolean } = {}) {
   generation += 1
-  if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:changed'))
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('auth:changed', { detail: { external } }))
 }
 
 export function setSessionToken(token: string | null) {
@@ -37,7 +37,7 @@ if (typeof window !== 'undefined') {
     if (event.storageArea && event.storageArea !== localStorage) return
     if (event.key !== null && event.key !== 'token') return
     if (event.key === 'token' && event.oldValue === event.newValue) return
-    invalidateAuthContext()
+    invalidateAuthContext({ external: true })
     window.dispatchEvent(new Event('auth:external-change'))
   })
 }

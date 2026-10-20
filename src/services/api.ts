@@ -29,7 +29,7 @@ type AuthScopedConfig = {
   pawRadarAuthContext?: AuthContext
 }
 
-function messagingRequestConfig(): AxiosRequestConfig & AuthScopedConfig {
+function authScopedRequestConfig(): AxiosRequestConfig & AuthScopedConfig {
   return { pawRadarAuthContext: captureAuthContext() }
 }
 
@@ -222,8 +222,8 @@ export async function getMySightings(): Promise<MySighting[]> {
   return data.sightings
 }
 
-export async function getPet(id: string): Promise<Pet> {
-  const { data } = await http.get<{ pet: Pet }>(`/pets/${id}`)
+export async function getPet(id: string, signal?: AbortSignal): Promise<Pet> {
+  const { data } = await http.get<{ pet: Pet }>(`/pets/${id}`, { ...authScopedRequestConfig(), signal })
   return data.pet
 }
 
@@ -324,7 +324,7 @@ export interface ChatThread {
 }
 
 export async function getChatInbox(): Promise<ChatConversation[]> {
-  const { data } = await http.get<{ conversations: ChatConversation[] }>('/chat/inbox', messagingRequestConfig())
+  const { data } = await http.get<{ conversations: ChatConversation[] }>('/chat/inbox', authScopedRequestConfig())
   return data.conversations
 }
 
@@ -333,7 +333,7 @@ export async function getMessages(
   participantId?: string,
 ): Promise<ChatThread> {
   const { data } = await http.get<ChatThread>(`/chat/${petId}`, {
-    ...messagingRequestConfig(),
+    ...authScopedRequestConfig(),
     params: participantId ? { participantId } : undefined,
   })
   return data
@@ -343,12 +343,12 @@ export async function sendMessage(
   petId: string,
   payload: SendMessagePayload,
 ): Promise<ChatMessage> {
-  const { data } = await http.post<{ message: ChatMessage }>(`/chat/${petId}`, payload, messagingRequestConfig())
+  const { data } = await http.post<{ message: ChatMessage }>(`/chat/${petId}`, payload, authScopedRequestConfig())
   return data.message
 }
 
 export async function markChatMessagesRead(petId: string, participantId: string | undefined, messageIds: string[]): Promise<void> {
-  await http.patch(`/chat/${petId}/read`, { participantId, messageIds }, messagingRequestConfig())
+  await http.patch(`/chat/${petId}/read`, { participantId, messageIds }, authScopedRequestConfig())
 }
 
 export interface ReportPetPayload {
@@ -489,8 +489,8 @@ export async function removeStrayComment(id: string, commentId: string): Promise
 
 export async function setStraySaved(id: string, saved: boolean): Promise<boolean> {
   const { data } = saved
-    ? await http.put<{ saved: boolean }>(`/strays/${id}/saved`)
-    : await http.delete<{ saved: boolean }>(`/strays/${id}/saved`)
+    ? await http.put<{ saved: boolean }>(`/strays/${id}/saved`, undefined, authScopedRequestConfig())
+    : await http.delete<{ saved: boolean }>(`/strays/${id}/saved`, authScopedRequestConfig())
   return data.saved
 }
 
@@ -502,7 +502,7 @@ export async function getSavedStraysPage(
     strays: StrayReport[]
     unavailableCount: number
     pagination: Pagination
-  }>('/strays/saved', { params, signal })
+  }>('/strays/saved', { ...authScopedRequestConfig(), params, signal })
   return data
 }
 

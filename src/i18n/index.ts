@@ -85,6 +85,7 @@ export function translateApiError(error: unknown, fallbackKey = 'errors.generic'
     FIELD_INVALID: 'messageRepair.invalidField',
     EMAIL_INVALID: 'messageRepair.email',
     PASSWORD_TOO_SHORT: 'messageRepair.password',
+    PASSWORD_TOO_LONG: 'passwordPolicy.tooLong',
     LOCATION_INVALID: 'messageRepair.location',
     DISTRICT_INVALID: 'messageRepair.district',
     CONTACT_INVALID: 'messageRepair.contact',
@@ -141,5 +142,6 @@ export function translateApiError(error: unknown, fallbackKey = 'errors.generic'
   return i18n.global.t(code && keyByCode[code] ? keyByCode[code] : fallbackKey, {
     field, max: bounded(detail?.params?.max, code === 'CHAT_MESSAGE_TOO_LONG' ? 2000 : code === 'COMMENT_INVALID' ? 500 : 100),
     min: bounded(detail?.params?.min, 6),
+    maxBytes: bounded(detail?.params?.maxBytes, 72),
   })
 }

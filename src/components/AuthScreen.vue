@@ -52,10 +52,12 @@
           v-model="password"
           type="password"
           placeholder="••••••••"
-          autocomplete="current-password"
+          :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
+          :aria-describedby="mode === 'register' ? 'password-guidance' : undefined"
           required
           minlength="6"
         />
+        <small v-if="mode === 'register'" id="password-guidance" class="password-guidance">{{ t('passwordPolicy.guidance', { maxBytes: MAX_PASSWORD_BYTES }) }}</small>
       </label>
 
       <button class="submit-btn" type="submit" :disabled="loading">
@@ -75,6 +77,7 @@ import { login, register } from '../services/api'
 import type { User } from '../types/user'
 import { translateApiError, useAppI18n } from '../i18n'
 import { captureAuthContext, isAuthContextCurrent, invalidateAuthContext, setSessionToken } from '../services/authSession'
+import { MAX_PASSWORD_BYTES, passwordByteLength } from '../utils/passwordPolicy'
 
 withDefaults(defineProps<{ sessionError?: string }>(), { sessionError: '' })
 
@@ -115,6 +118,11 @@ function switchMode(m: 'login' | 'register') {
 
 async function submit() {
   if (loading.value) return
+  error.value = ''
+  if (mode.value === 'register' && passwordByteLength(password.value) > MAX_PASSWORD_BYTES) {
+    error.value = t('passwordPolicy.tooLong', { maxBytes: MAX_PASSWORD_BYTES })
+    return
+  }
   const request = ++requestSequence
   const context = captureAuthContext()
   const active = () => request === requestSequence && isAuthContextCurrent(context)
@@ -234,6 +242,12 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.password-guidance {
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .error-banner {

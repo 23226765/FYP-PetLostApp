@@ -7,6 +7,8 @@ import appSource from '../../App.vue?raw'
 import AuthScreen from '../AuthScreen.vue'
 import { i18n } from '../../i18n'
 import type { Pet } from '../../types/pet'
+import { useSavedPets } from '../../composables/useSavedPets'
+import { setSessionToken } from '../../services/authSession'
 
 const apiMocks = vi.hoisted(() => ({
   getNearbyPets: vi.fn(),
@@ -143,6 +145,36 @@ describe('authenticated creation entry points', () => {
     apiMocks.getNotifications.mockResolvedValue([])
     apiMocks.getChatInbox.mockResolvedValue([])
     apiMocks.updateNotificationPreferences.mockResolvedValue(undefined)
+  })
+
+  it('activates only the confirmed restored account and clears its saved scope on logout', async () => {
+    localStorage.setItem('pawradar_saved_pets', '["unattributable"]')
+    localStorage.setItem('pawradar_saved_pets:v2:guest', '["guest-pet"]')
+    localStorage.setItem('pawradar_saved_pets:v2:user:owner-id', '["owner-pet"]')
+    let finish!: (value: unknown) => void
+    apiMocks.getProfile.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    const { wrapper, router } = await renderApp('owner-fixture')
+    const saved = useSavedPets()
+    expect(saved.savedContext.value.ready).toBe(false)
+    expect(saved.savedPetIds.value).toEqual([])
+    finish({ id: 'owner-id', name: 'Owner', email: 'owner@example.test', alertsEnabled: false })
+    await flushPromises()
+    expect(saved.savedPetIds.value).toEqual(['owner-pet'])
+    await router.push('/settings'); await wrapper.get('.stub-logout').trigger('click'); await flushPromises()
+    expect(saved.savedPetIds.value).toEqual(['guest-pet'])
+    expect(localStorage.getItem('pawradar_saved_pets')).toBe('["unattributable"]')
+    wrapper.unmount()
+  })
+
+  it('activates login identity after auth clearing and does not reuse owner saves for the finder', async () => {
+    localStorage.setItem('pawradar_saved_pets:v2:user:owner-id', '["owner-pet"]')
+    localStorage.setItem('pawradar_saved_pets:v2:user:finder-id', '["finder-pet"]')
+    const { wrapper } = await renderApp()
+    setSessionToken('finder-fixture') // AuthScreen sets the token before authenticated emit.
+    await wrapper.get('.stub-authenticated').trigger('click'); await flushPromises()
+    expect(useSavedPets().savedContext.value.accountId).toBe('finder-id')
+    expect(useSavedPets().savedPetIds.value).toEqual(['finder-pet'])
+    wrapper.unmount()
   })
 
   it('opens authentication instead of the lost-pet form for a guest', () => {

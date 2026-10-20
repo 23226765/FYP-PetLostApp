@@ -1,4 +1,17 @@
 {
+  "savedRepair": {
+    "fetchFailed": "Some saved posts could not be loaded. Your saved list is unchanged. Please retry.",
+    "storageIssue": "Saved posts could not be fully read or saved in this browser. Changes may last only for this visit.",
+    "petCount": "{shown} pet posts shown · {total} saved",
+    "strayCount": "{shown} available rescue posts shown · {total} saves (including unavailable posts)"
+  },
+  "hotspotCoverage": {
+    "limited": "Map shows {shown} of {total} hotspot cells. Report totals include all eligible records."
+  },
+  "passwordPolicy": {
+    "guidance": "Use at least 6 characters and no more than {maxBytes} UTF-8 bytes. Chinese characters and emoji use multiple bytes.",
+    "tooLong": "Password must be {maxBytes} UTF-8 bytes or fewer. Chinese characters and emoji use multiple bytes."
+  },
   "notificationEvents": {
     "proximityTitle": "Lost pet near you", "proximityBody": "{petName} ({animal}) was reported in {district}.",
     "sightingTitle": "New sighting of {petName}", "sightingBody": "{petName} was spotted in {district}.",

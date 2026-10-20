@@ -22,20 +22,21 @@
     </header>
 
     <main class="saved-content">
+      <p v-if="savedContext.storageIssue" class="unavailable" role="status">{{ t('savedRepair.storageIssue') }}</p>
       <div v-if="loading" class="loading-state" role="status" aria-live="polite">
         <span class="spinner" aria-hidden="true" />
         <span>{{ t('settings.loadingSaved') }}</span>
       </div>
 
-      <div v-else-if="error" class="error-state" role="alert">
+      <div v-else-if="hasFailures && !hasContent && !unavailableCount && !morePets && !moreStrays" class="error-state" role="alert">
         <span class="state-icon error-icon" aria-hidden="true">!</span>
         <h2>{{ t('settings.savedUnavailable') }}</h2>
         <p>{{ error }}</p>
-        <button type="button" @click="loadSavedPets">{{ t('common.retry') }}</button>
+        <button type="button" :disabled="petLoading || strayLoading" @click="retryFailures">{{ t('common.retry') }}</button>
       </div>
 
-      <section v-else-if="savedPets.length || savedStrays.length" class="saved-list" :aria-label="t('settings.savedPosts')">
-        <p v-if="savedPets.length">{{ t('settings.lostPetPosts') }}</p>
+      <section v-else-if="hasAnySaved" class="saved-list" :aria-label="t('settings.savedPosts')">
+        <p v-if="petTotal">{{ t('settings.lostPetPosts') }}</p>
         <PetCard
           v-for="pet in savedPets"
           :key="pet.id"
@@ -43,12 +44,17 @@
           @open="emit('open-pet', pet)"
           @found="emit('found', pet)"
         />
-        <p v-if="savedStrays.length">{{ t('settings.strayPosts') }}</p>
+        <p v-if="petTotal" class="pet-count">{{ t('savedRepair.petCount', { shown: savedPets.length, total: petTotal }) }}</p>
+        <button v-if="morePets" class="load-more pets-more" type="button" :disabled="petLoading" @click="loadMorePets">{{ petLoading ? t('profile.loadingMore') : t('profile.loadMore') }}</button>
+        <p v-if="savedStrays.length || strayPagination?.total">{{ t('settings.strayPosts') }}</p>
         <button v-for="stray in savedStrays" :key="stray.id" class="saved-stray" type="button" @click="emit('open-stray', stray.id)">
           <ManagedImage v-if="stray.photo" :src="imageUrl(stray.photo)" :alt="t('strays.reportedAlt', { species: strayAnimalLabel(stray.species, stray.animalType) })" />
           <span class="saved-stray-copy"><strong>{{ strayAnimalLabel(stray.species, stray.animalType) }} · {{ districtLabel(stray.district) }}</strong><span>{{ stray.description }}</span><small>{{ stray.author.name }} · {{ formatRelativeDate(stray.createdAt) }}</small></span>
         </button>
+        <p v-if="strayPagination?.total" class="stray-count">{{ t('savedRepair.strayCount', { shown: savedStrays.length, total: strayPagination.total }) }}</p>
+        <button v-if="moreStrays" class="load-more strays-more" type="button" :disabled="strayLoading" @click="loadMoreStrays">{{ strayLoading ? t('profile.loadingMore') : t('profile.loadMore') }}</button>
         <p v-if="unavailableCount" class="unavailable">{{ t('settings.unavailableSaved', { count: unavailableCount }, unavailableCount) }}</p>
+        <div v-if="hasFailures" class="error-state partial-error" role="alert"><p>{{ error }}</p><button type="button" :disabled="petLoading || strayLoading" @click="retryFailures">{{ t('common.retry') }}</button></div>
       </section>
 
       <div v-else class="empty-state" role="status">
@@ -75,12 +81,14 @@
 </template>
 
 <script setup lang="ts">
-import ManagedImage from "../components/ManagedImage.vue"
-import { ref, watch } from 'vue'
+import ManagedImage from '../components/ManagedImage.vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PetCard from '../components/PetCard.vue'
 import { useSavedPets } from '../composables/useSavedPets'
-import { getPet, getSavedStrays } from '../services/api'
+import { getPet, getSavedStraysPage } from '../services/api'
+import type { Pagination } from '../services/api'
+import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import type { Pet } from '../types/pet'
 import type { StrayReport } from '../types/stray'
 import type { User } from '../types/user'
@@ -88,65 +96,118 @@ import { translateApiError, useAppI18n } from '../i18n'
 import { districtLabel, formatRelativeDate, strayAnimalLabel } from '../i18n/formatters'
 
 const props = defineProps<{ user?: User | null }>()
-
-const emit = defineEmits<{
-  'open-pet': [pet: Pet]
-  found: [pet: Pet]
-  'open-stray': [strayId: string]
-}>()
-
+const emit = defineEmits<{ 'open-pet': [pet: Pet]; found: [pet: Pet]; 'open-stray': [strayId: string] }>()
 const router = useRouter()
 const { t } = useAppI18n()
-const { savedPetIds } = useSavedPets()
+const { savedContext } = useSavedPets()
+const PAGE_SIZE = 20
 const savedPets = ref<Pet[]>([])
 const savedStrays = ref<StrayReport[]>([])
-const unavailableCount = ref(0)
-const loading = ref(false)
-const error = ref('')
-let requestSequence = 0
+const petFailures = shallowRef(new Set<string>())
+const petUnavailable = shallowRef(new Set<string>())
+const processedPets = ref(0)
+const petLoading = ref(false)
+const strayLoading = ref(false)
+const strayError = shallowRef<unknown>(null)
+type StrayPage = { strays: StrayReport[]; unavailableCount: number; pagination: Pagination }
+const strayPages = shallowRef(new Map<number, StrayPage>())
+const strayPagination = ref<Pagination | null>(null)
+const strayFailedPage = ref<number | null>(null)
+let petSequence = 0, straySequence = 0, disposed = false
+let petController: AbortController | null = null, strayController: AbortController | null = null
 
-async function loadSavedPets() {
-  const sequence = ++requestSequence
-  const ids = [...savedPetIds.value]
-  error.value = ''
-  savedPets.value = []
-  savedStrays.value = []
-  unavailableCount.value = 0
+const ready = computed(() => savedContext.value.ready && (savedContext.value.accountId ? props.user?.id === savedContext.value.accountId : !props.user))
+const petTotal = computed(() => savedContext.value.ids.length)
+const hasContent = computed(() => Boolean(savedPets.value.length || savedStrays.value.length))
+const hasFailures = computed(() => Boolean(petFailures.value.size || strayError.value))
+const loading = computed(() => !ready.value || (!hasContent.value && (petLoading.value || strayLoading.value)))
+const error = computed(() => petFailures.value.size ? t('savedRepair.fetchFailed') : strayError.value ? translateApiError(strayError.value, 'errors.loadSaved') : '')
+const unavailableCount = computed(() => petUnavailable.value.size + [...strayPages.value.values()].reduce((sum, page) => sum + page.unavailableCount, 0))
+const hasAnySaved = computed(() => Boolean(petTotal.value || strayPagination.value?.total || hasContent.value || hasFailures.value || unavailableCount.value || savedContext.value.storageIssue))
+const morePets = computed(() => processedPets.value < petTotal.value)
+const moreStrays = computed(() => Boolean(strayPagination.value?.hasMore))
 
-  if (!ids.length && !props.user) {
-    loading.value = false
-    return
-  }
-
-  loading.value = true
-  try {
-    const [petResults, strayResult] = await Promise.all([
-      Promise.allSettled(ids.map((id) => getPet(id))),
-      props.user ? getSavedStrays() : Promise.resolve({ strays: [], unavailableCount: 0 }),
-    ])
-    if (sequence !== requestSequence) return
-
-    const petsById = new Map<string, Pet>()
-    petResults.forEach((result) => {
-      if (result.status === 'fulfilled') petsById.set(result.value.id, result.value)
-    })
-    savedPets.value = ids.flatMap((id) => {
-      const pet = petsById.get(id)
-      return pet ? [pet] : []
-    })
-    savedStrays.value = strayResult.strays
-    unavailableCount.value = strayResult.unavailableCount
-  } catch (caught) {
-    if (sequence !== requestSequence) return
-    savedPets.value = []
-    savedStrays.value = []
-    error.value = translateApiError(caught, 'errors.loadSaved')
-  } finally {
-    if (sequence === requestSequence) loading.value = false
-  }
+function requestGuard() {
+  const snapshot = savedContext.value
+  const auth = captureAuthContext()
+  return () => !disposed && ready.value && savedContext.value === snapshot && isAuthContextCurrent(auth)
 }
-
-watch([savedPetIds, () => props.user?.id], loadSavedPets, { immediate: true })
+async function loadPetIds(ids: string[], advance: boolean) {
+  if (!ready.value || petLoading.value || !ids.length) return
+  const current = ++petSequence, active = requestGuard()
+  petController?.abort(); petController = new AbortController()
+  const signal = petController.signal
+  petLoading.value = true
+  const outcomes: Array<{ id: string; pet?: Pet; unavailable?: boolean }> = []
+  let cursor = 0
+  async function worker() {
+    while (active() && cursor < ids.length) {
+      const id = ids[cursor++]!
+      try {
+        const pet = await getPet(id, signal)
+        if (!pet || pet.id !== id) throw new Error('Unexpected saved-post response')
+        outcomes.push({ id, pet })
+      } catch (cause) {
+        const status = (cause as { status?: number } | null)?.status
+        outcomes.push({ id, unavailable: status === 404 || status === 410 })
+      }
+    }
+  }
+  try {
+    await Promise.all(Array.from({ length: Math.min(4, ids.length) }, worker))
+    if (current !== petSequence || !active()) return
+    const pets = new Map(savedPets.value.map(pet => [pet.id, pet]))
+    const failures = new Set(petFailures.value), unavailable = new Set(petUnavailable.value)
+    for (const result of outcomes) {
+      failures.delete(result.id); unavailable.delete(result.id)
+      if (result.pet) pets.set(result.id, result.pet)
+      else {
+        pets.delete(result.id)
+        if (result.unavailable) unavailable.add(result.id)
+        else failures.add(result.id)
+      }
+    }
+    savedPets.value = savedContext.value.ids.flatMap(id => pets.has(id) ? [pets.get(id)!] : [])
+    petFailures.value = failures; petUnavailable.value = unavailable
+    if (advance) processedPets.value += ids.length
+  } finally { if (current === petSequence && active()) petLoading.value = false }
+}
+async function loadStrayPage(page: number) {
+  if (!ready.value || !savedContext.value.accountId || strayLoading.value) return
+  const current = ++straySequence, active = requestGuard()
+  strayController?.abort(); strayController = new AbortController()
+  strayLoading.value = true; strayError.value = null
+  try {
+    const result = await getSavedStraysPage({ page, limit: PAGE_SIZE }, strayController.signal)
+    if (current !== straySequence || !active()) return
+    if (result.pagination.page !== page) throw new Error('Unexpected saved-page response')
+    const pages = page === 1 ? new Map<number, StrayPage>() : new Map(strayPages.value)
+    pages.set(page, result)
+    strayPages.value = pages
+    savedStrays.value = [...new Map([...pages.entries()].sort(([left], [right]) => left - right).flatMap(([, value]) => value.strays).map(stray => [stray.id, stray])).values()]
+    strayPagination.value = result.pagination // Saved-record total includes unavailable records.
+    strayFailedPage.value = null
+  } catch (cause) {
+    if (current === straySequence && active()) { strayError.value = cause; strayFailedPage.value = page }
+  } finally { if (current === straySequence && active()) strayLoading.value = false }
+}
+function loadMorePets() { void loadPetIds(savedContext.value.ids.slice(processedPets.value, processedPets.value + PAGE_SIZE), true) }
+function loadMoreStrays() { void loadStrayPage(strayFailedPage.value || (strayPagination.value?.page || 0) + 1) }
+function retryFailures() {
+  if (petFailures.value.size) void loadPetIds([...petFailures.value], false)
+  if (strayFailedPage.value) void loadStrayPage(strayFailedPage.value)
+}
+function resetAndLoad() {
+  petSequence++; straySequence++; petController?.abort(); strayController?.abort()
+  savedPets.value = []; savedStrays.value = []; petFailures.value = new Set(); petUnavailable.value = new Set()
+  strayPages.value = new Map(); strayPagination.value = null; strayError.value = null; strayFailedPage.value = null
+  processedPets.value = 0; petLoading.value = false; strayLoading.value = false
+  if (!ready.value) return
+  loadMorePets()
+  if (savedContext.value.accountId) void loadStrayPage(1)
+}
+watch([savedContext, () => props.user?.id], resetAndLoad, { immediate: true, flush: 'sync' })
+onBeforeUnmount(() => { disposed = true; petSequence++; straySequence++; petController?.abort(); strayController?.abort(); savedPets.value = []; savedStrays.value = [] })
 
 function imageUrl(value: string) {
   try { const api = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin); return new URL(value, `${api.origin}/`).href } catch { return '' }
@@ -304,6 +365,10 @@ function imageUrl(value: string) {
   color: #fff;
   font-weight: 800;
 }
+
+.partial-error { min-height: 0; padding: 16px; }
+.load-more { min-height: 44px; padding: 10px 18px; border-radius: 14px; background: var(--teal); color: var(--color-text-on-accent); font-weight: 800; }
+button:disabled { opacity: 0.6; cursor: wait; }
 
 @keyframes spin {
   to {

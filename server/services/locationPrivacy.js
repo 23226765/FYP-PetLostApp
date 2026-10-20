@@ -1,5 +1,5 @@
-const EARTH_RADIUS_METERS = 6_378_137
-const MAX_MERCATOR_LATITUDE = 85.05112878
+export const EARTH_RADIUS_METERS = 6_378_137
+export const MAX_MERCATOR_LATITUDE = 85.05112878
 
 export const PUBLIC_GRID_SIZE_METERS = 750
 export const MIN_ANONYMOUS_RADIUS_KM = 1
@@ -45,6 +45,11 @@ export function approximateCoordinates(value, gridSizeMeters = PUBLIC_GRID_SIZE_
   const y = EARTH_RADIUS_METERS * Math.log(Math.tan(Math.PI / 4 + (latitude * Math.PI / 360)))
   const cellX = Math.floor(x / gridSizeMeters)
   const cellY = Math.floor(y / gridSizeMeters)
+  return publicCellCentre(cellX, cellY, gridSizeMeters)
+}
+
+/** Only deterministic cell centres, never a source report's coordinates. */
+export function publicCellCentre(cellX, cellY, gridSizeMeters = PUBLIC_GRID_SIZE_METERS) {
   const centreX = (cellX + 0.5) * gridSizeMeters
   const centreY = (cellY + 0.5) * gridSizeMeters
   const projectedLongitude = centreX / EARTH_RADIUS_METERS * 180 / Math.PI

@@ -1,4 +1,17 @@
 {
+  "savedRepair": {
+    "fetchFailed": "部分已收藏帖文暫時未能載入，收藏記錄並無變更。請重試。",
+    "storageIssue": "未能在此瀏覽器完整讀取或儲存收藏。變更可能只會保留至本次瀏覽結束。",
+    "petCount": "已顯示 {shown} 篇寵物帖文 · 共收藏 {total} 篇",
+    "strayCount": "已顯示 {shown} 篇可用救援帖文 · 共收藏 {total} 篇（包括暫時無法查看的帖文）"
+  },
+  "hotspotCoverage": {
+    "limited": "地圖顯示 {total} 個熱點網格中的 {shown} 個。報告總數包括所有符合條件的記錄。"
+  },
+  "passwordPolicy": {
+    "guidance": "請使用最少 6 個字元，且不超過 {maxBytes} 個 UTF-8 位元組。中文字及表情符號會佔用多個位元組。",
+    "tooLong": "密碼不可超過 {maxBytes} 個 UTF-8 位元組。中文字及表情符號會佔用多個位元組。"
+  },
   "notificationEvents": {
     "proximityTitle": "附近有寵物走失", "proximityBody": "有人在{district}報告{petName}（{animal}）走失。",
     "sightingTitle": "有人目擊{petName}", "sightingBody": "有人在{district}目擊{petName}。",

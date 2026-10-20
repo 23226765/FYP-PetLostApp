@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { getProfile, readManagedImage, getMessages, getChatInbox, sendMessage, markChatMessagesRead } from '../api'
+import { getProfile, readManagedImage, getMessages, getChatInbox, sendMessage, markChatMessagesRead, getPet, getSavedStraysPage, setStraySaved } from '../api'
 import { invalidateAuthContext, setSessionToken } from '../authSession'
 
 const transport = vi.hoisted(() => vi.fn())
@@ -11,6 +11,27 @@ vi.mock('axios', async (original) => {
 
 describe('real Axios interceptors with isolated transport fixtures', () => {
   beforeEach(() => { localStorage.clear(); invalidateAuthContext(); transport.mockReset() })
+  it.each(['pet', 'saved-rescues', 'save', 'unsave'])('same-tick switching prevents a queued saved %s request using the next account', async operation => {
+    setSessionToken('previous-saved-fixture')
+    const request = operation === 'pet' ? getPet('fixture-pet')
+      : operation === 'saved-rescues' ? getSavedStraysPage({ page: 2, limit: 20 })
+        : setStraySaved('fixture-rescue', operation === 'save')
+    setSessionToken('replacement-saved-fixture')
+    await expect(request).rejects.toMatchObject({ apiCode: 'AUTH_CONTEXT_CHANGED' })
+    expect(transport).not.toHaveBeenCalled()
+  })
+  it.each(['pet', 'saved-rescues'])('late %s unauthorized responses cannot log out a replacement account', async operation => {
+    setSessionToken('previous-saved-fixture')
+    let fail!: () => void
+    transport.mockImplementation((config: InternalAxiosRequestConfig) => new Promise((_resolve, reject) => {
+      fail = () => reject(new AxiosError('old unauthorized fixture', undefined, config, undefined, { config, status: 401, statusText: 'Unauthorized', headers: {}, data: {} }))
+    }))
+    const request = operation === 'pet' ? getPet('fixture-pet') : getSavedStraysPage()
+    await Promise.resolve(); await Promise.resolve()
+    setSessionToken('replacement-saved-fixture'); fail()
+    await expect(request).rejects.toMatchObject({ apiCode: 'AUTH_CONTEXT_CHANGED' })
+    expect(localStorage.getItem('token')).toBe('replacement-saved-fixture')
+  })
   it.each(['read', 'send', 'thread', 'inbox'])('same-tick account switching cancels queued messaging %s before transport', async operation => {
     setSessionToken('previous-messaging-fixture')
     transport.mockImplementation(config => Promise.resolve({ config, status: 200, statusText: 'OK', headers: {}, data: { message: {}, messages: [], conversations: [] } }))

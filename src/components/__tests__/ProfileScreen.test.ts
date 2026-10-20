@@ -141,9 +141,12 @@ describe('ProfileScreen My pets navigation', () => {
   it('removes only the selected saved rescue post when unsaved', async () => {
     const { wrapper } = await mountProfile([], owner, '/profile?tab=saved')
     expect(wrapper.findAll('.profile-stray-card')).toHaveLength(1)
+    // The real API no longer includes the unsaved record when page one refreshes.
+    apiMocks.getSavedStraysPage.mockResolvedValueOnce({ strays: [], unavailableCount: 0, pagination: { ...pagination, total: 0 } })
     await wrapper.get('.unsave').trigger('click')
     await flushPromises()
     expect(apiMocks.setStraySaved).toHaveBeenCalledWith('saved-one', false)
+    expect(apiMocks.getSavedStraysPage).toHaveBeenCalledTimes(2)
     expect(wrapper.findAll('.profile-stray-card')).toHaveLength(0)
   })
 

@@ -127,199 +127,67 @@ test('hotspot endpoint rejects invalid coordinates before querying the database'
   assert.match(payload.error, /valid coordinates/)
 })
 
-test('hotspot endpoint returns aggregate cells without source identity, timestamps, or exact coordinates', async () => {
-  const originalSightingAggregate = Sighting.aggregate
-  const originalStrayAggregate = Stray.aggregate
-  const exactSighting = [114.188123, 22.381456]
-  const exactStray = [114.1882, 22.3815]
-  let sightingPipeline
-  let strayPipeline
-  try {
-    Sighting.aggregate = async (pipeline) => {
-      sightingPipeline = pipeline
-      return [{
-      _id: 'private-sighting-id',
-      location: { type: 'Point', coordinates: exactSighting },
-      createdAt: new Date(),
-      confirmedBy: [],
-      }]
-    }
-    Stray.aggregate = async (pipeline) => {
-      strayPipeline = pipeline
-      return [{
-      _id: 'private-stray-id',
-      location: { type: 'Point', coordinates: exactStray },
-      createdAt: new Date(),
-      condition: 'healthy',
-      rescueStatus: 'reported',
-      }]
-    }
+test('hotspot endpoint returns only public cells and complete totals from globally grouped results', async (t) => {
+  const grouped = [{ cells: [{ _id: { x: 16948, y: 3410 }, count: 1701, sightingCount: 850, strayCount: 851, weightUnits: 90000, phone: 'PRIVATE_PHONE', reportId: 'PRIVATE_ID' }], summary: [{ total: 1701, cellCount: 1, sightings: 850, strays: 851, internal: 'PRIVATE_DETAIL' }] }]
+  const aggregate = t.mock.method(Sighting, 'aggregate', async () => grouped)
+  t.mock.method(Stray, 'aggregate', () => { throw new Error('all sources must use a single union pipeline') })
+  for (const user of [undefined, { role: 'user', _id: 'owner' }, { role: 'user', _id: 'reporter' }, { role: 'user', _id: 'unrelated' }, { role: 'shelter_admin', _id: 'admin' }]) {
     let payload
-    const response = {
-      set() { return this },
-      json(body) { payload = body; return this },
-    }
-    await listHotspots(
-      { query: { lat: '22.381', lng: '114.188', radiusKm: '5', source: 'all' } },
-      response,
-      (error) => { throw error },
-    )
-
-    assert.equal(payload.cells.length, 1)
-    assert.equal(payload.cells[0].count, 2)
-    assert.equal(payload.cells[0].sightingCount, 1)
-    assert.equal(payload.cells[0].strayCount, 1)
-    assert.equal(payload.cells[0].locationPrecision, 'approximate')
-    assert.notDeepEqual(payload.cells[0].coordinates, exactSighting)
-    assert.notDeepEqual(payload.cells[0].coordinates, exactStray)
-    assert.deepEqual(payload.summary, {
-      total: 2,
-      cellCount: 1,
-      sightings: 1,
-      strays: 1,
-      gridSizeMeters: 750,
-      radiusKm: 5,
-      windowDays: 30,
-    })
-    assert.equal(sightingPipeline.at(-1).$project._id, 0)
-    assert.equal(strayPipeline.at(-1).$project._id, 0)
-    assert.deepEqual(sightingPipeline[0].$geoNear.query, {
-      moderationStatus: { $ne: 'hidden' },
-    })
-    assert.deepEqual(strayPipeline[0].$geoNear.query, {
-      active: { $ne: false },
-      moderationStatus: { $ne: 'hidden' },
-    })
-    assert.ok(sightingPipeline.some((stage) => stage.$lookup?.from === 'pets'))
-    assert.ok(sightingPipeline.some((stage) => stage.$match?.['parentPet.0']?.$exists === true))
-    const serialized = JSON.stringify(payload)
-    assert.equal(serialized.includes('private-sighting-id'), false)
-    assert.equal(serialized.includes('private-stray-id'), false)
-    for (const forbidden of ['createdAt', 'occurredAt', 'timestamp', 'locationName', 'confirmedBy']) {
-      assert.equal(serialized.includes(forbidden), false)
-    }
-    for (const cell of payload.cells) {
-      assert.deepEqual(Object.keys(cell).sort(), [
-        'coordinates',
-        'count',
-        'intensity',
-        'locationPrecision',
-        'sightingCount',
-        'strayCount',
-      ])
-    }
-  } finally {
-    Sighting.aggregate = originalSightingAggregate
-    Stray.aggregate = originalStrayAggregate
+    const res = { set() { return this }, json(body) { payload = body } }
+    await listHotspots({ user, query: { lat: '22.381', lng: '114.188', radiusKm: '5', source: 'all' } }, res, error => { throw error })
+    assert.equal(payload.cells[0].count, 1701)
+    assert.equal(payload.summary.total, 1701)
+    assert.equal(payload.summary.returnedTotal, 1701)
+    assert.equal(payload.summary.cellsTruncated, false)
+    assert.equal(payload.summary.maxCells, 1500)
+    assert.deepEqual(Object.keys(payload.cells[0]).sort(), ['coordinates', 'count', 'intensity', 'locationPrecision', 'sightingCount', 'strayCount'])
+    assert.equal(JSON.stringify(payload).includes('PRIVATE'), false)
   }
+  const [pipeline, options] = aggregate.mock.calls[0].arguments
+  assert.deepEqual(options, { maxTimeMS: 10000, allowDiskUse: false })
+  const other = pipeline.find(stage => stage.$unionWith).$unionWith.pipeline
+  assert.equal(pipeline[0].$geoNear.query.moderationStatus.$ne, 'hidden')
+  assert.equal(other[0].$geoNear.query.active.$ne, false)
+  assert.equal(other[0].$geoNear.query.moderationStatus.$ne, 'hidden')
+  assert.ok(pipeline[0].$geoNear.query.createdAt.$gte instanceof Date)
+  assert.ok(pipeline.some(stage => stage.$match?.['parentPet.0']?.$exists === true))
+  for (const stages of [pipeline, other]) {
+    assert.ok(stages.some(stage => stage.$group))
+    assert.equal(stages.some(stage => stage.$limit || stage.$sample), false)
+  }
+  assert.deepEqual(pipeline.at(-1).$facet.cells, [{ $sort: { count: -1, '_id.x': 1, '_id.y': 1 } }, { $limit: 1500 }])
+  assert.equal(pipeline.at(-1).$facet.summary.some(stage => stage.$limit), false)
 })
 
-test('inactive and hidden rescue posts never contribute to hotspot cells or summaries', async () => {
-  const originalStrayAggregate = Stray.aggregate
-  const records = [
-    { active: true, moderationStatus: 'visible' },
-    {},
-    { active: false, moderationStatus: 'visible' },
-    { active: true, moderationStatus: 'hidden' },
-  ].map((flags, index) => ({
-    ...flags,
-    location: { type: 'Point', coordinates: [114.188 + index * 0.00001, 22.381] },
-    createdAt: NOW,
-    condition: 'healthy',
-    rescueStatus: 'reported',
-  }))
-  try {
-    Stray.aggregate = async (pipeline) => {
-      assert.deepEqual(pipeline[0].$geoNear.query, {
-        active: { $ne: false },
-        moderationStatus: { $ne: 'hidden' },
-      })
-      return records.filter((record) =>
-        record.active !== false && record.moderationStatus !== 'hidden')
-    }
+test('source selection, bounded validation and empty totals remain consistent', async (t) => {
+  const sightings = t.mock.method(Sighting, 'aggregate', async () => [{ cells: [], summary: [] }])
+  const strays = t.mock.method(Stray, 'aggregate', async () => [{ cells: [], summary: [] }])
+  for (const [source, radiusKm, days, expectedRadius, expectedDays] of [
+    ['sightings', '-1', '0', 1, 1], ['strays', '100', '500', 50, 365], ['all', 'bad', 'bad', 20, 30],
+  ]) {
     let payload
-    const response = {
-      set() { return this },
-      json(body) { payload = body; return this },
-    }
-    await listHotspots(
-      { query: { lat: '22.381', lng: '114.188', radiusKm: '5', source: 'strays' } },
-      response,
-      (error) => { throw error },
-    )
-    assert.equal(payload.summary.total, 2)
-    assert.equal(payload.summary.strays, 2)
-    assert.equal(payload.summary.sightings, 0)
-    assert.equal(payload.cells.reduce((sum, cell) => sum + cell.strayCount, 0), 2)
-  } finally {
-    Stray.aggregate = originalStrayAggregate
+    await listHotspots({ query: { lat: '22.3', lng: '114.1', source, radiusKm, days } }, { set() {}, json(body) { payload = body } }, error => { throw error })
+    assert.equal(payload.summary.total, 0)
+    assert.equal(payload.summary.cellCount, 0)
+    assert.equal(payload.summary.returnedCellCount, 0)
+    assert.equal(payload.summary.cellsTruncated, false)
+    assert.equal(payload.summary.radiusKm, expectedRadius)
+    assert.equal(payload.summary.windowDays, expectedDays)
   }
+  assert.equal(sightings.mock.callCount(), 2)
+  assert.equal(strays.mock.callCount(), 1)
+  assert.equal(strays.mock.calls[0].arguments[0].some(stage => stage.$unionWith), false)
 })
 
-test('hotspot endpoint rejects unsupported sources before querying the database', async () => {
-  const originalSightingAggregate = Sighting.aggregate
-  const originalStrayAggregate = Stray.aggregate
-  let queried = false
-  try {
-    Sighting.aggregate = async () => { queried = true; return [] }
-    Stray.aggregate = async () => { queried = true; return [] }
-    let statusCode = 200
-    let payload
-    const response = {
-      set() { return this },
-      status(code) { statusCode = code; return this },
-      json(body) { payload = body; return this },
-    }
-    await listHotspots(
-      { query: { lat: '22.381', lng: '114.188', source: 'individual-records' } },
-      response,
-      (error) => { throw error },
-    )
-    assert.equal(statusCode, 400)
-    assert.match(payload.error, /all \| sightings \| strays/)
-    assert.equal(queried, false)
-  } finally {
-    Sighting.aggregate = originalSightingAggregate
-    Stray.aggregate = originalStrayAggregate
-  }
-})
-
-test('hotspot source filter queries and counts only the requested report type', async () => {
-  const originalSightingAggregate = Sighting.aggregate
-  const originalStrayAggregate = Stray.aggregate
-  let sightingQueries = 0
-  let strayQueries = 0
-  try {
-    Sighting.aggregate = async () => {
-      sightingQueries += 1
-      return [{
-        location: { type: 'Point', coordinates: [114.188, 22.381] },
-        createdAt: NOW,
-        confirmedBy: [],
-      }]
-    }
-    Stray.aggregate = async () => {
-      strayQueries += 1
-      return []
-    }
-    let payload
-    const response = {
-      set() { return this },
-      json(body) { payload = body; return this },
-    }
-    await listHotspots(
-      { query: { lat: '22.381', lng: '114.188', source: 'sightings' } },
-      response,
-      (error) => { throw error },
-    )
-    assert.equal(sightingQueries, 1)
-    assert.equal(strayQueries, 0)
-    assert.equal(payload.summary.total, 1)
-    assert.equal(payload.summary.sightings, 1)
-    assert.equal(payload.summary.strays, 0)
-    assert.equal(payload.summary.cellCount, 1)
-  } finally {
-    Sighting.aggregate = originalSightingAggregate
-    Stray.aggregate = originalStrayAggregate
-  }
+test('invalid source is rejected without any query, and resource failures never return partial totals', async (t) => {
+  const aggregate = t.mock.method(Sighting, 'aggregate', async () => { throw Object.assign(new Error('timeout'), { code: 50 }) })
+  let status, payload, failure
+  const res = { set() {}, status(code) { status = code; return this }, json(body) { payload = body } }
+  await listHotspots({ query: { lat: '22.3', lng: '114.1', source: 'individual-records' } }, res, error => { throw error })
+  assert.equal(status, 400)
+  assert.equal(aggregate.mock.callCount(), 0)
+  payload = undefined
+  await listHotspots({ query: { lat: '22.3', lng: '114.1' } }, res, error => { failure = error })
+  assert.equal(failure.code, 50)
+  assert.equal(payload, undefined)
 })

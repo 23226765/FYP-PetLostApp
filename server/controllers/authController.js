@@ -11,6 +11,7 @@ import {
   validatePreferenceUpdate,
 } from '../services/userPreferences.js'
 import { requireJwtSecret } from '../config/security.js'
+import { MIN_PASSWORD_LENGTH, validateNewPassword } from '../services/passwordPolicy.js'
 import {
   clearLoginFailures,
   loginKeys,
@@ -21,7 +22,6 @@ import {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_EMAIL_LENGTH = 254
-const MIN_PASSWORD_LENGTH = 6
 const MAX_NAME_LENGTH = 100
 const MAX_REAL_NAME_LENGTH = 100
 
@@ -66,9 +66,8 @@ function validateRegistration(body) {
   if (normalizedEmail.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(normalizedEmail)) {
     return { error: 'Enter a valid email address.', code: 'EMAIL_INVALID', field: 'email' }
   }
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, code: 'PASSWORD_TOO_SHORT', field: 'password', params: { min: MIN_PASSWORD_LENGTH } }
-  }
+  const passwordError = validateNewPassword(password)
+  if (passwordError) return passwordError
   if (phone !== undefined && phone !== null && typeof phone !== 'string') {
     return { error: 'Phone must be a string.', code: 'FIELD_INVALID', field: 'phone' }
   }
@@ -253,6 +252,8 @@ export async function login(req, res, next) {
       return res.status(401).json({ error: 'Invalid email or password.', code: 'AUTH_INVALID_CREDENTIALS' })
     }
 
+    // Do not apply the new-password byte maximum here: hashes cannot identify
+    // historical overlong inputs. Preserve raw comparison and existing accounts.
     const ok = await bcrypt.compare(password, user.password)
     if (!ok) {
       recordLoginFailure(keys, now)
