@@ -109,12 +109,41 @@ export function aggregateHotspotCells(
 
 export { PUBLIC_GRID_SIZE_METERS }
 
-// All filters precede grouping; no source-record limit or sample is permitted.
+const CELL_SEARCH_PADDING_METERS = PUBLIC_GRID_SIZE_METERS / Math.SQRT2 + 1
+const POLAR_CLAMP_PADDING_METERS = EARTH_RADIUS_METERS * (90 - MAX_MERCATOR_LATITUDE) * Math.PI / 180
+
+// The indexed search must include every exact point whose PUBLIC cell is in
+// range. Mercator does not enlarge ground distances within its latitude domain;
+// beyond its clamp, include the full remaining poleward arc as well.
+export function hotspotCandidateRadiusMeters(latitude, radiusKm) {
+  const reachesClamp = Math.abs(latitude) +
+    (radiusKm * 1000 + CELL_SEARCH_PADDING_METERS) / EARTH_RADIUS_METERS * 180 / Math.PI >= MAX_MERCATOR_LATITUDE
+  return radiusKm * 1000 + CELL_SEARCH_PADDING_METERS + (reachesClamp ? POLAR_CLAMP_PADDING_METERS : 0)
+}
+
+function publicCellMembership(longitude, latitude, radiusKm) {
+  // Deterministic unrounded grid centres, independent of source coordinates.
+  // Output uses the same centres rounded to six decimal places for display.
+  const centreLng = { $divide: [{ $multiply: [{ $add: ['$_id.x', 0.5] }, PUBLIC_GRID_SIZE_METERS] }, EARTH_RADIUS_METERS] }
+  const centreLat = { $subtract: [{ $multiply: [2, { $atan: { $exp: { $divide: [{ $multiply: [{ $add: ['$_id.y', 0.5] }, PUBLIC_GRID_SIZE_METERS] }, EARTH_RADIUS_METERS] } } }] }, Math.PI / 2] }
+  const originLat = latitude * Math.PI / 180
+  const sineSquared = (angle) => ({ $pow: [{ $sin: { $divide: [angle, 2] } }, 2] })
+  const haversine = { $add: [
+    sineSquared({ $subtract: [centreLat, originLat] }),
+    { $multiply: [Math.cos(originLat), { $cos: centreLat }, sineSquared({ $subtract: [centreLng, longitude * Math.PI / 180] })] },
+  ] }
+  const distance = { $multiply: [2 * EARTH_RADIUS_METERS, { $asin: { $sqrt: { $max: [0, { $min: [1, haversine] }] } } }] }
+  return { $match: { $expr: { $lte: [distance, radiusKm * 1000] } } }
+}
+
+// Visibility/time filters precede grouping; final public radius membership
+// follows it. No source-record limit or sample is permitted.
 function sourcePipeline(source, { longitude, latitude, radiusKm, since, windowDays, now }) {
   const isSighting = source === 'sightings'
   const pipeline = [{ $geoNear: {
-    near: { type: 'Point', coordinates: [longitude, latitude] },
-    distanceField: 'distanceMeters', maxDistance: radiusKm * 1000,
+    // A cell centre at the antimeridian may project just outside [-180, 180].
+    near: { type: 'Point', coordinates: [((longitude + 180) % 360 + 360) % 360 - 180, latitude] },
+    distanceField: 'distanceMeters', maxDistance: hotspotCandidateRadiusMeters(latitude, radiusKm),
     spherical: true, key: 'location',
     query: visibleContentFilter({ createdAt: { $gte: since }, ...(!isSighting ? { active: { $ne: false } } : {}) }),
   } }]
@@ -140,6 +169,7 @@ function sourcePipeline(source, { longitude, latitude, radiusKm, since, windowDa
       weightUnits: { $floor: { $add: [{ $multiply: [weight, 100] }, 0.5] } },
     } },
     { $group: { _id: { x: '$cellX', y: '$cellY' }, count: { $sum: 1 }, weightUnits: { $sum: '$weightUnits' } } },
+    publicCellMembership(longitude, latitude, radiusKm),
     { $project: { _id: 1, count: 1, weightUnits: 1, sightingCount: isSighting ? '$count' : { $literal: 0 }, strayCount: isSighting ? { $literal: 0 } : '$count' } },
   )
   return pipeline

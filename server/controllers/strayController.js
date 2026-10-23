@@ -272,7 +272,14 @@ export async function updateStray(req, res, next) {
       saved = (await commitContentImages({ Model: Stray, type: 'stray', purpose: 'stray', userId: req.user._id,
         existingId: stray._id, imageIds: req.body.imageIds, minimum: 1,
         values: { description: stray.description, species: stray.species, animalType: stray.animalType, condition: stray.condition } })).doc
-    } else await stray.save()
+    } else {
+      saved = await Stray.findOneAndUpdate(
+        { _id: stray._id, reportedBy: req.user._id, ...ACTIVE_FILTER },
+        { $set: { description: stray.description, species: stray.species, animalType: stray.animalType, condition: stray.condition } },
+        { new: true, runValidators: true },
+      )
+      if (!saved) return res.status(404).json({ error: 'Stray report not found' })
+    }
     const [serialized] = await serializeMany([saved], req.user)
     res.json({ stray: serialized })
   } catch (error) { next(error) }

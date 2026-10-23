@@ -38,7 +38,9 @@ function authContextChanged(config: unknown): boolean {
   return Boolean(scoped?.pawRadarAuthContext && !isAuthContextCurrent(scoped.pawRadarAuthContext))
 }
 
-// Attach the JWT to every request when a token is stored.
+// Axios evaluates runWhen synchronously at the API call boundary, before its
+// asynchronous interceptor chain. Pin every operation (including public reads
+// with optional authentication and uploads) to that initiating session.
 http.interceptors.request.use((config) => {
   const context = (config as typeof config & AuthScopedConfig).pawRadarAuthContext || captureAuthContext()
   if (!isAuthContextCurrent(context)) throw authContextError()
@@ -46,6 +48,12 @@ http.interceptors.request.use((config) => {
   ;(config as typeof config & AuthScopedConfig).pawRadarAuthContext = context
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
+}, undefined, {
+  runWhen(config) {
+    const scoped = config as typeof config & AuthScopedConfig
+    scoped.pawRadarAuthContext ||= captureAuthContext()
+    return true
+  },
 })
 
 // Auto sign-out when a protected request returns 401 (expired/invalid token).
@@ -524,15 +532,21 @@ export type ImagePurpose = 'avatar' | 'pet' | 'sighting' | 'stray' | 'message'
 export interface ManagedImage { id: string; url: string; width: number; height: number; format: 'webp'; bytes: number }
 export async function uploadManagedImage(file: Blob, purpose: ImagePurpose, idempotencyKey: string,
   options: { signal?: AbortSignal; onProgress?: (percent: number) => void } = {}): Promise<ManagedImage> {
+  const context = captureAuthContext()
+  const progress = (percent: number) => {
+    if (isAuthContextCurrent(context) && !options.signal?.aborted) options.onProgress?.(percent)
+  }
   const form = new FormData()
   form.append('image', file, 'image')
   form.append('purpose', purpose)
   form.append('idempotencyKey', idempotencyKey)
   const { data } = await http.post<{ image: ManagedImage }>('/uploads/managed', form, {
+    pawRadarAuthContext: context,
     headers: { 'Content-Type': undefined }, signal: options.signal,
-    onUploadProgress: (event) => options.onProgress?.(event.total ? Math.min(99, Math.round(event.loaded / event.total * 100)) : 0),
-  })
-  options.onProgress?.(100)
+    onUploadProgress: (event) => progress(event.total ? Math.min(99, Math.round(event.loaded / event.total * 100)) : 0),
+  } as AxiosRequestConfig & AuthScopedConfig)
+  if (!isAuthContextCurrent(context)) throw authContextError()
+  progress(100)
   return data.image
 }
 export async function discardManagedImage(id: string): Promise<void> { await http.delete(`/uploads/managed/${id}`) }

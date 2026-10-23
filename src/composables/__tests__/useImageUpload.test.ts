@@ -2,6 +2,7 @@ import { effectScope } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useImageUpload, createImageRequestId } from '../useImageUpload'
 import type { ImagePurpose } from '../../services/api'
+import { invalidateAuthContext, setSessionToken } from '../../services/authSession'
 
 const mocks = vi.hoisted(() => ({ uploadManagedImage: vi.fn(), discardManagedImage: vi.fn() }))
 vi.mock('../../services/api', () => mocks)
@@ -83,6 +84,31 @@ describe('managed image upload state', () => {
     expect(await state.ensure()).toEqual(['e'.repeat(24)])
     expect(mocks.uploadManagedImage.mock.calls[0][2]).not.toBe(mocks.uploadManagedImage.mock.calls[1][2])
     state.finish(); stop()
+  })
+  it.each(['switch', 'same-token', 'round-trip'])('a terminal response cannot retry after %s invalidation', async mode => {
+    let fail!: (error: Error) => void
+    mocks.uploadManagedImage.mockImplementation(() => new Promise((_resolve, reject) => { fail = reject }))
+    const { state, stop } = setup('pet')
+    const pending = state.ensure()
+    if (mode === 'switch') setSessionToken('replacement-fixture')
+    else if (mode === 'same-token') invalidateAuthContext()
+    else { setSessionToken('temporary-fixture'); setSessionToken('fictional-owner-token') }
+    fail(Object.assign(new Error('ended'), { apiCode: 'IMAGE_UPLOAD_RETRY_REQUIRED' }))
+    await expect(pending).rejects.toMatchObject({ apiCode: 'IMAGE_UPLOAD_RETRY_REQUIRED' })
+    expect(mocks.uploadManagedImage).toHaveBeenCalledTimes(1)
+    expect(state.id).toBe(''); expect(state.preview).toBe(''); expect(state.error).toBe('')
+    expect(mocks.discardManagedImage).not.toHaveBeenCalled()
+    stop()
+  })
+  it('selection and disposal cannot cross accounts even before a storage event arrives', async () => {
+    const { state, stop } = setup('avatar')
+    mocks.uploadManagedImage.mockResolvedValue({ id: 'a'.repeat(24) })
+    await state.ensure()
+    localStorage.setItem('token', 'replacement-before-storage-event')
+    await expect(state.ensure()).rejects.toMatchObject({ apiCode: 'AUTH_CONTEXT_CHANGED' })
+    expect(mocks.uploadManagedImage).toHaveBeenCalledTimes(1)
+    stop()
+    expect(mocks.discardManagedImage).not.toHaveBeenCalled()
   })
   it('cancel aborts the request and cannot publish its late result', async () => {
     let finish: (value: { id: string }) => void = () => {}

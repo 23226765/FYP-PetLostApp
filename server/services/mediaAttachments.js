@@ -59,10 +59,13 @@ export async function commitContentImages({
       detached = []
       await authorize(session)
       let doc = existingId
-        ? await Model.findOne(visibleContentFilter({ _id: existingId })).select('+imageIds').session(session)
+        ? await Model.findOne(visibleContentFilter({
+          _id: existingId, ...(type === 'stray' ? { active: { $ne: false } } : {}),
+        })).select('+imageIds').session(session)
         : idempotencyFilter ? await Model.findOne(idempotencyFilter).select('+imageIds +moderationStatus').session(session) : null
       if (existingId && !doc) throw imageError('IMAGE_NOT_FOUND')
       if (doc && !isContentVisible(doc)) throw imageError('IMAGE_NOT_FOUND')
+      if (doc && type === 'stray' && doc.active === false) throw imageError('IMAGE_NOT_FOUND')
       const owner = type === 'user' ? doc?._id : type === 'message' ? doc?.sentBy : doc?.reportedBy
       if (doc && String(owner) !== String(userId)) throw imageError('IMAGE_ATTACHMENT_FORBIDDEN')
       if (doc && !existingId) {
@@ -97,6 +100,10 @@ export async function commitContentImages({
       }
       doc.set(values)
       doc.imageIds = ids
+      // Even an identical rescue edit must write the destination: concurrent
+      // deactivation/ownership/moderation changes then conflict and force a fresh
+      // eligibility check, rather than allowing a read-only snapshot to succeed.
+      if (type === 'stray') doc.markModified('imageIds')
       const urls = ids.map(mediaContentUrl)
       if (type === 'user') doc.avatar = urls[0] || ''
       else { doc.photo = urls[0] || ''; if (['pet', 'stray'].includes(type)) doc.photos = urls }

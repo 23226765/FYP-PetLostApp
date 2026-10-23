@@ -29,6 +29,7 @@ function fixture(purpose, type) {
     static db = connection
     constructor(values) { Object.assign(this, copy({ ...values, _id: String(values._id) })) }
     set(values) { Object.assign(this, copy(values)) }
+    markModified(path) { assert.equal(path, 'imageIds') }
     async save({ session }) {
       assert.ok(session)
       if (fail) throw new Error('fictional write failure')

@@ -15,6 +15,20 @@ const DAY = 86400000
 const centre = approximateCoordinates([114.188123, 22.381456])
 const point = (coordinates) => ({ type: 'Point', coordinates })
 const options = (coordinates = centre, radiusKm = 50) => ({ longitude: coordinates[0], latitude: coordinates[1], radiusKm, windowDays: 30, now: NOW, since: new Date(+NOW - 30 * DAY) })
+const cellIndex = ([lng, lat]) => [
+  Math.floor(EARTH_RADIUS_METERS * lng * Math.PI / 180 / 750),
+  Math.floor(EARTH_RADIUS_METERS * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / 750),
+]
+const rawCentre = (x, y) => [
+  (x + 0.5) * 750 / EARTH_RADIUS_METERS * 180 / Math.PI,
+  (2 * Math.atan(Math.exp((y + 0.5) * 750 / EARTH_RADIUS_METERS)) - Math.PI / 2) * 180 / Math.PI,
+]
+function distanceMeters([lng1, lat1], [lng2, lat2]) {
+  const radians = Math.PI / 180
+  const h = Math.sin((lat2 - lat1) * radians / 2) ** 2 +
+    Math.cos(lat1 * radians) * Math.cos(lat2 * radians) * Math.sin((lng2 - lng1) * radians / 2) ** 2
+  return 2 * EARTH_RADIUS_METERS * Math.asin(Math.sqrt(Math.min(1, h)))
+}
 
 test('real MongoDB geospatial hotspots count every eligible record before deterministic cell limits', {
   skip: !uri ? 'Dedicated local replica set required; application databases prohibited.' : false, timeout: 120000,
@@ -88,8 +102,9 @@ test('real MongoDB geospatial hotspots count every eligible record before determ
     await t.test('time window is inclusive, out-of-radius is excluded, and recency/urgency match existing JS', async () => {
       await eraseFixtures()
       const [pet] = await insert(Pet, [{}])
-      const inside = [centre[0], centre[1] + 0.0089] // < 1km at equator and Hong Kong.
-      const outside = [centre[0], centre[1] + 0.0091] // > 1km.
+      const [x, y] = cellIndex(centre)
+      const inside = publicCellCentre(x, y + 1) // Public centre < 1km.
+      const outside = publicCellCentre(x, y + 2) // Public centre > 1km.
       const sightings = [sight(pet._id, inside, { createdAt: new Date(+NOW - 30 * DAY), confirmedBy: [pet._id, pet._id] }), sight(pet._id, centre, { createdAt: new Date(+NOW + DAY), confirmedBy: 'legacy-non-array' })]
       const strays = ['healthy', 'unknown', 'injured', 'critical', 'legacy'].flatMap(condition => ['reported', 'rescue_dispatched', 'rescued', 'legacy'].map(rescueStatus => stray(inside, { condition, rescueStatus, createdAt: new Date(+NOW - 15 * DAY) })))
       await insert(Sighting, [...sightings, sight(pet._id, inside, { createdAt: new Date(+NOW - 30 * DAY - 1) }), sight(pet._id, outside)])
@@ -97,16 +112,68 @@ test('real MongoDB geospatial hotspots count every eligible record before determ
       const actual = await execute('all', options(centre, 1))
       assert.equal(actual.summary.total, 22)
       assert.deepEqual(actual.cells, aggregateHotspotCells({ sightings, strays }, 30, NOW))
-      // Measure the boundary with Mongo's own spherical index calculation, then
-      // exercise just below, exactly at and just above its maxDistance threshold.
-      const [probe] = await models.get(Sighting).aggregate([
-        { $geoNear: { near: point(centre), key: 'location', spherical: true, distanceField: 'distanceMeters' } },
-        { $match: { 'location.coordinates': inside } }, { $limit: 1 },
-      ])
-      for (const [delta, expected] of [[-0.001, 1], [0, 2], [0.001, 2]]) {
-        const boundary = await execute('sightings', options(centre, (probe.distanceMeters + delta) / 1000))
+      // Radius boundaries now refer only to deterministic public cell centres.
+      const boundaryMeters = distanceMeters(centre, rawCentre(x, y + 1))
+      for (const [delta, expected] of [[-0.001, 1], [0.001, 2]]) {
+        const boundary = await execute('sightings', options(centre, (boundaryMeters + delta) / 1000))
         assert.equal(boundary.summary.total, expected)
       }
+    })
+
+    await t.test('moving exact locations within public cells cannot change membership, weights, order or metadata', async () => {
+      await eraseFixtures()
+      const [pet, hiddenPet] = await insert(Pet, [{}, { moderationStatus: 'hidden' }])
+      const [x, y] = cellIndex(centre)
+      const locations = [rawCentre(x, y), rawCentre(x + 4, y + 2)]
+      const sightings = await insert(Sighting, [
+        sight(pet._id, locations[0], { confirmedBy: [pet._id], createdAt: new Date(+NOW - DAY) }),
+        sight(pet._id, locations[1], { confirmedBy: [pet._id, pet._id] }),
+        sight(hiddenPet._id, locations[0]), sight(pet._id, locations[0], { moderationStatus: 'hidden' }),
+      ])
+      const strays = await insert(Stray, [
+        stray(locations[0], { condition: 'critical' }), stray(locations[1], { active: true }),
+        stray(locations[0], { active: false }), stray(locations[1], { moderationStatus: 'hidden' }),
+      ])
+      const origins = [publicCellCentre(x - 5, y - 5), publicCellCentre(x - 5, y + 5), publicCellCentre(x + 5, y)]
+      const queries = origins.flatMap(origin => [
+        ...locations.flatMap(location => {
+          const boundary = distanceMeters(origin, location) / 1000
+          return [-0.000001, 0.000001].map(delta => options(origin, boundary + delta))
+        }), options(origin, 1), options(origin, 50),
+      ])
+      const baseline = await Promise.all(queries.map(settings => execute('all', settings)))
+      const move = async (dx, dy) => {
+        for (const [Global, rows] of [[Sighting, sightings], [Stray, strays]]) {
+          await models.get(Global).bulkWrite(rows.map(row => ({ updateOne: {
+            filter: { _id: row._id },
+            update: { $set: { location: point([row.location.coordinates[0] + dx, row.location.coordinates[1] + dy]) } },
+          } })))
+        }
+      }
+      for (const [dx, dy] of [[-0.0025, -0.0025], [0.0025, 0.0025]]) {
+        for (const location of locations) assert.deepEqual(approximateCoordinates([location[0] + dx, location[1] + dy]), approximateCoordinates(location))
+        await move(dx, dy)
+        for (const [index, settings] of queries.entries()) assert.deepEqual(await execute('all', settings), baseline[index])
+      }
+      assert.ok(baseline.some(result => result.summary.total === 4))
+      assert.ok(baseline.some(result => result.summary.total === 0))
+      // Real controller response, fixed clock, same source movement and all roles.
+      t.mock.timers.enable({ apis: ['Date'], now: NOW })
+      try {
+        for (const user of [undefined, { role: 'user', _id: pet._id }, { role: 'shelter_admin', _id: pet._id }]) {
+          for (const settings of queries) {
+            const call = async () => {
+              let payload
+              await listHotspots({ user, query: { source: 'all', lng: String(settings.longitude), lat: String(settings.latitude), radiusKm: String(settings.radiusKm), days: '30' } },
+                { set() {}, json(body) { payload = body } }, error => { throw error })
+              return payload
+            }
+            await move(-0.0025, -0.0025); const before = await call()
+            await move(0.0025, 0.0025); assert.deepEqual(await call(), before)
+            assert.equal(/PRIVATE|distanceMeters|weightUnits|reportedBy|createdAt/.test(JSON.stringify(before)), false)
+          }
+        }
+      } finally { t.mock.timers.reset() }
     })
 
     await t.test('mixed-source merging precedes global output limiting, ties are stable and totals stay complete', async () => {
@@ -134,6 +201,17 @@ test('real MongoDB geospatial hotspots count every eligible record before determ
       assert.deepEqual((await execute('all')).cells, result.cells)
       assert.deepEqual(result.cells[0].coordinates, approximateCoordinates(coordinates[2]))
       assert.equal(result.cells[0].count, 6)
+      // Even capped output and complete summary must be invariant to within-cell
+      // movements across every source, not merely the returned first page.
+      for (const Global of [Sighting, Stray]) {
+        await models.get(Global).updateMany({ _id: { $in: ledger.get(Global) } }, [{
+          $set: { 'location.coordinates': [
+            { $add: [{ $arrayElemAt: ['$location.coordinates', 0] }, 0.001] },
+            { $add: [{ $arrayElemAt: ['$location.coordinates', 1] }, -0.001] },
+          ] },
+        }])
+      }
+      assert.deepEqual(await execute('all'), result)
     })
 
     await t.test('individual non-saturated cells preserve every confirmation, urgency, status and recency weight', async () => {
@@ -173,9 +251,37 @@ test('real MongoDB geospatial hotspots count every eligible record before determ
         await insert(Pet, [{ _id: pet._id }])
         const row = sight(pet._id, coords)
         await insert(Sighting, [row])
-        const result = await execute('sightings', options(coords, 1))
+        const result = await execute('sightings', options(approximateCoordinates(coords), 1))
         assert.equal(result.summary.total, 1)
         assert.deepEqual(result.cells, aggregateHotspotCells({ sightings: [row] }, 30, NOW))
+      }
+    })
+    await t.test('clamped polar points and wrapped longitudes have the same cell membership at radius boundaries', async () => {
+      for (const locations of [
+        [[20, 85.1], [20, 89.99], [20, 90]],
+        [[-20, -85.1], [-20, -89.99], [-20, -90]],
+        [[179.999, 22.3], [180, 22.3]],
+        [[-180, -22.3], [-179.999, -22.3]],
+      ]) {
+        await eraseFixtures()
+        const [row] = await insert(Stray, [stray(locations[0])])
+        const publicPoint = approximateCoordinates(locations[0])
+        for (const location of locations) assert.deepEqual(approximateCoordinates(location), publicPoint)
+        const target = rawCentre(...cellIndex(publicPoint))
+        for (const origin of [publicPoint, [publicPoint[0] - 0.2, publicPoint[1] - 0.02], [publicPoint[0] + 0.2, publicPoint[1] + 0.02]]) {
+          const boundary = distanceMeters(origin, target) / 1000
+          const radii = [1, 50, ...[-0.000001, 0.000001].map(delta => Math.max(0.000001, boundary + delta))]
+          for (const radius of radii) {
+            let baseline
+            for (const location of locations) {
+              await models.get(Stray).updateOne({ _id: row._id }, { $set: { location: point(location) } })
+              const result = await execute('strays', options(origin, radius))
+              if (baseline) assert.deepEqual(result, baseline)
+              else baseline = result
+              assert.equal(result.summary.total, distanceMeters(origin, target) <= radius * 1000 ? 1 : 0)
+            }
+          }
+        }
       }
     })
   } finally {

@@ -1,12 +1,12 @@
 # PetLostApp — original 22-finding audit checklist
 
-Updated: 20 October 2026 (Hong Kong). New feature development remains paused.
+Updated: 23 October 2026 (Hong Kong). New feature development remains paused.
 
 Source: the user-supplied original audit attachment, `abcbef8d-3ff5-40cd-9e47-8efa4b448d04/Pasted text.txt`, whose baseline was commit `5ad3276`. Numbers, titles, severities and meanings below preserve that audit. This is a repair-status record, not a replacement audit or public-release sign-off.
 
 Status vocabulary: **Fixed and verified**, **Implemented but verification pending**, **Partially addressed**, **Still open**. “Verified” identifies the specific automated/isolated evidence below; it does not claim a browser, physical-device, production-proxy or live-Atlas mutation test. Earlier approved verification is explicitly distinguished from this batch. Uncommitted implementation is included.
 
-Summary: **21 fixed and verified; 1 partially addressed; 0 still open; 0 implemented but verification pending.**
+Summary: **21 fixed and verified; 1 partially addressed (#8); 0 still open; 0 implemented but verification pending.** The separate integration findings INT-01 and INT-02 below are also fixed with scoped automated evidence; they do not renumber the original audit. Remaining verification limits and intermittent test instability are recorded below.
 
 ## 1. High — Smart Match exposes precise distance indirectly
 
@@ -45,10 +45,10 @@ Summary: **21 fixed and verified; 1 partially addressed; 0 still open; 0 impleme
 
 ## 6. High — Session changes do not consistently invalidate existing state
 
-- Status: **Fixed and verified** for the original cancellation, cross-tab authentication and preference-race reproductions.
-- Repair: authentication generation guards reject obsolete login, request and preference completions; account changes invalidate privileged state and protected image blobs.
-- Evidence: `AuthCancellation.test.ts`, `AppCreationAuth.test.ts`, `apiAuthContext.test.ts`, `usePreferences.test.ts`, `ManagedImage.test.ts`, `ModerationScreen.test.ts`, including late old-admin queue responses and role/account changes.
-- Limitation: this does not resolve browser-global saved-pet state (#21); no claim of complete physical multi-browser verification.
+- Status: **Fixed and verified** within the automated scope. It remained partially addressed while the integration-review attribution defect was being repaired; the completed regressions now cover that defect too.
+- Repair: authentication generation guards reject obsolete login, request and preference completions; account changes invalidate privileged state and protected image blobs. The shared Axios boundary synchronously captures the initiating context for every API operation, before asynchronous interceptors. Image selections, retries, progress and disposal also retain their initiating context.
+- Evidence: `AuthCancellation.test.ts`, `AppCreationAuth.test.ts`, `apiAuthContext.test.ts`, `usePreferences.test.ts`, `useImageUpload.test.ts`, `ManagedImage.test.ts`, `ModerationScreen.test.ts`. A compile-exhaustive matrix covers all 52 API exports, same-tick invalidation and delayed responses; integrated preference tests reject old success/error rollbacks. See the 23 October evidence below.
+- Limitation: #21 now resolves browser-global saved-pet isolation within the local-storage design. Physical multi-browser verification remains pending.
 
 ## 7. High — Managed-image atomicity remains a release-verification blocker
 
@@ -459,4 +459,54 @@ The status below applies to each original audited defect/verification gap and it
 | 21 | Low — Saved-pet state and failures are inconsistent | Fixed and verified |
 | 22 | Low — Plain-HTTP mobile development can fail during image initialization | Fixed and verified |
 
-Finding #8 remains partially addressed: the previously documented development/native-tool advisory paths require separate supported-upstream/major-change review. They were not upgraded or re-audited in this saved-state repair.
+Finding #8 remains partially addressed: the previously documented development/native-tool advisory paths require separate supported-upstream/major-change review. They were not upgraded or re-audited in this integration repair.
+
+## Integration-review repair batch — 23 October 2026
+
+### INT-01. High — Hotspot query membership leaks exact-location information
+
+- Status: **Fixed and verified** through actual isolated MongoDB geospatial aggregation. This was a confirmed integration defect, separate from #19's already-repaired source-count truncation.
+- Repair: indexed exact-coordinate searching is now only a conservative candidate prefilter. Final radius membership uses each deterministic public grid centre after source grouping and before merged totals, weights, ordering and output truncation. Moving a source within its cell cannot change those public fields. Display rounding remains separate from the deterministic unrounded centre used for membership.
+- Bounds: candidate padding includes the cell half-diagonal and a conservative polar-clamp allowance where necessary; antimeridian query longitude is normalized. Hidden/missing-parent sightings, hidden/inactive rescues and time exclusions remain applied. The 1,500-cell output cap, complete summary counts, 10-second deadline and no-disk-spill restriction remain intact. No source sampling was introduced.
+- Evidence: `hotspotMongo.test.js` moves mixed-source fixtures between opposite corners of their original cells and compares complete results across multiple origins and radius boundaries, including polar clamps and the antimeridian. Actual controller payloads for guest/user/administrator are compared with fixed time and recursively checked for prohibited fields. Existing 1,725-report and 3,210-report/1,600-cell cases remain; the latter also proves unchanged full summaries and deterministic truncated output after in-cell movement. Mocked privacy/role tests supplement, but do not replace, this real database evidence.
+- Limitation: public cells remain 750-metre approximations, not a minimum-population anonymity guarantee. Extreme polar candidate searches are intentionally conservative and may hit existing resource limits; maximum-volume Atlas performance was not measured. Cross-collection reads are not a transaction snapshot under concurrent writes.
+
+### INT-02. Medium — Rescue image edits can commit after eligibility changes
+
+- Status: **Fixed and verified** through actual HTTP routes/controllers and isolated MongoDB transactions, with provider operations mocked. This is a confirmed destination-eligibility defect, not a claim that #7's earlier atomic attachment tests were invalid.
+- Repair: the transaction rechecks ownership, visibility and `active != false`. Even an identical image edit writes the destination, so a concurrent deactivation/hide/ownership change causes a real write conflict and transaction retry against current eligibility. The corresponding text-only edit uses an atomic owner/active/visible conditional update rather than a stale document save.
+- Evidence: new `rescueEditTransactions.test.js` pauses actual reads/saves, then deactivates through the actual DELETE route or changes isolated fixture visibility/ownership. It covers preflight and in-transaction races, identical image edits and text-only edits. Rejected edits return 404/403, preserve description and every image reference, leave complete asset documents unchanged and do not retire provider objects. Snapshot cases assert a real retry rechecked eligibility. Guest/unrelated/admin edit denial and successful owner replacement retain existing policy.
+- Limitation: provider deletion is a spy in this batch; no new Cloudinary, browser or live-account verification is implied.
+
+### #6 attribution and stale-state evidence
+
+- All 52 API exports are included in a TypeScript-exhaustive invocation matrix. Same-tick switch, logout, same-token invalidation, A-to-B-to-A and storage-event cases must reject before transport. Delayed old-account 200/401/503 responses cannot invalidate the new account. Optional-auth public reads are pinned too; they cannot accidentally gain the replacement account's privilege.
+- Real Axios interceptors run against an isolated mock transport. Integrated preference tests prove old success/failure responses cannot replace the new account's preferences, status or persisted selection. Upload progress/final completion, terminal retry recovery and selected/cached image IDs are context guarded, including switches before a storage event is delivered. Existing retry IDs, cancellation and all five image purposes remain covered.
+- Logical cancellation cannot recall a request already accepted by the server; such requests retain their original credentials and their stale frontend completions are rejected. Native browser cross-tab scheduling and physical devices remain unverified.
+
+### Final automated verification
+
+| Check | Result and boundary |
+| --- | --- |
+| Complete frontend | **403 passed**, 37 files; jsdom/components, actual Axios interceptors with mocked transport, no browser claim. |
+| Complete backend | Final standard parallel diagnostic run: **295 passed, 0 failed, 6 opt-in skipped** (301 entries). See instability note below. |
+| Real local database suites | **42 passed, 0 failed/skipped**, six suites: image, quota, sighting, rescue, hotspot and actual-route rescue-edit transactions. Actual MongoDB commits/conflicts/rollbacks; provider mocked. |
+| Vue TypeScript / ESLint | **Passed**; zero lint warnings. |
+| Backend syntax | **128 JavaScript files parsed successfully**, without executing application modules. |
+| Production build | **Passed**; existing main-chunk warning remains (approximately 764 kB). |
+| Frontend startup | Temporary loopback Vite served `/radar`, the API module and upload composable with HTTP 200, then stopped. No browser rendering claim. |
+| Diff / secret audit | **Passed**: `git diff --check`; 309 worktree files and 308 index files checked for local configured credentials and generic secret patterns, with precisely reviewed fictional redaction-test URI exceptions only. No secret findings or tracked runtime environment files. |
+
+**Intermittent test limitation:** one overlapping full-backend run reported 294 passed, one failed and six skipped. The failing diagnostic was lost to output truncation; its exact identity/cause cannot be established from that output. Inspection identified the existing provider-harness child-process test's 15-second timeout as a plausible contention sensitivity, not a proven cause. That test passed independently (about 1.3 seconds), and one diagnostic full parallel rerun after competing checks finished passed in about 5.7 seconds. No timeout, assertion or application code was relaxed to make it pass. The non-reproduced earlier failure remains recorded rather than being described as fully diagnosed.
+
+The explicit-model Astra/high specialist completed focused read-only reviews of privacy, session attribution and transactional eligibility, with no remaining blocking issue identified. Named configuration auto-loading is not claimed; specialist instructions were manually supplied with explicit model/reasoning selection. Review did not substitute for the tests above.
+
+### Safety and scope
+
+Final isolated replica set: `fyp_transactions_0f65e24a3aa5492699c94a9129849318`; analytics database: `fyp_transactions_analytics_fba1f68a7c7c4d249e383be58ce78f00`; new route-race database: `fyp_transactions_rescue_505c5b284b124c61b491ef849c6a04eb`. The harness confirmed exact synthetic fixture removal and shutdown of its owned replica set. No Atlas/application database, existing record, provider object, original image or runtime environment file was changed. No live uploads, seeds, migration or live cleanup ran; `sample_mflix` was not accessed.
+
+No schema, index, package, lockfile or routing-configuration changes. Existing indexes are reused; legacy index maintenance remains separate. Hash comparison across the resumed final verification confirmed all 14 existing preservation targets unchanged (runtime environment files, package files, routing instructions and original public/upload files). Browser/device checks and fresh live-provider/Atlas checks were not performed. Earlier dependency advisories and historical bcrypt compatibility limits remain unchanged.
+
+Changed application files: `server/controllers/analyticsController.js`, `server/controllers/strayController.js`, `server/services/hotspotAnalytics.js`, `server/services/mediaAttachments.js`, `src/services/api.ts`, `src/composables/useImageUpload.ts`.
+
+Changed verification files: `server/scripts/testTransactions.js`, `server/tests/hotspotMongo.test.js`, `server/tests/mediaAttachments.test.js`, `src/services/__tests__/apiAuthContext.test.ts`, `src/composables/__tests__/useImageUpload.test.ts`; new `server/tests/rescueEditTransactions.test.js`. This checklist is the only documentation change. No deletion, commit or push.

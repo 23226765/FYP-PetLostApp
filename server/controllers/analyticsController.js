@@ -26,7 +26,8 @@ export async function listHotspots(req, res, next) {
     if (!SOURCES.has(source)) return res.status(400).json({ error: '`source` must be all | sightings | strays.' })
 
     const now = new Date()
-    // Keep the same snapped search origin for every role; no fine-grained probes.
+    // Every role uses the same origin. The pipeline decides membership from
+    // public grid centres, so changing radius cannot probe exact source points.
     const [searchLongitude, searchLatitude] = anonymousSearchCoordinates(null, [longitude, latitude])
     const options = { longitude: searchLongitude, latitude: searchLatitude, radiusKm, windowDays, now,
       since: new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000) }
