@@ -82,6 +82,11 @@ export function useImageUpload(purpose: ImagePurpose) {
       const code = (error as { apiCode?: string })?.apiCode
       if (generation === version && isAuthContextCurrent(context) && ['IMAGE_STORAGE_UNAVAILABLE', 'IMAGE_STORAGE_CONFLICT'].includes(code || '')) key = ''
       if (generation === version && isAuthContextCurrent(context)) state.error = translateApiError(error, active?.signal.aborted ? 'media.cancelled' : 'media.uploadFailed')
+      // Transport cancellation has no stable API code. Only our own abort in
+      // the initiating session represents intentional upload cancellation.
+      if (active?.signal.aborted && isAuthContextCurrent(context)) {
+        throw Object.assign(new Error('Cancelled'), { apiCode: 'IMAGE_CANCELLED' })
+      }
       throw error
     } finally { if (generation === version) { state.uploading = false; controller = null } }
   }

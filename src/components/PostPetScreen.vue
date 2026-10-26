@@ -246,7 +246,9 @@ async function submit() {
     submitted.value = true
     imageUpload.finish()
   } catch (e) {
-    if (active()) error.value = translateApiError(e, 'errors.postPet')
+    if (active() && (e as { apiCode?: string } | null)?.apiCode !== 'IMAGE_CANCELLED') {
+      error.value = translateApiError(e, 'errors.postPet')
+    }
   } finally {
     if (active()) submitting.value = false
   }

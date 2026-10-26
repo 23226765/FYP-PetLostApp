@@ -1,0 +1,30 @@
+{
+  "run": "f7097ccef154436ca4ed48a4015f8c0e",
+  "database": "fyp_transactions_browser_f7097ccef154436ca4ed48a4015f8c0e",
+  "provider": "in-memory mock",
+  "records": {},
+  "objects": [],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/register",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    }
+  ],
+  "cleanupComplete": false
+}

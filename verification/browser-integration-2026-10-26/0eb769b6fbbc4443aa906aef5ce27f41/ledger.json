@@ -1,0 +1,1151 @@
+{
+  "run": "0eb769b6fbbc4443aa906aef5ce27f41",
+  "database": "fyp_transactions_browser_0eb769b6fbbc4443aa906aef5ce27f41",
+  "provider": "in-memory mock",
+  "records": {},
+  "objects": [
+    {
+      "publicId": "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/026af700-9fd0-4888-9d88-8f50a67f45e9",
+      "assetId": "6adf33984c9fc006ad621e46"
+    },
+    {
+      "publicId": "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/4fea1b1d-d67f-4f62-bc1c-3f8735a6ac52",
+      "assetId": "6adf33ea4c9fc006ad621e92"
+    },
+    {
+      "publicId": "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/eae2d9e3-515a-4251-8218-8e7772ce7032",
+      "assetId": "6adf344e4c9fc006ad621f19"
+    }
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-26T11:01:17.231Z",
+      "finishedAt": "2026-10-26T11:01:17.338Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-26T11:01:17.351Z",
+      "finishedAt": "2026-10-26T11:01:17.432Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-26T11:01:17.438Z",
+      "finishedAt": "2026-10-26T11:01:17.512Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-26T11:01:17.882Z",
+      "finishedAt": "2026-10-26T11:01:17.883Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:01:21.893Z",
+      "finishedAt": "2026-10-26T11:01:21.898Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-26T11:02:00.015Z",
+      "finishedAt": "2026-10-26T11:02:00.016Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:00.452Z",
+      "finishedAt": "2026-10-26T11:03:00.526Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:00.557Z",
+      "finishedAt": "2026-10-26T11:03:00.569Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:00.564Z",
+      "finishedAt": "2026-10-26T11:03:00.578Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:00.589Z",
+      "finishedAt": "2026-10-26T11:03:00.597Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:00.603Z",
+      "finishedAt": "2026-10-26T11:03:00.609Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:21.972Z",
+      "finishedAt": "2026-10-26T11:03:21.976Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:22.047Z",
+      "finishedAt": "2026-10-26T11:03:22.066Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:22.049Z",
+      "finishedAt": "2026-10-26T11:03:22.068Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:22.052Z",
+      "finishedAt": "2026-10-26T11:03:22.078Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:22.063Z",
+      "finishedAt": "2026-10-26T11:03:22.080Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:22.089Z",
+      "finishedAt": "2026-10-26T11:03:22.093Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:22.097Z",
+      "finishedAt": "2026-10-26T11:03:22.101Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:25.279Z",
+      "finishedAt": "2026-10-26T11:03:25.282Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:30.559Z",
+      "finishedAt": "2026-10-26T11:03:30.562Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:30.622Z",
+      "finishedAt": "2026-10-26T11:03:30.625Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:51.970Z",
+      "finishedAt": "2026-10-26T11:03:51.973Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:03:52.111Z",
+      "finishedAt": "2026-10-26T11:03:52.115Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:00.554Z",
+      "finishedAt": "2026-10-26T11:04:00.557Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:00.631Z",
+      "finishedAt": "2026-10-26T11:04:00.634Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:21.978Z",
+      "finishedAt": "2026-10-26T11:04:21.981Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:22.117Z",
+      "finishedAt": "2026-10-26T11:04:22.121Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:30.554Z",
+      "finishedAt": "2026-10-26T11:04:30.557Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:30.619Z",
+      "finishedAt": "2026-10-26T11:04:30.622Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/managed",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:45.194Z",
+      "finishedAt": "2026-10-26T11:04:45.201Z",
+      "imageKey": "image_86d88e33c73584745dbb8acc4d72cef1"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pets/report",
+      "status": 201,
+      "startedAt": "2026-10-26T11:04:45.626Z",
+      "finishedAt": "2026-10-26T11:04:45.649Z",
+      "submissionId": "image_b8098dcfca8a567b76de5a2ffb27daf8"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:49.613Z",
+      "finishedAt": "2026-10-26T11:04:49.622Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:49.612Z",
+      "finishedAt": "2026-10-26T11:04:49.623Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:49.629Z",
+      "finishedAt": "2026-10-26T11:04:49.638Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:49.645Z",
+      "finishedAt": "2026-10-26T11:04:49.653Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:51.982Z",
+      "finishedAt": "2026-10-26T11:04:51.987Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:04:52.105Z",
+      "finishedAt": "2026-10-26T11:04:52.109Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:00.546Z",
+      "finishedAt": "2026-10-26T11:05:00.550Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:00.620Z",
+      "finishedAt": "2026-10-26T11:05:00.624Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:16.163Z",
+      "finishedAt": "2026-10-26T11:05:16.168Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:16.178Z",
+      "finishedAt": "2026-10-26T11:05:16.182Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:16.220Z",
+      "finishedAt": "2026-10-26T11:05:16.224Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:16.234Z",
+      "finishedAt": "2026-10-26T11:05:16.245Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.134Z",
+      "finishedAt": "2026-10-26T11:05:17.200Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.223Z",
+      "finishedAt": "2026-10-26T11:05:17.227Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.241Z",
+      "finishedAt": "2026-10-26T11:05:17.247Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.249Z",
+      "finishedAt": "2026-10-26T11:05:17.256Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.270Z",
+      "finishedAt": "2026-10-26T11:05:17.276Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.269Z",
+      "finishedAt": "2026-10-26T11:05:17.278Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.284Z",
+      "finishedAt": "2026-10-26T11:05:17.290Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.352Z",
+      "finishedAt": "2026-10-26T11:05:17.360Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.359Z",
+      "finishedAt": "2026-10-26T11:05:17.369Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.386Z",
+      "finishedAt": "2026-10-26T11:05:17.394Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.385Z",
+      "finishedAt": "2026-10-26T11:05:17.397Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:17.402Z",
+      "finishedAt": "2026-10-26T11:05:17.408Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:47.225Z",
+      "finishedAt": "2026-10-26T11:05:47.228Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:47.301Z",
+      "finishedAt": "2026-10-26T11:05:47.304Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:47.349Z",
+      "finishedAt": "2026-10-26T11:05:47.352Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:05:47.427Z",
+      "finishedAt": "2026-10-26T11:05:47.430Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:09.637Z",
+      "finishedAt": "2026-10-26T11:06:09.644Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:09.639Z",
+      "finishedAt": "2026-10-26T11:06:09.647Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:09.744Z",
+      "finishedAt": "2026-10-26T11:06:09.747Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:10.856Z",
+      "finishedAt": "2026-10-26T11:06:10.861Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:10.864Z",
+      "finishedAt": "2026-10-26T11:06:10.868Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:10.872Z",
+      "finishedAt": "2026-10-26T11:06:10.875Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:10.879Z",
+      "finishedAt": "2026-10-26T11:06:10.883Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.395Z",
+      "finishedAt": "2026-10-26T11:06:17.460Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.515Z",
+      "finishedAt": "2026-10-26T11:06:17.521Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.517Z",
+      "finishedAt": "2026-10-26T11:06:17.526Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.519Z",
+      "finishedAt": "2026-10-26T11:06:17.527Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.536Z",
+      "finishedAt": "2026-10-26T11:06:17.542Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.540Z",
+      "finishedAt": "2026-10-26T11:06:17.547Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.541Z",
+      "finishedAt": "2026-10-26T11:06:17.548Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.550Z",
+      "finishedAt": "2026-10-26T11:06:17.554Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.559Z",
+      "finishedAt": "2026-10-26T11:06:17.562Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:17.567Z",
+      "finishedAt": "2026-10-26T11:06:17.570Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:20.724Z",
+      "finishedAt": "2026-10-26T11:06:20.731Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:20.725Z",
+      "finishedAt": "2026-10-26T11:06:20.735Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:20.740Z",
+      "finishedAt": "2026-10-26T11:06:20.744Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:21.724Z",
+      "finishedAt": "2026-10-26T11:06:21.727Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:22.044Z",
+      "finishedAt": "2026-10-26T11:06:22.048Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:47.492Z",
+      "finishedAt": "2026-10-26T11:06:47.496Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:47.568Z",
+      "finishedAt": "2026-10-26T11:06:47.572Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:55.362Z",
+      "finishedAt": "2026-10-26T11:06:55.366Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:55.377Z",
+      "finishedAt": "2026-10-26T11:06:55.381Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:56.363Z",
+      "finishedAt": "2026-10-26T11:06:56.438Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:56.477Z",
+      "finishedAt": "2026-10-26T11:06:56.487Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:56.485Z",
+      "finishedAt": "2026-10-26T11:06:56.496Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:56.512Z",
+      "finishedAt": "2026-10-26T11:06:56.518Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:56.513Z",
+      "finishedAt": "2026-10-26T11:06:56.525Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:06:56.543Z",
+      "finishedAt": "2026-10-26T11:06:56.550Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:07:26.481Z",
+      "finishedAt": "2026-10-26T11:07:26.485Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:07:26.573Z",
+      "finishedAt": "2026-10-26T11:07:26.576Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:07:43.601Z",
+      "finishedAt": "2026-10-26T11:07:43.609Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:07:43.603Z",
+      "finishedAt": "2026-10-26T11:07:43.612Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:07:56.475Z",
+      "finishedAt": "2026-10-26T11:07:56.478Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:07:56.567Z",
+      "finishedAt": "2026-10-26T11:07:56.573Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:08.203Z",
+      "finishedAt": "2026-10-26T11:08:08.206Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:08.435Z",
+      "finishedAt": "2026-10-26T11:08:08.441Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:08.453Z",
+      "finishedAt": "2026-10-26T11:08:08.458Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:09.776Z",
+      "finishedAt": "2026-10-26T11:08:09.864Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:09.889Z",
+      "finishedAt": "2026-10-26T11:08:09.896Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:09.892Z",
+      "finishedAt": "2026-10-26T11:08:09.900Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:09.909Z",
+      "finishedAt": "2026-10-26T11:08:09.913Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:09.918Z",
+      "finishedAt": "2026-10-26T11:08:09.922Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:11.249Z",
+      "finishedAt": "2026-10-26T11:08:11.258Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:11.253Z",
+      "finishedAt": "2026-10-26T11:08:11.263Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:11.270Z",
+      "finishedAt": "2026-10-26T11:08:11.275Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:12.251Z",
+      "finishedAt": "2026-10-26T11:08:12.254Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:39.886Z",
+      "finishedAt": "2026-10-26T11:08:39.890Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:39.932Z",
+      "finishedAt": "2026-10-26T11:08:39.935Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:48.963Z",
+      "finishedAt": "2026-10-26T11:08:48.968Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:48.979Z",
+      "finishedAt": "2026-10-26T11:08:48.983Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:49.944Z",
+      "finishedAt": "2026-10-26T11:08:50.018Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:50.045Z",
+      "finishedAt": "2026-10-26T11:08:50.052Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:50.048Z",
+      "finishedAt": "2026-10-26T11:08:50.058Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:50.074Z",
+      "finishedAt": "2026-10-26T11:08:50.080Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf33984c9fc006ad621e46/content",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:50.073Z",
+      "finishedAt": "2026-10-26T11:08:50.082Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:08:50.092Z",
+      "finishedAt": "2026-10-26T11:08:50.096Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:09:20.046Z",
+      "finishedAt": "2026-10-26T11:09:20.049Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:09:20.108Z",
+      "finishedAt": "2026-10-26T11:09:20.110Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:09:50.045Z",
+      "finishedAt": "2026-10-26T11:09:50.048Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:09:50.106Z",
+      "finishedAt": "2026-10-26T11:09:50.109Z"
+    }
+  ],
+  "providerEvents": [
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T11:03:52.078Z",
+      "assetId": "6adf33984c9fc006ad621e46",
+      "key": "image_86d88e33c73584745dbb8acc4d72cef1"
+    },
+    {
+      "event": "upload-finished",
+      "at": "2026-10-26T11:04:22.086Z",
+      "assetId": "6adf33984c9fc006ad621e46"
+    },
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T11:05:14.891Z",
+      "assetId": "6adf33ea4c9fc006ad621e92",
+      "key": "image_8c85cbf8e54389141ab92aa7dd429ac6"
+    },
+    {
+      "event": "upload-finished",
+      "at": "2026-10-26T11:05:44.905Z",
+      "assetId": "6adf33ea4c9fc006ad621e92"
+    },
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T11:06:54.131Z",
+      "assetId": "6adf344e4c9fc006ad621f19",
+      "key": "image_a237d504535d93f138cab50affa4f0d6"
+    },
+    {
+      "event": "upload-finished",
+      "at": "2026-10-26T11:07:24.142Z",
+      "assetId": "6adf344e4c9fc006ad621f19"
+    },
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T11:08:47.727Z",
+      "assetId": "6adf34bf4c9fc006ad621f75",
+      "key": "image_b6c2befb62b3ca79f7ecb248203ff3aa"
+    },
+    {
+      "event": "upload-failed",
+      "at": "2026-10-26T11:09:17.735Z",
+      "assetId": "6adf34bf4c9fc006ad621f75"
+    }
+  ],
+  "cleanupComplete": false,
+  "snapshots": [
+    {
+      "at": "2026-10-26T11:04:30.634Z",
+      "database": "fyp_transactions_browser_0eb769b6fbbc4443aa906aef5ce27f41",
+      "users": [
+        {
+          "_id": "6adf32fd4c9fc006ad621e0c",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf32fd4c9fc006ad621e10",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf32fd4c9fc006ad621e14",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [],
+      "assets": [
+        {
+          "_id": "6adf33984c9fc006ad621e46",
+          "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_86d88e33c73584745dbb8acc4d72cef1",
+          "expiresAt": "2026-10-27T11:03:52.056Z"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/026af700-9fd0-4888-9d88-8f50a67f45e9"
+      ]
+    },
+    {
+      "at": "2026-10-26T11:05:38.963Z",
+      "database": "fyp_transactions_browser_0eb769b6fbbc4443aa906aef5ce27f41",
+      "users": [
+        {
+          "_id": "6adf32fd4c9fc006ad621e0c",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf32fd4c9fc006ad621e10",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf32fd4c9fc006ad621e14",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf33cd4c9fc006ad621e6c",
+          "name": "Cancel Fixed Fixture",
+          "submissionId": "image_b8098dcfca8a567b76de5a2ffb27daf8",
+          "reportedBy": "6adf32fd4c9fc006ad621e0c",
+          "imageIds": [
+            "6adf33984c9fc006ad621e46"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf33984c9fc006ad621e46",
+          "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_86d88e33c73584745dbb8acc4d72cef1",
+          "expiresAt": "2026-10-27T11:03:52.056Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf33cd4c9fc006ad621e6c"
+          }
+        },
+        {
+          "_id": "6adf33ea4c9fc006ad621e92",
+          "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+          "purpose": "pet",
+          "state": "uploading",
+          "idempotencyKey": "image_8c85cbf8e54389141ab92aa7dd429ac6",
+          "expiresAt": "2026-10-27T11:05:14.874Z"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/026af700-9fd0-4888-9d88-8f50a67f45e9"
+      ]
+    },
+    {
+      "at": "2026-10-26T11:06:43.717Z",
+      "database": "fyp_transactions_browser_0eb769b6fbbc4443aa906aef5ce27f41",
+      "users": [
+        {
+          "_id": "6adf32fd4c9fc006ad621e0c",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf32fd4c9fc006ad621e10",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf32fd4c9fc006ad621e14",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf33cd4c9fc006ad621e6c",
+          "name": "Cancel Fixed Fixture",
+          "submissionId": "image_b8098dcfca8a567b76de5a2ffb27daf8",
+          "reportedBy": "6adf32fd4c9fc006ad621e0c",
+          "imageIds": [
+            "6adf33984c9fc006ad621e46"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf33984c9fc006ad621e46",
+          "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_86d88e33c73584745dbb8acc4d72cef1",
+          "expiresAt": "2026-10-27T11:03:52.056Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf33cd4c9fc006ad621e6c"
+          }
+        },
+        {
+          "_id": "6adf33ea4c9fc006ad621e92",
+          "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_8c85cbf8e54389141ab92aa7dd429ac6",
+          "expiresAt": "2026-10-27T11:05:14.874Z"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/026af700-9fd0-4888-9d88-8f50a67f45e9",
+        "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/4fea1b1d-d67f-4f62-bc1c-3f8735a6ac52"
+      ]
+    },
+    {
+      "at": "2026-10-26T11:08:26.667Z",
+      "database": "fyp_transactions_browser_0eb769b6fbbc4443aa906aef5ce27f41",
+      "users": [
+        {
+          "_id": "6adf32fd4c9fc006ad621e0c",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf32fd4c9fc006ad621e10",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf32fd4c9fc006ad621e14",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf33cd4c9fc006ad621e6c",
+          "name": "Cancel Fixed Fixture",
+          "submissionId": "image_b8098dcfca8a567b76de5a2ffb27daf8",
+          "reportedBy": "6adf32fd4c9fc006ad621e0c",
+          "imageIds": [
+            "6adf33984c9fc006ad621e46"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf33984c9fc006ad621e46",
+          "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_86d88e33c73584745dbb8acc4d72cef1",
+          "expiresAt": "2026-10-27T11:03:52.056Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf33cd4c9fc006ad621e6c"
+          }
+        },
+        {
+          "_id": "6adf33ea4c9fc006ad621e92",
+          "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_8c85cbf8e54389141ab92aa7dd429ac6",
+          "expiresAt": "2026-10-27T11:05:14.874Z"
+        },
+        {
+          "_id": "6adf344e4c9fc006ad621f19",
+          "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_a237d504535d93f138cab50affa4f0d6",
+          "expiresAt": "2026-10-27T11:06:54.114Z"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/026af700-9fd0-4888-9d88-8f50a67f45e9",
+        "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/4fea1b1d-d67f-4f62-bc1c-3f8735a6ac52",
+        "petlostapp/test/0eb769b6fbbc4443aa906aef5ce27f41/pet/eae2d9e3-515a-4251-8218-8e7772ce7032"
+      ]
+    }
+  ]
+}

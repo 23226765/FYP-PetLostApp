@@ -1,5 +1,88 @@
 # PetLostApp — original 22-finding audit checklist
 
+## Completed targeted upload browser checks — 26 October 2026
+
+This entry supersedes the earlier pending status for active-upload cancellation and controlled provider-failure/retry. All previously completed browser results, including happy-path uploads for all five image categories, remain preserved. Detailed new evidence: `verification/browser-integration-2026-10-26/73ce3fb9e2f84728beac5d9e1de6bfd5/BROWSER_RESULTS.md`, `ledger.json` and read-only `verify-ledger.mjs`.
+
+### Actual browser results
+
+| Scenario | Result and evidence |
+| --- | --- |
+| URL and isolation | Supported Windows controls confirmed the existing Example Domain tab and navigated that same tab to `http://127.0.0.1:4179/login`. The loaded document URL and independent HTTP 200 health matched. Database was `fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5`, readyState 1. Windows screenshot capture subsequently timed out; a supported Chrome-extension connection independently confirmed the same app tab/URL and performed the UI checks with its own policy checks active. No URL check was bypassed. |
+| Active cancellation | Passed. At 99% during a 30-second provider delay, Cancel preserved all entered form values, selected image and confirmed coordinates. No pet or attachment was created. The late provider result became an owner-bound pending reservation with expiry metadata, rather than silently submitting content. |
+| Cancelled-upload retry | Passed. Retry upload returned HTTP 200 with the same key/asset, without another provider upload. A later explicit Post created one pet with one attached image; no automatic submission or duplicate object occurred. |
+| Provider failure | Passed. A one-shot failure at the storage adapter returned HTTP 503 and useful localized feedback. The draft remained intact. The failed reservation was recorded as deleted with its failure code, and previous successful content was unchanged. |
+| Failure retry | Passed. Retry upload followed by explicit Post created one additional pet and one attachment. A fresh upload key after a definitive terminal failure is intentional. The ledger contains exactly two successful content submissions, two unique content submission IDs and two distinct attached assets. No uncertain final-content-response retry was simulated. |
+| Logout and replacement account | Passed for the same-tab navigation/unmount path. In the decisive attempt, owner upload started at 10:48:35.925Z, reporter login completed at 10:48:43.461Z, and old provider work finished at 10:49:05.930Z: 22.469 seconds after replacement login. Reporter profile showed zero owned reports. Before and after late completion, the reporter form had no old image, draft, success or error; only its own contact name was populated. Database snapshots retained the old assets under their original uploader and created no replacement-account content. Reporter was logged out afterward. |
+
+The first account-switch attempt did not achieve the required ordering because a context interruption delayed replacement login until after provider completion. It is retained as logout/unmount evidence only. One focused repeat supplied the ordering above; no unsuccessful attempt was relabelled as passing.
+
+### Defects and remaining limits
+
+- New low-severity UX issue **BROW-UP-01**: intentional Cancel displays both the useful cancellation/retry message and a redundant generic posting-failure message. Reproduce by selecting an image in Report, submitting while the mock provider is delayed, then clicking Cancel at 99%. Data and retry behavior are correct; no fix was applied.
+- Known email-placeholder i18n compilation errors and the camera PWA-element diagnostic recurred. Web file-selection fallback worked. These are existing observations from the earlier browser report, not new upload-data failures.
+- Screenshots were captured inline in the supported browser-tool transcript. The report records capture titles; no exported screenshot files or invented screenshot links are claimed.
+- This run used real UI, controllers, authentication, Sharp and local MongoDB; Cloudinary was an in-memory adapter. It does not verify actual provider deletion, browser-offline recovery, cross-tab switching, a still-mounted previous-account form or a successful obsolete HTTP response delivered after replacement. Navigation abort was part of the browser protection exercised.
+- Abandoned provider work intentionally remains pending, unattached and recoverable until retry/expiry/reconciliation. Snapshots verified ownership and expiry metadata, not a 24-hour elapsed-time cleanup. Migration and application bulk cleanup stayed disabled. Exact test teardown is separate from application reconciliation.
+- Content IDs were observed on the two successful final POSTs; identity before any content request is not exposed by the UI. Same upload identity across cancellation/retry and absence of duplicate content were directly measured. Existing isolated concurrency coverage is not presented as additional browser evidence.
+
+### Teardown and verification
+
+Read-only ledger assertions passed for identity reuse, failure compensation, unique content/attachments, actual replacement-login ordering and cleanup. Exact teardown removed **3 synthetic users, 2 pets, 5 media-asset records and 1 upload-budget record**; every application collection in the dedicated database was asserted empty. All **4 exact mock provider objects** were confirmed absent. Harness exited 0, its owned replica set stopped, and the isolated frontend/API became unreachable. `cleanupComplete: true` is recorded in the ledger.
+
+Only verification harness instrumentation, evidence artifacts and this checklist changed. No application functionality, runtime environment file, existing Atlas record, real provider asset, original image, dependency or routing configuration changed. Syntax and diff checks passed; no seed, migration, live provider operation, commit or push occurred. Broad application suites were not rerun because application source did not change; their earlier results remain separately dated above/below.
+
+Final secret audit: 335 worktree files and 309 index files scanned, zero findings; only exact reviewed fictional redaction-test fixture values were excepted. Git comparison confirmed no tracked application/configuration/package changes. Current Git scope is this modified checklist plus untracked verification harness/recovery scripts and evidence artifacts; no staged changes or deletions.
+
+### 26 October URL-check retry
+
+Supported `sky.get_window_state` successfully identified Chrome's active page at the MongoDB Cloud origin, rather than the stated example.com page. No Atlas controls were used. A fresh isolated harness started at `http://127.0.0.1:4179`; independent health returned HTTP 200, readyState 1, database `fyp_transactions_browser_bf65c2de12d54808b25ee2621c3ad2a1`.
+
+Opening a dedicated test tab with Ctrl+T then caused Computer Use to stop because it could not confidently determine the current browser URL. No URL-policy check was bypassed, and no application navigation or upload submission followed. Active-upload cancellation and failure/retry remain pending. Previously completed browser results are unchanged. The harness was stopped immediately; exact cleanup evidence is in `verification/browser-integration-2026-10-26/bf65c2de12d54808b25ee2621c3ad2a1/ledger.json`. No application functionality, Atlas data, real provider objects or runtime environment files changed.
+
+## Browser continuation — 26 October 2026
+
+The completed 23 October browser results supersede the historical blocked-attempt notes below. Actual Chrome journeys and findings are recorded in `verification/browser-integration-2026-10-23/fda05496cacf470aad07dd8fca089c24/BROWSER_RESULTS.md`; the supplemental report under `369cb2508a6a4bb8b5aa63794b8c7b09` confirms pet and sighting image uploads. Together those runs cover successful browser upload/attachment/display for all five categories. Both ledgers record exact fixture teardown and `cleanupComplete: true`.
+
+Confirmed browser findings remain open: privacy save resetting the selected theme; Hong Kong rescue observation time shifted eight hours; report phone unavailable when account phone is empty; reunited Radar cards retaining missing/Found it presentation; missing-distance text; untranslated moderation enums; broken empty chat-avatar fallbacks; and email-placeholder i18n compilation diagnostics. The reports preserve reproductions, evidence boundaries and suspected issues separately. No application fixes were applied during verification. Original audit numbering and narrowly scoped automated statuses below are retained; they do not resolve these additional browser findings.
+
+On 26 October, the direct Computer Use runtime initialized and found Chrome. Its first window-state request then stopped automation: it could not determine the current browser URL confidently enough to enforce policy. No browser actions or submissions occurred in this new run. The new harness reached connected state in disposable local database `fyp_transactions_browser_72ce86397b914e568462370e741459dc`, with in-memory provider storage. It was stopped immediately; process exit 0 and `CLEANUP_VERIFIED` confirmed exact fixture deletion, mock-object absence and replica shutdown. Ledger: `verification/browser-integration-2026-10-26/72ce86397b914e568462370e741459dc/ledger.json`.
+
+Remaining browser gaps include provider-failure/retry, cancellation during an active upload, simultaneous browser profiles, GPS denial and comprehensive keyboard/layout coverage. Verification-only harness controls were added for a single mock-provider failure and bounded upload delay; neither was exercised because browser automation stopped. Application source, environment files, Atlas data and real provider assets were unchanged. No commit or push.
+
+## Browser-connected continuation — interrupted during preparation
+
+Chrome connectivity was subsequently confirmed by the supported child browser tool: a blank `about:blank` tab opened successfully. This supersedes the earlier no-connected-surface inventory, but is not application verification.
+
+The browser-capable specialist then hit a runtime usage limit while preparing `server/scripts/browserVerificationHarness.js`. The draft passed `node --check`, but was not started or runtime-validated: no run ledger or fixture image artifacts exist and no local mongod process was present at the interruption check. No browser application submissions occurred. All requested end-to-end journeys remain **untested** in this continuation; no application defect was confirmed.
+
+The parent session has no browser-control tool. Resume after the browser-capable runtime is available, review and validate the draft's isolation/teardown first, confirm its disposable database through health, and only then begin browser submissions. No fixture teardown was required because this harness had not run. The draft does not change application functionality; existing environments, Atlas records and provider assets were untouched. No commit or push.
+
+## Controlled browser verification attempt — 23 October 2026
+
+**Browser execution blocked; independent verification passed.** Parent tool inventory exposes no browser-control or node_repl runtime. The Computer Use skill requires that runtime and was read before concluding it was unavailable. The focused architect child exposed a supported browser inventory tool and actually called `cua.getState()`: result `{"apps":[],"browsers":[]}`. No connected surface exists; no browser journey, screenshot, desktop/mobile viewport, native keyboard focus, dialog overlap or visual theme/language result is claimed.
+
+Smallest setup: enable/connect a supported browser surface in the Codex session, then verify it appears in inventory. Opening or installing Chrome alone does not establish that connection. Once connected, use an isolated frontend/backend harness and disposable local database, not the normal Atlas-backed development server. No persistent browser fixture server was started during this blocked attempt.
+
+| Independent check | Actual result / boundary |
+| --- | --- |
+| Normal `npm test` in server | 295 passed, 0 failed, 6 opt-in skips; one normal parallel run, no retry. Complete TAP diagnostics retained in `verification/browser-integration-2026-10-23/backend.tap`. Earlier intermittent failure did not recur and remains unexplained. |
+| `npm run test:frontend -- --maxWorkers=1` | 403 passed across 37 jsdom files. Component/API mocks are not frontend-to-backend browser integration. |
+| `npm --prefix server run test:transactions` | 42 passed, no skips; actual MongoDB 8.0.17, local replica set `fyp_transactions_dba6cd739b274661b072f50433387a8f`. Exact tracked fixture teardown confirmed in all suites, followed by owned replica-set shutdown. Provider mocked; no Atlas/provider operations. |
+| TypeScript / ESLint | Both passed. Application functionality was not changed. |
+
+Journey evidence and remaining gaps:
+
+- Authentication/account switching: existing cancellation, API-attribution, preferences and saved-state regressions passed; actual browser cookie/storage scheduling and end-to-end login/logout remain pending.
+- Pet reporting/location/sightings/reunion: component and real local transaction coverage passed. `PostPetImages` mocks API, GPS and Leaflet; it cannot establish actual map interaction or browser geolocation prompts.
+- Rescue/comments/saves/management: mounted component tests plus local Mongo authorization, pagination, retry and edit-conflict tests passed. Full browser navigation and control usability remain pending.
+- Messaging/unread/notifications: component notification navigation and unread tests passed, with real Mongo read-acknowledgment/concurrency coverage. `MessagingState` mocks API and visual children; no browser conversation sequence was exercised.
+- Images: selection/retry/cancellation/blob-display component tests and real attachment/rollback database suites passed. Actual browser multipart transport, image rendering and adapter-backed end-to-end delivery remain pending.
+- Privacy/moderation: existing HTTP/controller policy and component evidence tests passed, with mocked model/provider boundaries in those tests. This is not a live browser moderation/privacy journey.
+- Themes/locales/accessibility: all-three-locale component tests and CSS-token contrast tests passed as part of the suite. `ThemeContrast` calculates token contrast, not rendered screenshots. Real mobile/desktop layout, focus order, dialog geometry, loading transitions and overlap checks remain unverified.
+
+No new application defect was confirmed by this attempt. No application source, runtime configuration, environment file, existing record, upload or provider asset changed. Only this checklist and the diagnostic artifact were added/updated. No seeds, migrations, live cleanup, commit or push. New feature development remains paused. Browser sign-off is withheld.
+
 Updated: 23 October 2026 (Hong Kong). New feature development remains paused.
 
 Source: the user-supplied original audit attachment, `abcbef8d-3ff5-40cd-9e47-8efa4b448d04/Pasted text.txt`, whose baseline was commit `5ad3276`. Numbers, titles, severities and meanings below preserve that audit. This is a repair-status record, not a replacement audit or public-release sign-off.

@@ -1,0 +1,1434 @@
+{
+  "run": "73ce3fb9e2f84728beac5d9e1de6bfd5",
+  "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+  "provider": "in-memory mock",
+  "records": {
+    "mediaassets": [
+      "6adf2e1ea744fbde2b518c4c",
+      "6adf2e9aa744fbde2b518c95",
+      "6adf2ec2a744fbde2b518cb1",
+      "6adf2ee8a744fbde2b518ce2",
+      "6adf3003a744fbde2b518d5f"
+    ],
+    "savedstrays": [],
+    "sightings": [],
+    "contentreports": [],
+    "pets": [
+      "6adf2e67a744fbde2b518c72",
+      "6adf2ec3a744fbde2b518cbc"
+    ],
+    "notifications": [],
+    "messages": [],
+    "mediauploadbudgets": [
+      "6adf2e1ebbb7f1b42fb5c3b8"
+    ],
+    "straycomments": [],
+    "userblocks": [],
+    "strays": [],
+    "users": [
+      "6adf2d47a744fbde2b518c29",
+      "6adf2d47a744fbde2b518c2d",
+      "6adf2d47a744fbde2b518c31"
+    ]
+  },
+  "objects": [
+    {
+      "publicId": "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/046168a5-d9a6-4861-9c02-6241684a81b5",
+      "assetId": "6adf2e1ea744fbde2b518c4c",
+      "absentConfirmed": true
+    },
+    {
+      "publicId": "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/a63b3211-1e5c-4d1b-9b09-b6ef557b2ec4",
+      "assetId": "6adf2ec2a744fbde2b518cb1",
+      "absentConfirmed": true
+    },
+    {
+      "publicId": "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/c628cd44-58db-44df-a4cc-d30c8e9b56f0",
+      "assetId": "6adf2ee8a744fbde2b518ce2",
+      "absentConfirmed": true
+    },
+    {
+      "publicId": "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/90ab7022-0097-4fc4-a9b3-d37662b2f9e8",
+      "assetId": "6adf3003a744fbde2b518d5f",
+      "absentConfirmed": true
+    }
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-26T10:36:55.672Z",
+      "finishedAt": "2026-10-26T10:36:55.771Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-26T10:36:55.784Z",
+      "finishedAt": "2026-10-26T10:36:55.854Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-26T10:36:55.860Z",
+      "finishedAt": "2026-10-26T10:36:55.928Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-26T10:36:56.246Z",
+      "finishedAt": "2026-10-26T10:36:56.247Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-26T10:37:12.974Z",
+      "finishedAt": "2026-10-26T10:37:12.974Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401,
+      "startedAt": "2026-10-26T10:37:25.214Z",
+      "finishedAt": "2026-10-26T10:37:25.216Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:37:30.405Z",
+      "finishedAt": "2026-10-26T10:37:30.412Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T10:39:35.588Z",
+      "finishedAt": "2026-10-26T10:39:35.662Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:39:35.693Z",
+      "finishedAt": "2026-10-26T10:39:35.705Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:39:35.697Z",
+      "finishedAt": "2026-10-26T10:39:35.710Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T10:39:35.718Z",
+      "finishedAt": "2026-10-26T10:39:35.725Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:39:35.729Z",
+      "finishedAt": "2026-10-26T10:39:35.734Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:40:05.692Z",
+      "finishedAt": "2026-10-26T10:40:05.696Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:40:05.754Z",
+      "finishedAt": "2026-10-26T10:40:05.758Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:40:35.700Z",
+      "finishedAt": "2026-10-26T10:40:35.704Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:40:35.747Z",
+      "finishedAt": "2026-10-26T10:40:35.752Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:05.690Z",
+      "finishedAt": "2026-10-26T10:41:05.693Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:05.753Z",
+      "finishedAt": "2026-10-26T10:41:05.756Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/managed",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:32.504Z",
+      "finishedAt": "2026-10-26T10:41:32.511Z",
+      "imageKey": "image_26b21dc0d6c9a58ae20098a7dff8b893"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:35.687Z",
+      "finishedAt": "2026-10-26T10:41:35.691Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:35.749Z",
+      "finishedAt": "2026-10-26T10:41:35.753Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pets/report",
+      "status": 201,
+      "startedAt": "2026-10-26T10:41:43.923Z",
+      "finishedAt": "2026-10-26T10:41:43.945Z",
+      "submissionId": "image_9f5ead0f5803533c4f13ea04e301b0fc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:52.093Z",
+      "finishedAt": "2026-10-26T10:41:52.100Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:52.095Z",
+      "finishedAt": "2026-10-26T10:41:52.108Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:52.116Z",
+      "finishedAt": "2026-10-26T10:41:52.124Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:41:52.131Z",
+      "finishedAt": "2026-10-26T10:41:52.142Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:42:05.697Z",
+      "finishedAt": "2026-10-26T10:42:05.702Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:42:05.743Z",
+      "finishedAt": "2026-10-26T10:42:05.746Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/managed",
+      "status": 503,
+      "startedAt": "2026-10-26T10:42:34.068Z",
+      "finishedAt": "2026-10-26T10:42:34.103Z",
+      "imageKey": "image_6dae0b0b085a048d8ed97d5e5446106e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:42:35.688Z",
+      "finishedAt": "2026-10-26T10:42:35.692Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:42:35.739Z",
+      "finishedAt": "2026-10-26T10:42:35.742Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:05.696Z",
+      "finishedAt": "2026-10-26T10:43:05.700Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:05.743Z",
+      "finishedAt": "2026-10-26T10:43:05.746Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/managed",
+      "status": 201,
+      "startedAt": "2026-10-26T10:43:14.887Z",
+      "finishedAt": "2026-10-26T10:43:14.917Z",
+      "imageKey": "image_1951b87f9c0aa2f3b5602f8a43a4ab00"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pets/report",
+      "status": 201,
+      "startedAt": "2026-10-26T10:43:15.101Z",
+      "finishedAt": "2026-10-26T10:43:15.117Z",
+      "submissionId": "image_8139ec77ecd6884149644605731f4e38"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:15.313Z",
+      "finishedAt": "2026-10-26T10:43:15.323Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:15.315Z",
+      "finishedAt": "2026-10-26T10:43:15.327Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:15.332Z",
+      "finishedAt": "2026-10-26T10:43:15.341Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:15.348Z",
+      "finishedAt": "2026-10-26T10:43:15.354Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:15.349Z",
+      "finishedAt": "2026-10-26T10:43:15.356Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:35.689Z",
+      "finishedAt": "2026-10-26T10:43:35.694Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:35.752Z",
+      "finishedAt": "2026-10-26T10:43:35.755Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:52.513Z",
+      "finishedAt": "2026-10-26T10:43:52.521Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:52.523Z",
+      "finishedAt": "2026-10-26T10:43:52.533Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:52.547Z",
+      "finishedAt": "2026-10-26T10:43:52.556Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:52.549Z",
+      "finishedAt": "2026-10-26T10:43:52.558Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:52.742Z",
+      "finishedAt": "2026-10-26T10:43:52.746Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:55.973Z",
+      "finishedAt": "2026-10-26T10:43:55.979Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:55.997Z",
+      "finishedAt": "2026-10-26T10:43:56.003Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:43:55.998Z",
+      "finishedAt": "2026-10-26T10:43:56.006Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T10:45:50.241Z",
+      "finishedAt": "2026-10-26T10:45:50.307Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:45:50.341Z",
+      "finishedAt": "2026-10-26T10:45:50.348Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:45:50.345Z",
+      "finishedAt": "2026-10-26T10:45:50.353Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T10:45:50.368Z",
+      "finishedAt": "2026-10-26T10:45:50.373Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:45:50.366Z",
+      "finishedAt": "2026-10-26T10:45:50.375Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:45:50.368Z",
+      "finishedAt": "2026-10-26T10:45:50.378Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:45:50.382Z",
+      "finishedAt": "2026-10-26T10:45:50.386Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:46:04.249Z",
+      "finishedAt": "2026-10-26T10:46:04.258Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:46:04.250Z",
+      "finishedAt": "2026-10-26T10:46:04.261Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:46:20.338Z",
+      "finishedAt": "2026-10-26T10:46:20.342Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:46:20.401Z",
+      "finishedAt": "2026-10-26T10:46:20.404Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:46:50.334Z",
+      "finishedAt": "2026-10-26T10:46:50.338Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:46:50.395Z",
+      "finishedAt": "2026-10-26T10:46:50.398Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:20.334Z",
+      "finishedAt": "2026-10-26T10:47:20.337Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:20.396Z",
+      "finishedAt": "2026-10-26T10:47:20.399Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:29.413Z",
+      "finishedAt": "2026-10-26T10:47:29.414Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:49.697Z",
+      "finishedAt": "2026-10-26T10:47:49.707Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:49.702Z",
+      "finishedAt": "2026-10-26T10:47:49.711Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:49.890Z",
+      "finishedAt": "2026-10-26T10:47:49.892Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:50.333Z",
+      "finishedAt": "2026-10-26T10:47:50.336Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:50.392Z",
+      "finishedAt": "2026-10-26T10:47:50.395Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:56.730Z",
+      "finishedAt": "2026-10-26T10:47:56.734Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:56.746Z",
+      "finishedAt": "2026-10-26T10:47:56.750Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:47:56.747Z",
+      "finishedAt": "2026-10-26T10:47:56.753Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:00.386Z",
+      "finishedAt": "2026-10-26T10:48:00.468Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:00.493Z",
+      "finishedAt": "2026-10-26T10:48:00.500Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:00.498Z",
+      "finishedAt": "2026-10-26T10:48:00.504Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:00.514Z",
+      "finishedAt": "2026-10-26T10:48:00.517Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:00.522Z",
+      "finishedAt": "2026-10-26T10:48:00.526Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:30.503Z",
+      "finishedAt": "2026-10-26T10:48:30.506Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:30.533Z",
+      "finishedAt": "2026-10-26T10:48:30.536Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:36.379Z",
+      "finishedAt": "2026-10-26T10:48:36.388Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:36.381Z",
+      "finishedAt": "2026-10-26T10:48:36.391Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:36.400Z",
+      "finishedAt": "2026-10-26T10:48:36.407Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:36.401Z",
+      "finishedAt": "2026-10-26T10:48:36.409Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:36.576Z",
+      "finishedAt": "2026-10-26T10:48:36.580Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:40.010Z",
+      "finishedAt": "2026-10-26T10:48:40.013Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:40.026Z",
+      "finishedAt": "2026-10-26T10:48:40.030Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:40.027Z",
+      "finishedAt": "2026-10-26T10:48:40.032Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:43.390Z",
+      "finishedAt": "2026-10-26T10:48:43.461Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:43.494Z",
+      "finishedAt": "2026-10-26T10:48:43.503Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:43.498Z",
+      "finishedAt": "2026-10-26T10:48:43.508Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:43.525Z",
+      "finishedAt": "2026-10-26T10:48:43.530Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:43.523Z",
+      "finishedAt": "2026-10-26T10:48:43.532Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:43.524Z",
+      "finishedAt": "2026-10-26T10:48:43.534Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:43.539Z",
+      "finishedAt": "2026-10-26T10:48:43.544Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:46.734Z",
+      "finishedAt": "2026-10-26T10:48:46.744Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:48:46.738Z",
+      "finishedAt": "2026-10-26T10:48:46.748Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:13.487Z",
+      "finishedAt": "2026-10-26T10:49:13.490Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:13.563Z",
+      "finishedAt": "2026-10-26T10:49:13.565Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:43.496Z",
+      "finishedAt": "2026-10-26T10:49:43.499Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:43.559Z",
+      "finishedAt": "2026-10-26T10:49:43.562Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:49.579Z",
+      "finishedAt": "2026-10-26T10:49:49.586Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:49.580Z",
+      "finishedAt": "2026-10-26T10:49:49.589Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:52.752Z",
+      "finishedAt": "2026-10-26T10:49:52.755Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:55.969Z",
+      "finishedAt": "2026-10-26T10:49:55.973Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2ec2a744fbde2b518cb1/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:55.986Z",
+      "finishedAt": "2026-10-26T10:49:55.990Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adf2e1ea744fbde2b518c4c/content",
+      "status": 200,
+      "startedAt": "2026-10-26T10:49:55.986Z",
+      "finishedAt": "2026-10-26T10:49:55.993Z"
+    }
+  ],
+  "providerEvents": [
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T10:40:30.220Z",
+      "assetId": "6adf2e1ea744fbde2b518c4c",
+      "key": "image_26b21dc0d6c9a58ae20098a7dff8b893"
+    },
+    {
+      "event": "upload-finished",
+      "at": "2026-10-26T10:41:00.237Z",
+      "assetId": "6adf2e1ea744fbde2b518c4c"
+    },
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T10:42:34.092Z",
+      "assetId": "6adf2e9aa744fbde2b518c95",
+      "key": "image_6dae0b0b085a048d8ed97d5e5446106e"
+    },
+    {
+      "event": "upload-failed",
+      "at": "2026-10-26T10:42:34.092Z",
+      "assetId": "6adf2e9aa744fbde2b518c95"
+    },
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T10:43:14.910Z",
+      "assetId": "6adf2ec2a744fbde2b518cb1",
+      "key": "image_1951b87f9c0aa2f3b5602f8a43a4ab00"
+    },
+    {
+      "event": "upload-finished",
+      "at": "2026-10-26T10:43:14.912Z",
+      "assetId": "6adf2ec2a744fbde2b518cb1"
+    },
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T10:43:52.063Z",
+      "assetId": "6adf2ee8a744fbde2b518ce2",
+      "key": "image_b61a2259cf4126ebeaae0f880ab4e082"
+    },
+    {
+      "event": "upload-finished",
+      "at": "2026-10-26T10:44:22.072Z",
+      "assetId": "6adf2ee8a744fbde2b518ce2"
+    },
+    {
+      "event": "upload-start",
+      "at": "2026-10-26T10:48:35.925Z",
+      "assetId": "6adf3003a744fbde2b518d5f",
+      "key": "image_a39ad3ee70e5e7f6d38785891a643dc0"
+    },
+    {
+      "event": "upload-finished",
+      "at": "2026-10-26T10:49:05.930Z",
+      "assetId": "6adf3003a744fbde2b518d5f"
+    }
+  ],
+  "cleanupComplete": true,
+  "snapshots": [
+    {
+      "at": "2026-10-26T10:39:16.818Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [],
+      "assets": [],
+      "mockObjects": []
+    },
+    {
+      "at": "2026-10-26T10:40:53.173Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [],
+      "assets": [
+        {
+          "_id": "6adf2e1ea744fbde2b518c4c",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "uploading",
+          "idempotencyKey": "image_26b21dc0d6c9a58ae20098a7dff8b893",
+          "expiresAt": "2026-10-27T10:40:30.196Z"
+        }
+      ],
+      "mockObjects": []
+    },
+    {
+      "at": "2026-10-26T10:41:17.820Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [],
+      "assets": [
+        {
+          "_id": "6adf2e1ea744fbde2b518c4c",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_26b21dc0d6c9a58ae20098a7dff8b893",
+          "expiresAt": "2026-10-27T10:40:30.196Z"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/046168a5-d9a6-4861-9c02-6241684a81b5"
+      ]
+    },
+    {
+      "at": "2026-10-26T10:42:11.523Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf2e67a744fbde2b518c72",
+          "name": "Active Cancel Fixture",
+          "submissionId": "image_9f5ead0f5803533c4f13ea04e301b0fc",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2e1ea744fbde2b518c4c"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf2e1ea744fbde2b518c4c",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_26b21dc0d6c9a58ae20098a7dff8b893",
+          "expiresAt": "2026-10-27T10:40:30.196Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2e67a744fbde2b518c72"
+          }
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/046168a5-d9a6-4861-9c02-6241684a81b5"
+      ]
+    },
+    {
+      "at": "2026-10-26T10:42:59.911Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf2e67a744fbde2b518c72",
+          "name": "Active Cancel Fixture",
+          "submissionId": "image_9f5ead0f5803533c4f13ea04e301b0fc",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2e1ea744fbde2b518c4c"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf2e1ea744fbde2b518c4c",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_26b21dc0d6c9a58ae20098a7dff8b893",
+          "expiresAt": "2026-10-27T10:40:30.196Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2e67a744fbde2b518c72"
+          }
+        },
+        {
+          "_id": "6adf2e9aa744fbde2b518c95",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_6dae0b0b085a048d8ed97d5e5446106e",
+          "expiresAt": "2026-10-27T10:42:34.073Z",
+          "failureCode": "IMAGE_STORAGE_UNAVAILABLE"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/046168a5-d9a6-4861-9c02-6241684a81b5"
+      ]
+    },
+    {
+      "at": "2026-10-26T10:43:38.973Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf2e67a744fbde2b518c72",
+          "name": "Active Cancel Fixture",
+          "submissionId": "image_9f5ead0f5803533c4f13ea04e301b0fc",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2e1ea744fbde2b518c4c"
+          ]
+        },
+        {
+          "_id": "6adf2ec3a744fbde2b518cbc",
+          "name": "Provider Retry Fixture",
+          "submissionId": "image_8139ec77ecd6884149644605731f4e38",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2ec2a744fbde2b518cb1"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf2e1ea744fbde2b518c4c",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_26b21dc0d6c9a58ae20098a7dff8b893",
+          "expiresAt": "2026-10-27T10:40:30.196Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2e67a744fbde2b518c72"
+          }
+        },
+        {
+          "_id": "6adf2e9aa744fbde2b518c95",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_6dae0b0b085a048d8ed97d5e5446106e",
+          "expiresAt": "2026-10-27T10:42:34.073Z",
+          "failureCode": "IMAGE_STORAGE_UNAVAILABLE"
+        },
+        {
+          "_id": "6adf2ec2a744fbde2b518cb1",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_1951b87f9c0aa2f3b5602f8a43a4ab00",
+          "expiresAt": "2026-10-27T10:43:14.893Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2ec3a744fbde2b518cbc"
+          }
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/046168a5-d9a6-4861-9c02-6241684a81b5",
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/a63b3211-1e5c-4d1b-9b09-b6ef557b2ec4"
+      ]
+    },
+    {
+      "at": "2026-10-26T10:44:22.715Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf2e67a744fbde2b518c72",
+          "name": "Active Cancel Fixture",
+          "submissionId": "image_9f5ead0f5803533c4f13ea04e301b0fc",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2e1ea744fbde2b518c4c"
+          ]
+        },
+        {
+          "_id": "6adf2ec3a744fbde2b518cbc",
+          "name": "Provider Retry Fixture",
+          "submissionId": "image_8139ec77ecd6884149644605731f4e38",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2ec2a744fbde2b518cb1"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf2e1ea744fbde2b518c4c",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_26b21dc0d6c9a58ae20098a7dff8b893",
+          "expiresAt": "2026-10-27T10:40:30.196Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2e67a744fbde2b518c72"
+          }
+        },
+        {
+          "_id": "6adf2e9aa744fbde2b518c95",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_6dae0b0b085a048d8ed97d5e5446106e",
+          "expiresAt": "2026-10-27T10:42:34.073Z",
+          "failureCode": "IMAGE_STORAGE_UNAVAILABLE"
+        },
+        {
+          "_id": "6adf2ec2a744fbde2b518cb1",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_1951b87f9c0aa2f3b5602f8a43a4ab00",
+          "expiresAt": "2026-10-27T10:43:14.893Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2ec3a744fbde2b518cbc"
+          }
+        },
+        {
+          "_id": "6adf2ee8a744fbde2b518ce2",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_b61a2259cf4126ebeaae0f880ab4e082",
+          "expiresAt": "2026-10-27T10:43:52.044Z"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/046168a5-d9a6-4861-9c02-6241684a81b5",
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/a63b3211-1e5c-4d1b-9b09-b6ef557b2ec4",
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/c628cd44-58db-44df-a4cc-d30c8e9b56f0"
+      ]
+    },
+    {
+      "at": "2026-10-26T10:48:22.019Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf2e67a744fbde2b518c72",
+          "name": "Active Cancel Fixture",
+          "submissionId": "image_9f5ead0f5803533c4f13ea04e301b0fc",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2e1ea744fbde2b518c4c"
+          ]
+        },
+        {
+          "_id": "6adf2ec3a744fbde2b518cbc",
+          "name": "Provider Retry Fixture",
+          "submissionId": "image_8139ec77ecd6884149644605731f4e38",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2ec2a744fbde2b518cb1"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf2e1ea744fbde2b518c4c",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_26b21dc0d6c9a58ae20098a7dff8b893",
+          "expiresAt": "2026-10-27T10:40:30.196Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2e67a744fbde2b518c72"
+          }
+        },
+        {
+          "_id": "6adf2e9aa744fbde2b518c95",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_6dae0b0b085a048d8ed97d5e5446106e",
+          "expiresAt": "2026-10-27T10:42:34.073Z",
+          "failureCode": "IMAGE_STORAGE_UNAVAILABLE"
+        },
+        {
+          "_id": "6adf2ec2a744fbde2b518cb1",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_1951b87f9c0aa2f3b5602f8a43a4ab00",
+          "expiresAt": "2026-10-27T10:43:14.893Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2ec3a744fbde2b518cbc"
+          }
+        },
+        {
+          "_id": "6adf2ee8a744fbde2b518ce2",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_b61a2259cf4126ebeaae0f880ab4e082",
+          "expiresAt": "2026-10-27T10:43:52.044Z"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/046168a5-d9a6-4861-9c02-6241684a81b5",
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/a63b3211-1e5c-4d1b-9b09-b6ef557b2ec4",
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/c628cd44-58db-44df-a4cc-d30c8e9b56f0"
+      ]
+    },
+    {
+      "at": "2026-10-26T10:49:28.613Z",
+      "database": "fyp_transactions_browser_73ce3fb9e2f84728beac5d9e1de6bfd5",
+      "users": [
+        {
+          "_id": "6adf2d47a744fbde2b518c29",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c2d",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6adf2d47a744fbde2b518c31",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6adf2e67a744fbde2b518c72",
+          "name": "Active Cancel Fixture",
+          "submissionId": "image_9f5ead0f5803533c4f13ea04e301b0fc",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2e1ea744fbde2b518c4c"
+          ]
+        },
+        {
+          "_id": "6adf2ec3a744fbde2b518cbc",
+          "name": "Provider Retry Fixture",
+          "submissionId": "image_8139ec77ecd6884149644605731f4e38",
+          "reportedBy": "6adf2d47a744fbde2b518c29",
+          "imageIds": [
+            "6adf2ec2a744fbde2b518cb1"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6adf2e1ea744fbde2b518c4c",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_26b21dc0d6c9a58ae20098a7dff8b893",
+          "expiresAt": "2026-10-27T10:40:30.196Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2e67a744fbde2b518c72"
+          }
+        },
+        {
+          "_id": "6adf2e9aa744fbde2b518c95",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_6dae0b0b085a048d8ed97d5e5446106e",
+          "expiresAt": "2026-10-27T10:42:34.073Z",
+          "failureCode": "IMAGE_STORAGE_UNAVAILABLE"
+        },
+        {
+          "_id": "6adf2ec2a744fbde2b518cb1",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_1951b87f9c0aa2f3b5602f8a43a4ab00",
+          "expiresAt": "2026-10-27T10:43:14.893Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6adf2ec3a744fbde2b518cbc"
+          }
+        },
+        {
+          "_id": "6adf2ee8a744fbde2b518ce2",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_b61a2259cf4126ebeaae0f880ab4e082",
+          "expiresAt": "2026-10-27T10:43:52.044Z"
+        },
+        {
+          "_id": "6adf3003a744fbde2b518d5f",
+          "uploadedBy": "6adf2d47a744fbde2b518c29",
+          "purpose": "pet",
+          "state": "pending",
+          "idempotencyKey": "image_a39ad3ee70e5e7f6d38785891a643dc0",
+          "expiresAt": "2026-10-27T10:48:35.909Z"
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/046168a5-d9a6-4861-9c02-6241684a81b5",
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/a63b3211-1e5c-4d1b-9b09-b6ef557b2ec4",
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/c628cd44-58db-44df-a4cc-d30c8e9b56f0",
+        "petlostapp/test/73ce3fb9e2f84728beac5d9e1de6bfd5/pet/90ab7022-0097-4fc4-a9b3-d37662b2f9e8"
+      ]
+    }
+  ]
+}

@@ -121,6 +121,32 @@ describe('managed image upload state', () => {
     expect(state.preview).toBe('blob:fictional-preview')
     stop()
   })
+  it('normalizes a rejected intentional transport abort and preserves its retry key', async () => {
+    mocks.uploadManagedImage.mockImplementationOnce((_file, _purpose, _key, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => reject(Object.assign(new Error('Transport cancelled'), { code: 'ERR_CANCELED' })))
+    })).mockResolvedValueOnce({ id: 'b'.repeat(24) })
+    const { state, stop } = setup('pet'), pending = state.ensure()
+    state.cancel()
+    await expect(pending).rejects.toMatchObject({ apiCode: 'IMAGE_CANCELLED' })
+    expect(state.preview).toBe('blob:fictional-preview')
+    await state.ensure()
+    expect(mocks.uploadManagedImage.mock.calls[0][2]).toBe(mocks.uploadManagedImage.mock.calls[1][2])
+    state.finish(); stop()
+  })
+  it.each(['switch', 'same-token', 'round-trip'])('preserves the original rejected error after %s invalidation', async mode => {
+    let fail!: (error: Error) => void
+    mocks.uploadManagedImage.mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject }))
+    const { state, stop } = setup('pet'), pending = state.ensure()
+    if (mode === 'switch') setSessionToken('replacement-fixture')
+    else if (mode === 'same-token') invalidateAuthContext()
+    else { setSessionToken('temporary-fixture'); setSessionToken('fictional-owner-token') }
+    const original = Object.assign(new Error('Late failure'), { apiCode: 'IMAGE_STORAGE_UNAVAILABLE' })
+    fail(original)
+    await expect(pending).rejects.toBe(original)
+    expect(state.preview).toBe(''); expect(state.id).toBe(''); expect(state.error).toBe('')
+    expect(mocks.discardManagedImage).not.toHaveBeenCalled()
+    stop()
+  })
   it('logout/account switch clears IDs and ignores a stale upload response without deleting under the new identity', async () => {
     let finish: (value: { id: string }) => void = () => {}
     mocks.uploadManagedImage.mockImplementation(() => new Promise((resolve) => { finish = resolve }))

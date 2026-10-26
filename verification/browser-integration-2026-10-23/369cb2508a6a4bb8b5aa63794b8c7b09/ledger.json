@@ -1,0 +1,315 @@
+{
+  "run": "369cb2508a6a4bb8b5aa63794b8c7b09",
+  "database": "fyp_transactions_browser_369cb2508a6a4bb8b5aa63794b8c7b09",
+  "provider": "in-memory mock",
+  "records": {
+    "users": [
+      "6adb7857a52e952bdbda958d",
+      "6adb7857a52e952bdbda9591",
+      "6adb7857a52e952bdbda9595"
+    ],
+    "messages": [],
+    "mediauploadbudgets": [
+      "6adb787f1c74be4a6e23991b",
+      "6adb78a71c74be4a6e23991c"
+    ],
+    "strays": [],
+    "notifications": [
+      "6adb78a71c74be4a6e23991d"
+    ],
+    "userblocks": [],
+    "contentreports": [],
+    "mediaassets": [
+      "6adb787fa52e952bdbda95a8",
+      "6adb78a7a52e952bdbda95fe"
+    ],
+    "sightings": [
+      "6adb78a7a52e952bdbda960c"
+    ],
+    "savedstrays": [],
+    "straycomments": [],
+    "pets": [
+      "6adb787fa52e952bdbda95b3"
+    ]
+  },
+  "objects": [
+    {
+      "publicId": "petlostapp/test/369cb2508a6a4bb8b5aa63794b8c7b09/pet/5f18dd74-da5c-4290-8e61-dc20ed5ae3f2",
+      "assetId": "6adb787fa52e952bdbda95a8",
+      "absentConfirmed": true
+    },
+    {
+      "publicId": "petlostapp/test/369cb2508a6a4bb8b5aa63794b8c7b09/sighting/dd50b80d-4604-4917-ace8-cd692c7711da",
+      "assetId": "6adb78a7a52e952bdbda95fe",
+      "absentConfirmed": true
+    }
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/managed",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/pets/report",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb787fa52e952bdbda95a8/content",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/6adb787fa52e952bdbda95b3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb787fa52e952bdbda95a8/content",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/6adb787fa52e952bdbda95b3/sightings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb787fa52e952bdbda95a8/content",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb787fa52e952bdbda95a8/content",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb787fa52e952bdbda95a8/content",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/managed",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/pets/6adb787fa52e952bdbda95b3/sighting",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/6adb787fa52e952bdbda95b3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb787fa52e952bdbda95a8/content",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/6adb787fa52e952bdbda95b3/sightings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb78a7a52e952bdbda95fe/content",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb787fa52e952bdbda95a8/content",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6adb787fa52e952bdbda95a8/content",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200
+    }
+  ],
+  "cleanupComplete": true
+}

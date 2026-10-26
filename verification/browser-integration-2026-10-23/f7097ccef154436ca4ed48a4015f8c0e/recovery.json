@@ -1,0 +1,14 @@
+{
+  "run": "f7097ccef154436ca4ed48a4015f8c0e",
+  "database": "fyp_transactions_browser_f7097ccef154436ca4ed48a4015f8c0e",
+  "recoveredPath": "C:\\Users\\user\\AppData\\Local\\Temp\\mongo-mem-iFOKjH",
+  "records": {},
+  "cleanupComplete": true,
+  "databaseNames": [
+    "admin",
+    "config",
+    "local"
+  ],
+  "exactRecordsRemoved": 0,
+  "emptyCollectionsVerified": true
+}

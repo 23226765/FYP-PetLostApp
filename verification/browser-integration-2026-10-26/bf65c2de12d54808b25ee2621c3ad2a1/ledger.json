@@ -1,0 +1,52 @@
+{
+  "run": "bf65c2de12d54808b25ee2621c3ad2a1",
+  "database": "fyp_transactions_browser_bf65c2de12d54808b25ee2621c3ad2a1",
+  "provider": "in-memory mock",
+  "records": {
+    "messages": [],
+    "straycomments": [],
+    "mediauploadbudgets": [],
+    "contentreports": [],
+    "strays": [],
+    "savedstrays": [],
+    "mediaassets": [],
+    "users": [
+      "6adf2b2bdada914c6515075a",
+      "6adf2b2bdada914c6515075e",
+      "6adf2b2bdada914c65150762"
+    ],
+    "pets": [],
+    "userblocks": [],
+    "sightings": [],
+    "notifications": []
+  },
+  "objects": [],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    }
+  ],
+  "cleanupComplete": true
+}

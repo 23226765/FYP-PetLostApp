@@ -1,0 +1,1868 @@
+
+> pawradar-server@0.1.0 test
+> node --test tests/*.test.js
+
+TAP version 13
+# Subtest: Smart Match scores, totals, bands, limit selection and ordering are invariant to exact movement within a public cell
+ok 1 - Smart Match scores, totals, bands, limit selection and ordering are invariant to exact movement within a public cell
+  ---
+  duration_ms: 32.1727
+  type: 'test'
+  ...
+# Authentication service unavailable { name: 'Error', code: undefined, status: undefined }
+# Authentication service unavailable { name: 'Error', code: undefined, status: undefined }
+# Authentication service unavailable { name: 'Error', code: undefined, status: undefined }
+# Authentication service unavailable { name: 'Error', code: undefined, status: undefined }
+# Authentication service unavailable { name: 'Error', code: undefined, status: undefined }
+# Authentication service unavailable { name: 'Error', code: undefined, status: undefined }
+# Authentication service unavailable { name: 'Error', code: undefined, status: undefined }
+# Authentication service unavailable { name: 'Error', code: undefined, status: undefined }
+# Subtest: real HTTP auth boundary distinguishes invalid credentials from mocked database outages for every role
+ok 2 - real HTTP auth boundary distinguishes invalid credentials from mocked database outages for every role
+  ---
+  duration_ms: 166.8675
+  type: 'test'
+  ...
+# Subtest: new and legacy users default contact visibility to private
+ok 3 - new and legacy users default contact visibility to private
+  ---
+  duration_ms: 13.9926
+  type: 'test'
+  ...
+# Subtest: anonymous and authenticated requesters receive contact only when permitted
+ok 4 - anonymous and authenticated requesters receive contact only when permitted
+  ---
+  duration_ms: 1.7725
+  type: 'test'
+  ...
+# Subtest: privacy update accepts only the supported field and values
+ok 5 - privacy update accepts only the supported field and values
+  ---
+  duration_ms: 0.5664
+  type: 'test'
+  ...
+# Subtest: every report, sighting, comment, and message creation route rejects guests before database access
+ok 6 - every report, sighting, comment, and message creation route rejects guests before database access
+  ---
+  duration_ms: 132.0898
+  type: 'test'
+  ...
+# Subtest: invalid bearer tokens cannot reach protected creation routes
+ok 7 - invalid bearer tokens cannot reach protected creation routes
+  ---
+  duration_ms: 8.372
+  type: 'test'
+  ...
+# Subtest: message read acknowledgments require authentication before any database access
+ok 8 - message read acknowledgments require authentication before any database access
+  ---
+  duration_ms: 12.2038
+  type: 'test'
+  ...
+# Subtest: authentication accepts the relevant role matrix without granting anonymous access
+ok 9 - authentication accepts the relevant role matrix without granting anonymous access
+  ---
+  duration_ms: 42.5776
+  type: 'test'
+  ...
+# Subtest: database configuration always selects the expected Atlas database
+ok 10 - database configuration always selects the expected Atlas database
+  ---
+  duration_ms: 1.8654
+  type: 'test'
+  ...
+# Subtest: database connection fails safely when MONGODB_URI is absent
+ok 11 - database connection fails safely when MONGODB_URI is absent
+  ---
+  duration_ms: 1.1957
+  type: 'test'
+  ...
+# Subtest: database startup errors never expose a MongoDB URI
+ok 12 - database startup errors never expose a MongoDB URI
+  ---
+  duration_ms: 0.2793
+  type: 'test'
+  ...
+# Subtest: application models map only to PawRadar collections
+ok 13 - application models map only to PawRadar collections
+  ---
+  duration_ms: 1.1635
+  type: 'test'
+  ...
+# Subtest: all application models use timestamps
+ok 14 - all application models use timestamps
+  ---
+  duration_ms: 0.2923
+  type: 'test'
+  ...
+# Subtest: all location-bearing models declare a 2dsphere index
+ok 15 - all location-bearing models declare a 2dsphere index
+  ---
+  duration_ms: 0.7079
+  type: 'test'
+  ...
+# Subtest: content reports retain an auditable, private moderation decision
+ok 16 - content reports retain an auditable, private moderation decision
+  ---
+  duration_ms: 0.2291
+  type: 'test'
+  ...
+# Subtest: moderatable content has private, auditable visibility fields with visible defaults
+ok 17 - moderatable content has private, auditable visibility fields with visible defaults
+  ---
+  duration_ms: 0.3614
+  type: 'test'
+  ...
+# Subtest: patched qs safely round-trips a query containing a non-callable constructor.isBuffer
+ok 18 - patched qs safely round-trips a query containing a non-callable constructor.isBuffer
+  ---
+  duration_ms: 4.4474
+  type: 'test'
+  ...
+# Subtest: patched qs enforces comma array limits for bracketed keys before allocating excess elements
+ok 19 - patched qs enforces comma array limits for bracketed keys before allocating excess elements
+  ---
+  duration_ms: 0.764
+  type: 'test'
+  ...
+# Subtest: safe error metadata omits messages, configuration, and driver objects
+ok 20 - safe error metadata omits messages, configuration, and driver objects
+  ---
+  duration_ms: 5.3537
+  type: 'test'
+  ...
+# Subtest: central error logging emits only sanitized metadata and a query-free path
+ok 21 - central error logging emits only sanitized metadata and a query-free path
+  ---
+  duration_ms: 5.7615
+  type: 'test'
+  ...
+# Subtest: notification logging uses the same sanitized representation
+ok 22 - notification logging uses the same sanitized representation
+  ---
+  duration_ms: 0.2787
+  type: 'test'
+  ...
+# Subtest: validation responses expose stable fields and bounded constraints but never rejected values or messages
+ok 23 - validation responses expose stable fields and bounded constraints but never rejected values or messages
+  ---
+  duration_ms: 0.6221
+  type: 'test'
+  ...
+# Subtest: registration and profile validation return localizable codes and useful limits before database access
+ok 24 - registration and profile validation return localizable codes and useful limits before database access
+  ---
+  duration_ms: 1036.2164
+  type: 'test'
+  ...
+# Subtest: hotspot recency decays linearly across the requested analysis window
+ok 25 - hotspot recency decays linearly across the requested analysis window
+  ---
+  duration_ms: 1.6494
+  type: 'test'
+  ...
+# Subtest: community confirmations increase sighting hotspot intensity
+ok 26 - community confirmations increase sighting hotspot intensity
+  ---
+  duration_ms: 0.4516
+  type: 'test'
+  ...
+# Subtest: critical unresolved strays carry more heat than rescued healthy reports
+ok 27 - critical unresolved strays carry more heat than rescued healthy reports
+  ---
+  duration_ms: 0.3246
+  type: 'test'
+  ...
+# Subtest: hotspot aggregation merges records in one deterministic 750 metre cell
+ok 28 - hotspot aggregation merges records in one deterministic 750 metre cell
+  ---
+  duration_ms: 2.0993
+  type: 'test'
+  ...
+# Subtest: hotspot aggregation is stable across input order and ignores invalid coordinates
+ok 29 - hotspot aggregation is stable across input order and ignores invalid coordinates
+  ---
+  duration_ms: 0.6933
+  type: 'test'
+  ...
+# Subtest: hotspot endpoint rejects invalid coordinates before querying the database
+ok 30 - hotspot endpoint rejects invalid coordinates before querying the database
+  ---
+  duration_ms: 0.6323
+  type: 'test'
+  ...
+# Subtest: hotspot endpoint returns only public cells and complete totals from globally grouped results
+ok 31 - hotspot endpoint returns only public cells and complete totals from globally grouped results
+  ---
+  duration_ms: 4.8661
+  type: 'test'
+  ...
+# Subtest: source selection, bounded validation and empty totals remain consistent
+ok 32 - source selection, bounded validation and empty totals remain consistent
+  ---
+  duration_ms: 1.0696
+  type: 'test'
+  ...
+# Subtest: invalid source is rejected without any query, and resource failures never return partial totals
+ok 33 - invalid source is rejected without any query, and resource failures never return partial totals
+  ---
+  duration_ms: 3.5879
+  type: 'test'
+  ...
+# Subtest: real MongoDB geospatial hotspots count every eligible record before deterministic cell limits
+ok 34 - real MongoDB geospatial hotspots count every eligible record before deterministic cell limits # SKIP Dedicated local replica set required; application databases prohibited.
+  ---
+  duration_ms: 2.2542
+  type: 'test'
+  ...
+# Subtest: proxy trust rejects blanket values and accepts only explicit bounded configurations
+ok 35 - proxy trust rejects blanket values and accepts only explicit bounded configurations
+  ---
+  duration_ms: 10.0579
+  type: 'test'
+  ...
+# Subtest: patched proxy resolution cannot turn a short IPv4-mapped IPv6 subnet into blanket IPv4 trust
+ok 36 - patched proxy resolution cannot turn a short IPv4-mapped IPv6 subnet into blanket IPv4 trust
+  ---
+  duration_ms: 112.1363
+  type: 'test'
+  ...
+# Subtest: CORS origins are exact, normalized, deduplicated, and required in production
+ok 37 - CORS origins are exact, normalized, deduplicated, and required in production
+  ---
+  duration_ms: 0.8939
+  type: 'test'
+  ...
+# Subtest: security configuration errors expose stable guidance without echoing submitted values
+ok 38 - security configuration errors expose stable guidance without echoing submitted values
+  ---
+  duration_ms: 0.2784
+  type: 'test'
+  ...
+# Subtest: development responses carry security and cache headers while preserving cross-origin uploads
+ok 39 - development responses carry security and cache headers while preserving cross-origin uploads
+  ---
+  duration_ms: 24.0031
+  type: 'test'
+  ...
+# Subtest: CORS preflight is explicit and disallowed origins receive a sanitized 403
+ok 40 - CORS preflight is explicit and disallowed origins receive a sanitized 403
+  ---
+  duration_ms: 15.9509
+  type: 'test'
+  ...
+# Subtest: forwarded headers are ignored without trust and honored only for an explicit loopback proxy
+ok 41 - forwarded headers are ignored without trust and honored only for an explicit loopback proxy
+  ---
+  duration_ms: 18.8824
+  type: 'test'
+  ...
+# Subtest: production responses enable HSTS only after explicit production CORS configuration
+ok 42 - production responses enable HSTS only after explicit production CORS configuration
+  ---
+  duration_ms: 7.8905
+  type: 'test'
+  ...
+# Subtest: guests/invalid tokens are rejected before parsing or provider/database operations
+ok 43 - guests/invalid tokens are rejected before parsing or provider/database operations
+  ---
+  duration_ms: 79.7224
+  type: 'test'
+  ...
+# Subtest: owner/reporter/unrelated/admin may upload only their own pending images
+ok 44 - owner/reporter/unrelated/admin may upload only their own pending images
+  ---
+  duration_ms: 155.4731
+  type: 'test'
+  ...
+# Subtest: binary decoding rejects disguised file MIME and enforces multipart limits
+ok 45 - binary decoding rejects disguised file MIME and enforces multipart limits
+  ---
+  duration_ms: 110.9796
+  type: 'test'
+  ...
+# Subtest: browser MIME and extension cannot veto an actual supported raster
+ok 46 - browser MIME and extension cannot veto an actual supported raster
+  ---
+  duration_ms: 10.3639
+  type: 'test'
+  ...
+# Subtest: disconnect while parsing releases the uploader slot and creates no object
+ok 47 - disconnect while parsing releases the uploader slot and creates no object
+  ---
+  duration_ms: 129.026
+  type: 'test'
+  ...
+# Subtest: feature disabled returns sanitized 503 and does not affect legacy route registration
+ok 48 - feature disabled returns sanitized 503 and does not affect legacy route registration
+  ---
+  duration_ms: 9.8868
+  type: 'test'
+  ...
+# Subtest: slots bound concurrent parsing/processing and release explicitly after disconnect
+ok 49 - slots bound concurrent parsing/processing and release explicitly after disconnect
+  ---
+  duration_ms: 1.691
+  type: 'test'
+  ...
+# (node:10716) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: successful upload reserves before provider call and returns only safe pending metadata
+ok 50 - successful upload reserves before provider call and returns only safe pending metadata
+  ---
+  duration_ms: 4.6242
+  type: 'test'
+  ...
+# Subtest: same request reuses one object; different image/purpose cannot reuse its key
+ok 51 - same request reuses one object; different image/purpose cannot reuse its key
+  ---
+  duration_ms: 1.945
+  type: 'test'
+  ...
+# Subtest: reservation failure prevents all provider uploads
+ok 52 - reservation failure prevents all provider uploads
+  ---
+  duration_ms: 0.5397
+  type: 'test'
+  ...
+# Subtest: acknowledged metadata failure deletes only its exact reserved object
+ok 53 - acknowledged metadata failure deletes only its exact reserved object
+  ---
+  duration_ms: 1.0105
+  type: 'test'
+  ...
+# Subtest: uncertain metadata write that committed is reconciled without deletion
+ok 54 - uncertain metadata write that committed is reconciled without deletion
+  ---
+  duration_ms: 0.7887
+  type: 'test'
+  ...
+# Subtest: failed provider deletion keeps a durable delete_pending record
+ok 55 - failed provider deletion keeps a durable delete_pending record
+  ---
+  duration_ms: 0.9606
+  type: 'test'
+  ...
+# Subtest: a pre-existing provider object is never deleted on a public-ID collision
+ok 56 - a pre-existing provider object is never deleted on a public-ID collision
+  ---
+  duration_ms: 0.7074
+  type: 'test'
+  ...
+# Subtest: complete database outage retains pre-upload reservation for reconciliation
+ok 57 - complete database outage retains pre-upload reservation for reconciliation
+  ---
+  duration_ms: 0.8665
+  type: 'test'
+  ...
+# Subtest: duplicate-key concurrency never starts a second provider upload
+ok 58 - duplicate-key concurrency never starts a second provider upload
+  ---
+  duration_ms: 0.9036
+  type: 'test'
+  ...
+# Subtest: recovery never deletes a record already attached by a concurrent operation
+ok 59 - recovery never deletes a record already attached by a concurrent operation
+  ---
+  duration_ms: 1.3659
+  type: 'test'
+  ...
+# Subtest: invalid provider metadata triggers rollback instead of a broken pending reference
+ok 60 - invalid provider metadata triggers rollback instead of a broken pending reference
+  ---
+  duration_ms: 0.878
+  type: 'test'
+  ...
+# Subtest: daily/pending quotas reject before reservation or upload
+ok 61 - daily/pending quotas reject before reservation or upload
+  ---
+  duration_ms: 0.5304
+  type: 'test'
+  ...
+# Subtest: pending preview is uploader-only, unexpired and has no admin-role bypass
+ok 62 - pending preview is uploader-only, unexpired and has no admin-role bypass
+  ---
+  duration_ms: 0.826
+  type: 'test'
+  ...
+# Subtest: wrong database or invalid input cannot start a provider operation
+ok 63 - wrong database or invalid input cannot start a provider operation
+  ---
+  duration_ms: 0.7443
+  type: 'test'
+  ...
+# Subtest: pending cancellation deletes only the uploader-owned object and is idempotent
+ok 64 - pending cancellation deletes only the uploader-owned object and is idempotent
+  ---
+  duration_ms: 0.9799
+  type: 'test'
+  ...
+# Subtest: cancellation failure remains auditable and exact-ID retry completes deletion
+ok 65 - cancellation failure remains auditable and exact-ID retry completes deletion
+  ---
+  duration_ms: 0.7404
+  type: 'test'
+  ...
+# Subtest: attached images cannot be discarded; repeated upload returns their content path
+ok 66 - attached images cannot be discarded; repeated upload returns their content path
+  ---
+  duration_ms: 0.6089
+  type: 'test'
+  ...
+# Subtest: expired legacy uploading reservations require a fresh key; unexpired leases remain in progress
+ok 67 - expired legacy uploading reservations require a fresh key; unexpired leases remain in progress
+  ---
+  duration_ms: 0.6521
+  type: 'test'
+  ...
+# Subtest: long-running uploads refresh the same lease and stop heartbeats after completion
+ok 68 - long-running uploads refresh the same lease and stop heartbeats after completion
+  ---
+  duration_ms: 2.4905
+  type: 'test'
+  ...
+# Subtest: JPEG, PNG and static WebP are decoded and re-encoded as safe WebP
+ok 69 - JPEG, PNG and static WebP are decoded and re-encoded as safe WebP
+  ---
+  duration_ms: 48.792
+  type: 'test'
+  ...
+# Subtest: EXIF orientation is corrected and GPS/copyright metadata is stripped
+ok 70 - EXIF orientation is corrected and GPS/copyright metadata is stripped
+  ---
+  duration_ms: 19.6008
+  type: 'test'
+  ...
+# Subtest: every purpose enforces dimensions/output size without enlargement
+ok 71 - every purpose enforces dimensions/output size without enlargement
+  ---
+  duration_ms: 623.719
+  type: 'test'
+  ...
+# Subtest: rejects SVG, executable/disguised data, GIF and unsupported raster formats
+ok 72 - rejects SVG, executable/disguised data, GIF and unsupported raster formats
+  ---
+  duration_ms: 8.0952
+  type: 'test'
+  ...
+# Subtest: rejects corrupt/truncated JPEG and oversized buffers
+ok 73 - rejects corrupt/truncated JPEG and oversized buffers
+  ---
+  duration_ms: 7.433
+  type: 'test'
+  ...
+# Subtest: rejects pixel bombs and excessive individual dimensions
+ok 74 - rejects pixel bombs and excessive individual dimensions
+  ---
+  duration_ms: 204.7366
+  type: 'test'
+  ...
+# Subtest: rejects animated WebP instead of silently retaining one frame
+ok 75 - rejects animated WebP instead of silently retaining one frame
+  ---
+  duration_ms: 36.1202
+  type: 'test'
+  ...
+# Subtest: re-encoding discards trailing executable markup from a decodable raster
+ok 76 - re-encoding discards trailing executable markup from a decodable raster
+  ---
+  duration_ms: 13.0991
+  type: 'test'
+  ...
+# Subtest: high-entropy avatar compression remains within the configured cap
+ok 77 - high-entropy avatar compression remains within the configured cap
+  ---
+  duration_ms: 137.9311
+  type: 'test'
+  ...
+# Subtest: rejects invalid and inherited-property purposes
+ok 78 - rejects invalid and inherited-property purposes
+  ---
+  duration_ms: 1.2849
+  type: 'test'
+  ...
+# Subtest: managed uploads default to disabled and config errors never echo credentials
+ok 79 - managed uploads default to disabled and config errors never echo credentials
+  ---
+  duration_ms: 6.2208
+  type: 'test'
+  ...
+# Subtest: adapter streams bytes with authenticated delivery and overwrite disabled
+ok 80 - adapter streams bytes with authenticated delivery and overwrite disabled
+  ---
+  duration_ms: 2.5293
+  type: 'test'
+  ...
+# Subtest: provider errors and malformed/existing-object responses are sanitized
+ok 81 - provider errors and malformed/existing-object responses are sanitized
+  ---
+  duration_ms: 9.5435
+  type: 'test'
+  ...
+# Subtest: deletion is exact and idempotent; IDs outside our namespace are rejected
+ok 82 - deletion is exact and idempotent; IDs outside our namespace are rejected
+  ---
+  duration_ms: 1.6436
+  type: 'test'
+  ...
+# Subtest: stat distinguishes a confirmed missing object from provider unavailability
+ok 83 - stat distinguishes a confirmed missing object from provider unavailability
+  ---
+  duration_ms: 0.5944
+  type: 'test'
+  ...
+# Subtest: delivery signatures stay backend-only and provider redirects are forbidden
+ok 84 - delivery signatures stay backend-only and provider redirects are forbidden
+  ---
+  duration_ms: 36.3002
+  type: 'test'
+  ...
+# Subtest: public IDs use purpose folders and server UUIDs without personal data
+ok 85 - public IDs use purpose folders and server UUIDs without personal data
+  ---
+  duration_ms: 0.5336
+  type: 'test'
+  ...
+# Subtest: MediaAsset has private metadata, timestamps, strict validation and no TTL deletion
+ok 86 - MediaAsset has private metadata, timestamps, strict validation and no TTL deletion
+  ---
+  duration_ms: 35.6512
+  type: 'test'
+  ...
+# Subtest: visible pet/rescue/avatar photos remain discoverable through old URLs and authenticated API aliases
+ok 87 - visible pet/rescue/avatar photos remain discoverable through old URLs and authenticated API aliases
+  ---
+  duration_ms: 670.3887
+  type: 'test'
+  ...
+# Subtest: sighting photos allow only the relevant owner/reporter; no general shelter-admin bypass
+ok 88 - sighting photos allow only the relevant owner/reporter; no general shelter-admin bypass
+  ---
+  duration_ms: 50.1382
+  type: 'test'
+  ...
+# Subtest: hidden/inactive records and hidden parents deny every ordinary role
+ok 89 - hidden/inactive records and hidden parents deny every ordinary role
+  ---
+  duration_ms: 131.9841
+  type: 'test'
+  ...
+# Subtest: chat photos require membership and an unblocked owner/participant relationship
+ok 90 - chat photos require membership and an unblocked owner/participant relationship
+  ---
+  duration_ms: 114.6327
+  type: 'test'
+  ...
+# Subtest: unreferenced files, orphan private records, ambiguous absolute-only references and disguised SVG are unavailable
+ok 91 - unreferenced files, orphan private records, ambiguous absolute-only references and disguised SVG are unavailable
+  ---
+  duration_ms: 63.0959
+  type: 'test'
+  ...
+# Subtest: all references must authorize: public photos arrays/avatar copies cannot bypass private or hidden references
+ok 92 - all references must authorize: public photos arrays/avatar copies cannot bypass private or hidden references
+  ---
+  duration_ms: 49.9845
+  type: 'test'
+  ...
+# Subtest: unknown-origin private copies restrict public references and malformed aliases fail closed
+ok 93 - unknown-origin private copies restrict public references and malformed aliases fail closed
+  ---
+  duration_ms: 66.2518
+  type: 'test'
+  ...
+# Subtest: encoded filenames, loopback absolute URLs and nested paths resolve consistently
+ok 94 - encoded filenames, loopback absolute URLs and nested paths resolve consistently
+  ---
+  duration_ms: 100.35
+  type: 'test'
+  ...
+# Subtest: GET/HEAD ignore old cache validators and use private no-store without ETags
+ok 95 - GET/HEAD ignore old cache validators and use private no-store without ETags
+  ---
+  duration_ms: 148.3567
+  type: 'test'
+  ...
+# Subtest: traversal, encoded traversal, separators, NUL, drive paths and token queries are rejected
+ok 96 - traversal, encoded traversal, separators, NUL, drive paths and token queries are rejected
+  ---
+  duration_ms: 38.4545
+  type: 'test'
+  ...
+# Subtest: excessive reference ambiguity fails closed instead of truncating away a private owner
+ok 97 - excessive reference ambiguity fails closed instead of truncating away a private owner
+  ---
+  duration_ms: 67.8953
+  type: 'test'
+  ...
+# Subtest: directory symlink/junction escapes are rejected without reading the external image
+ok 98 - directory symlink/junction escapes are rejected without reading the external image
+  ---
+  duration_ms: 32.6185
+  type: 'test'
+  ...
+# Subtest: hard-link aliases are rejected rather than bypassing another path policy
+ok 99 - hard-link aliases are rejected rather than bypassing another path policy
+  ---
+  duration_ms: 36.4914
+  type: 'test'
+  ...
+# Subtest: real transaction harness permits only isolated loopback database and replica-set names
+ok 100 - real transaction harness permits only isolated loopback database and replica-set names
+  ---
+  duration_ms: 4.764
+  type: 'test'
+  ...
+# Subtest: public projection uses a deterministic 750 metre cell centre in lng/lat order
+ok 101 - public projection uses a deterministic 750 metre cell centre in lng/lat order
+  ---
+  duration_ms: 6.5039
+  type: 'test'
+  ...
+# Subtest: anonymous search origins are projected while authenticated origins remain internal-exact
+ok 102 - anonymous search origins are projected while authenticated origins remain internal-exact
+  ---
+  duration_ms: 2.0704
+  type: 'test'
+  ...
+# Subtest: pet and rescue exact locations are limited to their author, including against shelter admins
+ok 103 - pet and rescue exact locations are limited to their author, including against shelter admins
+  ---
+  duration_ms: 1.2146
+  type: 'test'
+  ...
+# Subtest: sighting exact locations are limited to the pet owner and the sighting reporter
+ok 104 - sighting exact locations are limited to the pet owner and the sighting reporter
+  ---
+  duration_ms: 1.1942
+  type: 'test'
+  ...
+# Subtest: forced-public artifacts never inherit owner-authorized exact data
+ok 105 - forced-public artifacts never inherit owner-authorized exact data
+  ---
+  duration_ms: 0.298
+  type: 'test'
+  ...
+# Subtest: public distances are rounded to half-kilometre values and Smart Match uses bands
+ok 106 - public distances are rounded to half-kilometre values and Smart Match uses bands
+  ---
+  duration_ms: 1.0068
+  type: 'test'
+  ...
+# Subtest: real-provider harness refuses unapproved or direct invocation without exposing inherited secrets
+ok 107 - real-provider harness refuses unapproved or direct invocation without exposing inherited secrets
+  ---
+  duration_ms: 3226.8798
+  type: 'test'
+  ...
+# Subtest: an exact, nearby, recent match receives 100 points
+ok 108 - an exact, nearby, recent match receives 100 points
+  ---
+  duration_ms: 4.1328
+  type: 'test'
+  ...
+# Subtest: partial breed names receive proportional token-overlap points
+ok 109 - partial breed names receive proportional token-overlap points
+  ---
+  duration_ms: 1.4984
+  type: 'test'
+  ...
+# Subtest: species mismatch earns no species points
+ok 110 - species mismatch earns no species points
+  ---
+  duration_ms: 0.3541
+  type: 'test'
+  ...
+# Subtest: distance uses the specified linear decay between one and five kilometres
+ok 111 - distance uses the specified linear decay between one and five kilometres
+  ---
+  duration_ms: 0.2414
+  type: 'test'
+  ...
+# Subtest: recency follows the 24-hour, 7-day, and 14-day bands
+ok 112 - recency follows the 24-hour, 7-day, and 14-day bands
+  ---
+  duration_ms: 0.2291
+  type: 'test'
+  ...
+# Subtest: user: ordinary visible images support guest discovery without exposing metadata
+ok 113 - user: ordinary visible images support guest discovery without exposing metadata
+  ---
+  duration_ms: 3.0594
+  type: 'test'
+  ...
+# Subtest: pet: ordinary visible images support guest discovery without exposing metadata
+ok 114 - pet: ordinary visible images support guest discovery without exposing metadata
+  ---
+  duration_ms: 1.1462
+  type: 'test'
+  ...
+# Subtest: stray: ordinary visible images support guest discovery without exposing metadata
+ok 115 - stray: ordinary visible images support guest discovery without exposing metadata
+  ---
+  duration_ms: 0.5882
+  type: 'test'
+  ...
+# Subtest: sighting images are private to the pet owner and reporter, with no general admin bypass
+ok 116 - sighting images are private to the pet owner and reporter, with no general admin bypass
+  ---
+  duration_ms: 1.9354
+  type: 'test'
+  ...
+# Subtest: message images require conversation membership and an unblocked relationship
+ok 117 - message images require conversation membership and an unblocked relationship
+  ---
+  duration_ms: 1.3739
+  type: 'test'
+  ...
+# Subtest: pet: hidden or inactive targets deny delivery even to their author
+ok 118 - pet: hidden or inactive targets deny delivery even to their author
+  ---
+  duration_ms: 1.0506
+  type: 'test'
+  ...
+# Subtest: sighting: hidden or inactive targets deny delivery even to their author
+ok 119 - sighting: hidden or inactive targets deny delivery even to their author
+  ---
+  duration_ms: 0.6284
+  type: 'test'
+  ...
+# Subtest: stray: hidden or inactive targets deny delivery even to their author
+ok 120 - stray: hidden or inactive targets deny delivery even to their author
+  ---
+  duration_ms: 0.7228
+  type: 'test'
+  ...
+# Subtest: message: hidden or inactive targets deny delivery even to their author
+ok 121 - message: hidden or inactive targets deny delivery even to their author
+  ---
+  duration_ms: 4.0715
+  type: 'test'
+  ...
+# Subtest: hidden pet suppresses sighting image delivery, and restored content becomes available
+ok 122 - hidden pet suppresses sighting image delivery, and restored content becomes available
+  ---
+  duration_ms: 2.1272
+  type: 'test'
+  ...
+# Subtest: detached references and retired assets cannot be viewed through stale URLs
+ok 123 - detached references and retired assets cannot be viewed through stale URLs
+  ---
+  duration_ms: 0.5199
+  type: 'test'
+  ...
+# Subtest: unsupported and prototype destination names return unavailable without accessing a model
+ok 124 - unsupported and prototype destination names return unavailable without accessing a model
+  ---
+  duration_ms: 0.9759
+  type: 'test'
+  ...
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Subtest: avatar: attachment and repeated submission retain one content/asset relationship
+ok 125 - avatar: attachment and repeated submission retain one content/asset relationship
+  ---
+  duration_ms: 8.2957
+  type: 'test'
+  ...
+# Subtest: avatar: foreign ownership/purpose and destination reuse are rejected
+ok 126 - avatar: foreign ownership/purpose and destination reuse are rejected
+  ---
+  duration_ms: 3.5356
+  type: 'test'
+  ...
+# Subtest: avatar: database/replacement failure rolls back both references and asset claims
+ok 127 - avatar: database/replacement failure rolls back both references and asset claims
+  ---
+  duration_ms: 3.3301
+  type: 'test'
+  ...
+# Subtest: avatar: successful replacement retires only the old asset after commit
+ok 128 - avatar: successful replacement retires only the old asset after commit
+  ---
+  duration_ms: 1.8098
+  type: 'test'
+  ...
+# Subtest: pet: attachment and repeated submission retain one content/asset relationship
+ok 129 - pet: attachment and repeated submission retain one content/asset relationship
+  ---
+  duration_ms: 0.988
+  type: 'test'
+  ...
+# Subtest: pet: foreign ownership/purpose and destination reuse are rejected
+ok 130 - pet: foreign ownership/purpose and destination reuse are rejected
+  ---
+  duration_ms: 1.8581
+  type: 'test'
+  ...
+# Subtest: pet: database/replacement failure rolls back both references and asset claims
+ok 131 - pet: database/replacement failure rolls back both references and asset claims
+  ---
+  duration_ms: 1.6342
+  type: 'test'
+  ...
+# Subtest: pet: successful replacement retires only the old asset after commit
+ok 132 - pet: successful replacement retires only the old asset after commit
+  ---
+  duration_ms: 1.6459
+  type: 'test'
+  ...
+# Subtest: sighting: attachment and repeated submission retain one content/asset relationship
+ok 133 - sighting: attachment and repeated submission retain one content/asset relationship
+  ---
+  duration_ms: 1.3765
+  type: 'test'
+  ...
+# Subtest: sighting: foreign ownership/purpose and destination reuse are rejected
+ok 134 - sighting: foreign ownership/purpose and destination reuse are rejected
+  ---
+  duration_ms: 2.1288
+  type: 'test'
+  ...
+# Subtest: sighting: database/replacement failure rolls back both references and asset claims
+ok 135 - sighting: database/replacement failure rolls back both references and asset claims
+  ---
+  duration_ms: 3.2742
+  type: 'test'
+  ...
+# Subtest: sighting: successful replacement retires only the old asset after commit
+ok 136 - sighting: successful replacement retires only the old asset after commit
+  ---
+  duration_ms: 0.7788
+  type: 'test'
+  ...
+# Subtest: stray: attachment and repeated submission retain one content/asset relationship
+ok 137 - stray: attachment and repeated submission retain one content/asset relationship
+  ---
+  duration_ms: 0.5787
+  type: 'test'
+  ...
+# Subtest: stray: foreign ownership/purpose and destination reuse are rejected
+ok 138 - stray: foreign ownership/purpose and destination reuse are rejected
+  ---
+  duration_ms: 1.3364
+  type: 'test'
+  ...
+# Subtest: stray: database/replacement failure rolls back both references and asset claims
+ok 139 - stray: database/replacement failure rolls back both references and asset claims
+  ---
+  duration_ms: 1.148
+  type: 'test'
+  ...
+# Subtest: stray: successful replacement retires only the old asset after commit
+ok 140 - stray: successful replacement retires only the old asset after commit
+  ---
+  duration_ms: 0.8077
+  type: 'test'
+  ...
+# Subtest: message: attachment and repeated submission retain one content/asset relationship
+ok 141 - message: attachment and repeated submission retain one content/asset relationship
+  ---
+  duration_ms: 0.5549
+  type: 'test'
+  ...
+# Subtest: message: foreign ownership/purpose and destination reuse are rejected
+ok 142 - message: foreign ownership/purpose and destination reuse are rejected
+  ---
+  duration_ms: 1.2933
+  type: 'test'
+  ...
+# Subtest: message: database/replacement failure rolls back both references and asset claims
+ok 143 - message: database/replacement failure rolls back both references and asset claims
+  ---
+  duration_ms: 1.4394
+  type: 'test'
+  ...
+# Subtest: message: successful replacement retires only the old asset after commit
+ok 144 - message: successful replacement retires only the old asset after commit
+  ---
+  duration_ms: 0.9141
+  type: 'test'
+  ...
+# Subtest: missing/duplicate/excess image IDs and URL writes fail before DB operations
+ok 145 - missing/duplicate/excess image IDs and URL writes fail before DB operations
+  ---
+  duration_ms: 0.6734
+  type: 'test'
+  ...
+# Subtest: concurrent unique-submission collision rechecks authorization and reuses the winning record
+ok 146 - concurrent unique-submission collision rechecks authorization and reuses the winning record
+  ---
+  duration_ms: 1.1074
+  type: 'test'
+  ...
+# Subtest: owners cannot attach to hidden content or edit somebody else; removal is explicit
+ok 147 - owners cannot attach to hidden content or edit somebody else; removal is explicit
+  ---
+  duration_ms: 1.7451
+  type: 'test'
+  ...
+# Subtest: legacy avatar is preserved until an explicit replacement/removal and files are not touched
+ok 148 - legacy avatar is preserved until an explicit replacement/removal and files are not touched
+  ---
+  duration_ms: 0.55
+  type: 'test'
+  ...
+# Subtest: incorrect database name fails before a transaction starts
+ok 149 - incorrect database name fails before a transaction starts
+  ---
+  duration_ms: 0.4716
+  type: 'test'
+  ...
+# Subtest: managed replay validates payload both directly and after a duplicate-key retry, without changing attachments
+ok 150 - managed replay validates payload both directly and after a duplicate-key retry, without changing attachments
+  ---
+  duration_ms: 2.1979
+  type: 'test'
+  ...
+# Subtest: avatar: unrelated profile edits preserve legacy images; new images attach via ID
+ok 151 - avatar: unrelated profile edits preserve legacy images; new images attach via ID
+  ---
+  duration_ms: 150.0725
+  type: 'test'
+  ...
+# Subtest: pet: new image IDs create one report and repeated submission returns that report
+ok 152 - pet: new image IDs create one report and repeated submission returns that report
+  ---
+  duration_ms: 35.2181
+  type: 'test'
+  ...
+# Subtest: sighting: attaches once, owner/reporter delivery succeeds and unrelated/admin delivery fails
+ok 153 - sighting: attaches once, owner/reporter delivery succeeds and unrelated/admin delivery fails
+  ---
+  duration_ms: 133.6356
+  type: 'test'
+  ...
+# Subtest: photo-free HTTP submissions are idempotent; legacy photo references obey the same role projection
+ok 154 - photo-free HTTP submissions are idempotent; legacy photo references obey the same role projection
+  ---
+  duration_ms: 61.3389
+  type: 'test'
+  ...
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Unhandled API error {
+#   name: 'Error',
+#   code: 'PET_NOT_ACCEPTING_SIGHTINGS',
+#   status: 409,
+#   request: {
+#     method: 'POST',
+#     path: '/api/pets/6adb5956ed53fe5e2fa5923a/sighting'
+#   }
+# }
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Unhandled API error {
+#   name: 'Error',
+#   code: 'PET_NOT_ACCEPTING_SIGHTINGS',
+#   status: 409,
+#   request: {
+#     method: 'POST',
+#     path: '/api/pets/6adb5956ed53fe5e2fa59244/sighting'
+#   }
+# }
+# Subtest: HTTP creation rolls back status/assets on write failure and loses safely to a concurrent reunion (mock DB)
+ok 155 - HTTP creation rolls back status/assets on write failure and loses safely to a concurrent reunion (mock DB)
+  ---
+  duration_ms: 46.986
+  type: 'test'
+  ...
+# Subtest: rescue: URLs survive serialization and guest image delivery is available for a visible post
+ok 156 - rescue: URLs survive serialization and guest image delivery is available for a visible post
+  ---
+  duration_ms: 47.8924
+  type: 'test'
+  ...
+# Subtest: chat: image-only message is idempotent and its binary obeys conversation/blocking restrictions
+ok 157 - chat: image-only message is idempotent and its binary obeys conversation/blocking restrictions
+  ---
+  duration_ms: 128.8562
+  type: 'test'
+  ...
+# Subtest: rescue HTTP role matrix exposes only executable author/status controls
+ok 158 - rescue HTTP role matrix exposes only executable author/status controls
+  ---
+  duration_ms: 128.4051
+  type: 'test'
+  ...
+# Unhandled API error {
+#   name: 'Error',
+#   code: undefined,
+#   status: 404,
+#   request: {
+#     method: 'POST',
+#     path: '/api/strays/6adb5956ed53fe5e2fa59257/comments'
+#   }
+# }
+# Subtest: comment HTTP replay binds text/destination, hides hidden replay and never notifies a conflicting target
+ok 159 - comment HTTP replay binds text/destination, hides hidden replay and never notifies a conflicting target
+  ---
+  duration_ms: 51.201
+  type: 'test'
+  ...
+# Subtest: chat HTTP retries reject changed text, destination, shared post and image/no-image payloads
+ok 160 - chat HTTP retries reject changed text, destination, shared post and image/no-image payloads
+  ---
+  duration_ms: 64.2954
+  type: 'test'
+  ...
+# Subtest: legacy Base64/arbitrary URL public writes are rejected in every category
+ok 161 - legacy Base64/arbitrary URL public writes are rejected in every category
+  ---
+  duration_ms: 29.4712
+  type: 'test'
+  ...
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Subtest: failed avatar replacement preserves the original; hidden targets and foreign editors are denied
+ok 162 - failed avatar replacement preserves the original; hidden targets and foreign editors are denied
+  ---
+  duration_ms: 25.9527
+  type: 'test'
+  ...
+# Subtest: real local upload quotas and exact recovery: expiry boundaries, concurrent reservations, debt and rollback
+ok 163 - real local upload quotas and exact recovery: expiry boundaries, concurrent reservations, debt and rollback # SKIP Isolated local replica-set required; no application database is used.
+  ---
+  duration_ms: 1.1739
+  type: 'test'
+  ...
+# Subtest: reconciliation is dry-run by default and rejects unbounded/ambiguous client identifiers
+ok 164 - reconciliation is dry-run by default and rejects unbounded/ambiguous client identifiers
+  ---
+  duration_ms: 8.1538
+  type: 'test'
+  ...
+# Subtest: expiry boundaries preserve active leases and grace, including old uploads without leases
+ok 165 - expiry boundaries preserve active leases and grace, including old uploads without leases
+  ---
+  duration_ms: 0.5543
+  type: 'test'
+  ...
+# Subtest: provider-present recovery never deletes without an additional exact-delete authorization
+ok 166 - provider-present recovery never deletes without an additional exact-delete authorization
+  ---
+  duration_ms: 7.8142
+  type: 'test'
+  ...
+# Subtest: failed recovery retains metadata/debt and failed DB acknowledgement leaves a resumable claim
+ok 167 - failed recovery retains metadata/debt and failed DB acknowledgement leaves a resumable claim
+  ---
+  duration_ms: 1.3011
+  type: 'test'
+  ...
+# Subtest: concurrent requests claim/deallocate one exact object once, and references always protect it
+ok 168 - concurrent requests claim/deallocate one exact object once, and references always protect it
+  ---
+  duration_ms: 1.2021
+  type: 'test'
+  ...
+# Subtest: real MongoDB transactions atomically attach, roll back and replace images
+ok 169 - real MongoDB transactions atomically attach, roll back and replace images # SKIP No isolated local replica-set URI configured (MEDIA_TEST_MONGODB_URI).
+  ---
+  duration_ms: 1.2924
+  type: 'test'
+  ...
+# Subtest: read schema is optional for legacy documents and acknowledgment route requires authentication and rate limiting
+ok 170 - read schema is optional for legacy documents and acknowledgment route requires authentication and rate limiting
+  ---
+  duration_ms: 8.2221
+  type: 'test'
+  ...
+# Subtest: inbox counts all incoming unread messages even when the latest message is outgoing; GET does not acknowledge
+ok 171 - inbox counts all incoming unread messages even when the latest message is outgoing; GET does not acknowledge
+  ---
+  duration_ms: 5.9446
+  type: 'test'
+  ...
+# Subtest: finder sees no unread for outgoing-only messages and reads are independent per account
+ok 172 - finder sees no unread for outgoing-only messages and reads are independent per account
+  ---
+  duration_ms: 3.4462
+  type: 'test'
+  ...
+# Subtest: acknowledgment updates only explicit incoming IDs in the authorized thread and is idempotent
+ok 173 - acknowledgment updates only explicit incoming IDs in the authorized thread and is idempotent
+  ---
+  duration_ms: 1.6206
+  type: 'test'
+  ...
+# Subtest: finder-supplied participant and admin role cannot acknowledge another thread
+ok 174 - finder-supplied participant and admin role cannot acknowledge another thread
+  ---
+  duration_ms: 1.4077
+  type: 'test'
+  ...
+# Subtest: read request validates list bounds and IDs before any write
+ok 175 - read request validates list bounds and IDs before any write
+  ---
+  duration_ms: 1.0288
+  type: 'test'
+  ...
+# Subtest: message validation preserves English compatibility and supplies stable localized error codes
+ok 176 - message validation preserves English compatibility and supplies stable localized error codes
+  ---
+  duration_ms: 1.0663
+  type: 'test'
+  ...
+# Subtest: hidden or blocked conversations cannot be acknowledged in either blocking direction
+ok 177 - hidden or blocked conversations cannot be acknowledged in either blocking direction
+  ---
+  duration_ms: 1.4555
+  type: 'test'
+  ...
+# Subtest: notifications reconstruct correct multi-thread destinations and safe event data from authorized messages
+ok 178 - notifications reconstruct correct multi-thread destinations and safe event data from authorized messages
+  ---
+  duration_ms: 4.9467
+  type: 'test'
+  ...
+# Subtest: message destinations reject unrelated/admin recipients, missing or mismatched references, and legacy unknown participants
+ok 179 - message destinations reject unrelated/admin recipients, missing or mismatched references, and legacy unknown participants
+  ---
+  duration_ms: 1.7336
+  type: 'test'
+  ...
+# Subtest: owner replies route to their participant and shared-post notification honors unavailable content
+ok 180 - owner replies route to their participant and shared-post notification honors unavailable content
+  ---
+  duration_ms: 2.4135
+  type: 'test'
+  ...
+# Subtest: list and mark-read both hide blocked legacy messages and notification reads never mark messages seen
+ok 181 - list and mark-read both hide blocked legacy messages and notification reads never mark messages seen
+  ---
+  duration_ms: 2.3049
+  type: 'test'
+  ...
+# Subtest: localized system events use safe parent fields and comments use visible authored text
+ok 182 - localized system events use safe parent fields and comments use visible authored text
+  ---
+  duration_ms: 1.7697
+  type: 'test'
+  ...
+# Subtest: seeing a message derives read notification state, including notifications created after acknowledgment
+ok 183 - seeing a message derives read notification state, including notifications created after acknowledgment
+  ---
+  duration_ms: 1.1522
+  type: 'test'
+  ...
+# Subtest: moderation role matrix denies guests and every ordinary authenticated role
+ok 184 - moderation role matrix denies guests and every ordinary authenticated role
+  ---
+  duration_ms: 119.6792
+  type: 'test'
+  ...
+# Subtest: shelter administrator receives a safe, paginated moderation projection
+ok 185 - shelter administrator receives a safe, paginated moderation projection
+  ---
+  duration_ms: 15.2613
+  type: 'test'
+  ...
+# Subtest: deleted target content stays in the audit queue as unavailable without leaking stale data
+ok 186 - deleted target content stays in the audit queue as unavailable without leaking stale data
+  ---
+  duration_ms: 9.2129
+  type: 'test'
+  ...
+# Subtest: only shelter administrators can save an audited, non-destructive decision
+ok 187 - only shelter administrators can save an audited, non-destructive decision
+  ---
+  duration_ms: 102.0581
+  type: 'test'
+  ...
+# Subtest: moderation updates reject unknown fields and invalid statuses
+ok 188 - moderation updates reject unknown fields and invalid statuses
+  ---
+  duration_ms: 25.6523
+  type: 'test'
+  ...
+# Subtest: only shelter administrators can hide and restore supported content with an audit reason
+ok 189 - only shelter administrators can hide and restore supported content with an audit reason
+  ---
+  duration_ms: 47.7381
+  type: 'test'
+  ...
+# Subtest: reported-context evidence supports all image types/hidden parents without changing ordinary delivery authorization
+ok 190 - reported-context evidence supports all image types/hidden parents without changing ordinary delivery authorization
+  ---
+  duration_ms: 10.1574
+  type: 'test'
+  ...
+# Subtest: invalid, deleted, mismatched, unreported or retargeted evidence fails closed on every request
+ok 191 - invalid, deleted, mismatched, unreported or retargeted evidence fails closed on every request
+  ---
+  duration_ms: 1.9393
+  type: 'test'
+  ...
+# Subtest: real HTTP/JWT role matrix revalidates role/report on repeated evidence requests; ordinary private image URLs stay forbidden
+ok 192 - real HTTP/JWT role matrix revalidates role/report on repeated evidence requests; ordinary private image URLs stay forbidden
+  ---
+  duration_ms: 186.0424
+  type: 'test'
+  ...
+# Subtest: legacy evidence uses real protected file reads, strips metadata, preserves originals and refuses unrelated private shared references
+ok 193 - legacy evidence uses real protected file reads, strips metadata, preserves originals and refuses unrelated private shared references
+  ---
+  duration_ms: 195.4089
+  type: 'test'
+  ...
+# Subtest: legacy Base64 is raster-validated; remote evidence cannot become an arbitrary URL/redirect proxy
+ok 194 - legacy Base64 is raster-validated; remote evidence cannot become an arbitrary URL/redirect proxy
+  ---
+  duration_ms: 21.3434
+  type: 'test'
+  ...
+# Subtest: missing moderation status remains visible while hidden is excluded by the shared predicate
+ok 195 - missing moderation status remains visible while hidden is excluded by the shared predicate
+  ---
+  duration_ms: 2.4943
+  type: 'test'
+  ...
+# Subtest: pet lists, nearby radar, and Smart Match all query only visible content
+ok 196 - pet lists, nearby radar, and Smart Match all query only visible content
+  ---
+  duration_ms: 2.5431
+  type: 'test'
+  ...
+# Subtest: hidden pet details return 404 to their owner and ordinary owner mutations cannot bypass hiding
+ok 197 - hidden pet details return 404 to their owner and ordinary owner mutations cannot bypass hiding
+  ---
+  duration_ms: 1.6183
+  type: 'test'
+  ...
+# Subtest: a hidden pet suppresses its entire ordinary sighting history
+ok 198 - a hidden pet suppresses its entire ordinary sighting history
+  ---
+  duration_ms: 0.6099
+  type: 'test'
+  ...
+# Subtest: a hidden sighting is removed without suppressing other visible sightings
+ok 199 - a hidden sighting is removed without suppressing other visible sightings
+  ---
+  duration_ms: 2.6609
+  type: 'test'
+  ...
+# Subtest: hidden rescue posts return 404 to their author and resolve as unavailable when saved
+ok 200 - hidden rescue posts return 404 to their author and resolve as unavailable when saved
+  ---
+  duration_ms: 1.9516
+  type: 'test'
+  ...
+# Subtest: a hidden rescue post becomes unavailable through an existing shared-message reference
+ok 201 - a hidden rescue post becomes unavailable through an existing shared-message reference
+  ---
+  duration_ms: 1.6602
+  type: 'test'
+  ...
+# Subtest: hidden comments are excluded from visible comment counts and previews
+ok 202 - hidden comments are excluded from visible comment counts and previews
+  ---
+  duration_ms: 2.271
+  type: 'test'
+  ...
+# Subtest: notifications with hidden or unavailable targets are omitted instead of linking to them
+ok 203 - notifications with hidden or unavailable targets are omitted instead of linking to them
+  ---
+  duration_ms: 1.9462
+  type: 'test'
+  ...
+# Subtest: notification generation is a no-op for hidden pets or hidden sightings
+ok 204 - notification generation is a no-op for hidden pets or hidden sightings
+  ---
+  duration_ms: 0.9969
+  type: 'test'
+  ...
+# Subtest: historical location notification bodies are rebuilt with district-only text
+ok 205 - historical location notification bodies are rebuilt with district-only text
+  ---
+  duration_ms: 4.1914
+  type: 'test'
+  ...
+# Subtest: new-password policy matches real bcrypt UTF-8 truncation boundaries
+    # Subtest: ASCII below
+    ok 1 - ASCII below
+      ---
+      duration_ms: 1.9064
+      type: 'test'
+      ...
+    # Subtest: ASCII at
+    ok 2 - ASCII at
+      ---
+      duration_ms: 0.2867
+      type: 'test'
+      ...
+    # Subtest: ASCII above
+    ok 3 - ASCII above
+      ---
+      duration_ms: 1.7975
+      type: 'test'
+      ...
+    # Subtest: CJK below
+    ok 4 - CJK below
+      ---
+      duration_ms: 0.2697
+      type: 'test'
+      ...
+    # Subtest: CJK at
+    ok 5 - CJK at
+      ---
+      duration_ms: 0.4027
+      type: 'test'
+      ...
+    # Subtest: CJK above
+    ok 6 - CJK above
+      ---
+      duration_ms: 0.2742
+      type: 'test'
+      ...
+    # Subtest: emoji below
+    ok 7 - emoji below
+      ---
+      duration_ms: 0.4073
+      type: 'test'
+      ...
+    # Subtest: emoji at
+    ok 8 - emoji at
+      ---
+      duration_ms: 0.5597
+      type: 'test'
+      ...
+    # Subtest: emoji above
+    ok 9 - emoji above
+      ---
+      duration_ms: 1.1356
+      type: 'test'
+      ...
+    # Subtest: split CJK boundary
+    ok 10 - split CJK boundary
+      ---
+      duration_ms: 0.5807
+      type: 'test'
+      ...
+    1..10
+ok 206 - new-password policy matches real bcrypt UTF-8 truncation boundaries
+  ---
+  duration_ms: 13.1062
+  type: 'test'
+  ...
+# Subtest: registration rejects oversized input before lookup, real hashing or persistence
+ok 207 - registration rejects oversized input before lookup, real hashing or persistence
+  ---
+  duration_ms: 2.1306
+  type: 'test'
+  ...
+# Subtest: registration hashes accepted raw passwords with real bcrypt, including unchanged Unicode and whitespace
+ok 208 - registration hashes accepted raw passwords with real bcrypt, including unchanged Unicode and whitespace
+  ---
+  duration_ms: 1696.2298
+  type: 'test'
+  ...
+# Subtest: historical overlong logins retain raw comparison; hashes cannot disambiguate ignored suffixes
+ok 209 - historical overlong logins retain raw comparison; hashes cannot disambiguate ignored suffixes
+  ---
+  duration_ms: 23.9183
+  type: 'test'
+  ...
+# Subtest: all existing password-setting paths use the shared guard; seed entry point is not executed
+ok 210 - all existing password-setting paths use the shared guard; seed entry point is not executed
+  ---
+  duration_ms: 3.0153
+  type: 'test'
+  ...
+# Subtest: real HTTP auth routes enforce the byte policy and preserve legacy login, using isolated model fixtures
+ok 211 - real HTTP auth routes enforce the byte policy and preserve legacy login, using isolated model fixtures
+  ---
+  duration_ms: 219.5004
+  type: 'test'
+  ...
+# Subtest: current-user pets are paginated, ownership-scoped, and omit contact details
+ok 212 - current-user pets are paginated, ownership-scoped, and omit contact details
+  ---
+  duration_ms: 11.1836
+  type: 'test'
+  ...
+# Subtest: authenticated radar list excludes owner and preserves status/pagination filters
+ok 213 - authenticated radar list excludes owner and preserves status/pagination filters
+  ---
+  duration_ms: 2.7637
+  type: 'test'
+  ...
+# Subtest: authenticated nearby radar applies the same owner and status exclusion
+ok 214 - authenticated nearby radar applies the same owner and status exclusion
+  ---
+  duration_ms: 1.7455
+  type: 'test'
+  ...
+# Subtest: pet owner and reporter can see reporter contact while unrelated users cannot
+ok 215 - pet owner and reporter can see reporter contact while unrelated users cannot
+  ---
+  duration_ms: 4.1561
+  type: 'test'
+  ...
+# Subtest: forced-public pet detail remains approximate and contact-free for its owner
+ok 216 - forced-public pet detail remains approximate and contact-free for its owner
+  ---
+  duration_ms: 1.7466
+  type: 'test'
+  ...
+# Subtest: Smart Match keeps exact scoring internal and returns only a distance band
+ok 217 - Smart Match keeps exact scoring internal and returns only a distance band
+  ---
+  duration_ms: 3.0741
+  type: 'test'
+  ...
+# Subtest: sighting GeoJSON validation rejects missing, malformed, reversed, and string coordinates
+ok 218 - sighting GeoJSON validation rejects missing, malformed, reversed, and string coordinates
+  ---
+  duration_ms: 0.7381
+  type: 'test'
+  ...
+# Subtest: pet reports are owned by the authenticated user and ignore spoofed ownership fields
+ok 219 - pet reports are owned by the authenticated user and ignore spoofed ownership fields
+  ---
+  duration_ms: 3.0133
+  type: 'test'
+  ...
+# Subtest: pet reports reject invalid/coercible coordinate pairs before any persistence
+ok 220 - pet reports reject invalid/coercible coordinate pairs before any persistence
+  ---
+  duration_ms: 1.7674
+  type: 'test'
+  ...
+# Subtest: valid selected coordinates preserve lng/lat order and retries create one sighting
+ok 221 - valid selected coordinates preserve lng/lat order and retries create one sighting
+  ---
+  duration_ms: 49.2957
+  type: 'test'
+  ...
+# Subtest: missing selected location is rejected without inserting a fallback coordinate
+ok 222 - missing selected location is rejected without inserting a fallback coordinate
+  ---
+  duration_ms: 0.6829
+  type: 'test'
+  ...
+# Subtest: fixed-window limiter returns standard headers, blocks at the limit, and resets safely
+ok 223 - fixed-window limiter returns standard headers, blocks at the limit, and resets safely
+  ---
+  duration_ms: 15.4141
+  type: 'test'
+  ...
+# Subtest: limiter storage stays bounded while identities remain independent
+ok 224 - limiter storage stays bounded while identities remain independent
+  ---
+  duration_ms: 1.7868
+  type: 'test'
+  ...
+# Subtest: registration attempts are limited per IP without reaching a database mutation
+ok 225 - registration attempts are limited per IP without reaching a database mutation
+  ---
+  duration_ms: 126.2487
+  type: 'test'
+  ...
+# Subtest: guest is rejected before mutation limiting and authenticated roles have isolated account buckets
+ok 226 - guest is rejected before mutation limiting and authenticated roles have isolated account buckets
+  ---
+  duration_ms: 58.108
+  type: 'test'
+  ...
+# Subtest: real rescue routes reject stale edit eligibility before and during image transactions
+ok 227 - real rescue routes reject stale edit eligibility before and during image transactions # SKIP Dedicated local replica set required; application databases prohibited.
+  ---
+  duration_ms: 1.7884
+  type: 'test'
+  ...
+# Subtest: real local rescue permissions, visible comment totals and submission races
+ok 228 - real local rescue permissions, visible comment totals and submission races # SKIP Dedicated local replica set required; application databases are prohibited.
+  ---
+  duration_ms: 2.5416
+  type: 'test'
+  ...
+# Subtest: pet status changes require authentication
+ok 229 - pet status changes require authentication
+  ---
+  duration_ms: 2.2098
+  type: 'test'
+  ...
+# Subtest: radar list and nearby routes apply optional authentication
+ok 230 - radar list and nearby routes apply optional authentication
+  ---
+  duration_ms: 0.2137
+  type: 'test'
+  ...
+# Subtest: pet reports and sightings require authentication while public reads remain available
+ok 231 - pet reports and sightings require authentication while public reads remain available
+  ---
+  duration_ms: 0.2637
+  type: 'test'
+  ...
+# Subtest: sighting confirmation requires authentication
+ok 232 - sighting confirmation requires authentication
+  ---
+  duration_ms: 0.155
+  type: 'test'
+  ...
+# Subtest: smart match is exposed as one public static endpoint
+ok 233 - smart match is exposed as one public static endpoint
+  ---
+  duration_ms: 0.2771
+  type: 'test'
+  ...
+# Subtest: candidate matching is available at the frontend contract path
+ok 234 - candidate matching is available at the frontend contract path
+  ---
+  duration_ms: 0.1554
+  type: 'test'
+  ...
+# Subtest: spatial hotspot analytics are available as one public batched endpoint
+ok 235 - spatial hotspot analytics are available as one public batched endpoint
+  ---
+  duration_ms: 0.3025
+  type: 'test'
+  ...
+# Subtest: chat inbox, reads, and writes require authentication
+ok 236 - chat inbox, reads, and writes require authentication
+  ---
+  duration_ms: 0.2559
+  type: 'test'
+  ...
+# Subtest: notification inbox, preferences, and read state require authentication
+ok 237 - notification inbox, preferences, and read state require authentication
+  ---
+  duration_ms: 0.6837
+  type: 'test'
+  ...
+# Subtest: notification schema accepts every application notification type
+ok 238 - notification schema accepts every application notification type
+  ---
+  duration_ms: 0.739
+  type: 'test'
+  ...
+# Subtest: stray reads are public while reports and ownership actions require authentication
+ok 239 - stray reads are public while reports and ownership actions require authentication
+  ---
+  duration_ms: 0.4112
+  type: 'test'
+  ...
+# Subtest: stray community writes and private saved posts require authentication
+ok 240 - stray community writes and private saved posts require authentication
+  ---
+  duration_ms: 0.2894
+  type: 'test'
+  ...
+# Subtest: image upload requires authentication
+ok 241 - image upload requires authentication
+  ---
+  duration_ms: 0.2541
+  type: 'test'
+  ...
+# Subtest: managed image uploads authenticate and rate-limit before bounded multipart parsing
+ok 242 - managed image uploads authenticate and rate-limit before bounded multipart parsing
+  ---
+  duration_ms: 0.179
+  type: 'test'
+  ...
+# Subtest: profile updates require authentication
+ok 243 - profile updates require authentication
+  ---
+  duration_ms: 0.1671
+  type: 'test'
+  ...
+# Subtest: registration is rate limited while login retains its dedicated controller limiter
+ok 244 - registration is rate limited while login retains its dedicated controller limiter
+  ---
+  duration_ms: 0.1398
+  type: 'test'
+  ...
+# Subtest: contact privacy reads and updates require authentication
+ok 245 - contact privacy reads and updates require authentication
+  ---
+  duration_ms: 0.2105
+  type: 'test'
+  ...
+# Subtest: language and appearance preferences read and update require authentication
+ok 246 - language and appearance preferences read and update require authentication
+  ---
+  duration_ms: 0.1423
+  type: 'test'
+  ...
+# Subtest: public pet details still resolve optional requester identity
+ok 247 - public pet details still resolve optional requester identity
+  ---
+  duration_ms: 0.1084
+  type: 'test'
+  ...
+# Subtest: content reports and user blocks require authentication and mutations are rate limited
+ok 248 - content reports and user blocks require authentication and mutations are rate limited
+  ---
+  duration_ms: 0.1305
+  type: 'test'
+  ...
+# Subtest: moderation queue is restricted to shelter administrators and decisions are rate limited
+ok 249 - moderation queue is restricted to shelter administrators and decisions are rate limited
+  ---
+  duration_ms: 0.1101
+  type: 'test'
+  ...
+# Subtest: guest cannot report, block, list blocks, or unblock
+ok 250 - guest cannot report, block, list blocks, or unblock
+  ---
+  duration_ms: 117.3785
+  type: 'test'
+  ...
+# Subtest: owner, reporter, unrelated user, and shelter admin share the same authenticated safety permissions
+ok 251 - owner, reporter, unrelated user, and shelter admin share the same authenticated safety permissions
+  ---
+  duration_ms: 90.3726
+  type: 'test'
+  ...
+# Subtest: account-scoped block listing never exposes another account block
+ok 252 - account-scoped block listing never exposes another account block
+  ---
+  duration_ms: 11.5733
+  type: 'test'
+  ...
+# Subtest: JWT configuration rejects missing, short, and known placeholder secrets
+ok 253 - JWT configuration rejects missing, short, and known placeholder secrets
+  ---
+  duration_ms: 2.841
+  type: 'test'
+  ...
+# Subtest: JWT configuration errors never include the submitted secret
+ok 254 - JWT configuration errors never include the submitted secret
+  ---
+  duration_ms: 0.415
+  type: 'test'
+  ...
+# Subtest: successful login reset clears both email and IP failure counters
+ok 255 - successful login reset clears both email and IP failure counters
+  ---
+  duration_ms: 0.5232
+  type: 'test'
+  ...
+# Subtest: successful login uses the combined email and IP reset path
+ok 256 - successful login uses the combined email and IP reset path
+  ---
+  duration_ms: 1.3501
+  type: 'test'
+  ...
+# Subtest: every seeded model has a private immutable batch marker
+ok 257 - every seeded model has a private immutable batch marker
+  ---
+  duration_ms: 1.9949
+  type: 'test'
+  ...
+# Subtest: test seed requires explicit permission, password, and exact database
+ok 258 - test seed requires explicit permission, password, and exact database
+  ---
+  duration_ms: 9.4204
+  type: 'test'
+  ...
+# Subtest: demo users have explicit idempotent privacy choices
+ok 259 - demo users have explicit idempotent privacy choices
+  ---
+  duration_ms: 2.1541
+  type: 'test'
+  ...
+# Subtest: demo users have explicit language and appearance preferences
+ok 260 - demo users have explicit language and appearance preferences
+  ---
+  duration_ms: 1.9786
+  type: 'test'
+  ...
+# Subtest: cleanup deletes only the named seed batch
+ok 261 - cleanup deletes only the named seed batch
+  ---
+  duration_ms: 1.7713
+  type: 'test'
+  ...
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Image attachment transaction failed { name: 'Error', code: undefined, status: undefined }
+# Subtest: photo-free: one creation/status change; duplicate retries cannot reopen a reunited pet
+ok 262 - photo-free: one creation/status change; duplicate retries cannot reopen a reunited pet
+  ---
+  duration_ms: 8.4549
+  type: 'test'
+  ...
+# Subtest: photo-free: concurrent owner reunion rejects creation without overwriting owner status
+ok 263 - photo-free: concurrent owner reunion rejects creation without overwriting owner status
+  ---
+  duration_ms: 1.783
+  type: 'test'
+  ...
+# Subtest: photo-free: content-write failure rolls back status, sighting and asset claims
+ok 264 - photo-free: content-write failure rolls back status, sighting and asset claims
+  ---
+  duration_ms: 2.7128
+  type: 'test'
+  ...
+# Subtest: photo-free: hidden parent is unavailable and ordinary creation cannot bypass moderation
+ok 265 - photo-free: hidden parent is unavailable and ordinary creation cannot bypass moderation
+  ---
+  duration_ms: 0.7032
+  type: 'test'
+  ...
+# Subtest: managed image: one creation/status change; duplicate retries cannot reopen a reunited pet
+ok 266 - managed image: one creation/status change; duplicate retries cannot reopen a reunited pet
+  ---
+  duration_ms: 1.7482
+  type: 'test'
+  ...
+# Subtest: managed image: concurrent owner reunion rejects creation without overwriting owner status
+ok 267 - managed image: concurrent owner reunion rejects creation without overwriting owner status
+  ---
+  duration_ms: 0.4444
+  type: 'test'
+  ...
+# Subtest: managed image: content-write failure rolls back status, sighting and asset claims
+ok 268 - managed image: content-write failure rolls back status, sighting and asset claims
+  ---
+  duration_ms: 0.9698
+  type: 'test'
+  ...
+# Subtest: managed image: hidden parent is unavailable and ordinary creation cannot bypass moderation
+ok 269 - managed image: hidden parent is unavailable and ordinary creation cannot bypass moderation
+  ---
+  duration_ms: 0.3851
+  type: 'test'
+  ...
+# Subtest: real MongoDB sighting transactions: rollback, idempotency and concurrent reunion with/without images
+ok 270 - real MongoDB sighting transactions: rollback, idempotency and concurrent reunion with/without images # SKIP No isolated local replica-set configured (MEDIA_TEST_MONGODB_URI); mocked tests are separate.
+  ---
+  duration_ms: 1.5784
+  type: 'test'
+  ...
+# Subtest: authored rescue posts are ownership-scoped, paginated, and contact-free
+ok 271 - authored rescue posts are ownership-scoped, paginated, and contact-free
+  ---
+  duration_ms: 6.3103
+  type: 'test'
+  ...
+# Subtest: rescue location is exact only for its author and forced-public output stays approximate
+ok 272 - rescue location is exact only for its author and forced-public output stays approximate
+  ---
+  duration_ms: 4.3048
+  type: 'test'
+  ...
+# Subtest: saved rescue posts use only the authenticated user and skip unavailable posts safely
+ok 273 - saved rescue posts use only the authenticated user and skip unavailable posts safely
+  ---
+  duration_ms: 1.9174
+  type: 'test'
+  ...
+# Subtest: stray schema preserves GeoJSON and adds community post fields
+ok 274 - stray schema preserves GeoJSON and adds community post fields
+  ---
+  duration_ms: 0.5857
+  type: 'test'
+  ...
+# Subtest: comments and private saves use ownership indexes
+ok 275 - comments and private saves use ownership indexes
+  ---
+  duration_ms: 0.5482
+  type: 'test'
+  ...
+# Subtest: new stray posts reject absent coordinates and reject legacy image strings
+ok 276 - new stray posts reject absent coordinates and reject legacy image strings
+  ---
+  duration_ms: 1.3209
+  type: 'test'
+  ...
+# Subtest: Other stray reports require a specific animal type before database access
+ok 277 - Other stray reports require a specific animal type before database access
+  ---
+  duration_ms: 0.7086
+  type: 'test'
+  ...
+# Subtest: empty and oversized comments are rejected before database access
+ok 278 - empty and oversized comments are rejected before database access
+  ---
+  duration_ms: 0.9687
+  type: 'test'
+  ...
+# Subtest: trust and safety models use private batch markers and ownership indexes
+ok 279 - trust and safety models use private batch markers and ownership indexes
+  ---
+  duration_ms: 1.737
+  type: 'test'
+  ...
+# Subtest: content reporting is idempotent and never returns private moderation fields
+ok 280 - content reporting is idempotent and never returns private moderation fields
+  ---
+  duration_ms: 1.8216
+  type: 'test'
+  ...
+# Subtest: content reporting rejects unexpected fields and self-reporting
+ok 281 - content reporting rejects unexpected fields and self-reporting
+  ---
+  duration_ms: 0.4971
+  type: 'test'
+  ...
+# Subtest: blocking is scoped to the authenticated blocker and is reversible
+ok 282 - blocking is scoped to the authenticated blocker and is reversible
+  ---
+  duration_ms: 2.9211
+  type: 'test'
+  ...
+# Subtest: blocked users cannot read a chat or create a comment, while emergency posts remain addressable
+ok 283 - blocked users cannot read a chat or create a comment, while emergency posts remain addressable
+  ---
+  duration_ms: 1.054
+  type: 'test'
+  ...
+# Subtest: self-blocking is rejected before database access
+ok 284 - self-blocking is rejected before database access
+  ---
+  duration_ms: 0.2139
+  type: 'test'
+  ...
+# Subtest: a blocked relationship suppresses contact fields while preserving the emergency pet post
+ok 285 - a blocked relationship suppresses contact fields while preserving the emergency pet post
+  ---
+  duration_ms: 2.7864
+  type: 'test'
+  ...
+# Subtest: comment history excludes mutually blocked authors in both rows and pagination totals
+ok 286 - comment history excludes mutually blocked authors in both rows and pagination totals
+  ---
+  duration_ms: 4.4645
+  type: 'test'
+  ...
+# Subtest: blocked social notifications are hidden without suppressing emergency sighting alerts
+ok 287 - blocked social notifications are hidden without suppressing emergency sighting alerts
+  ---
+  duration_ms: 3.1126
+  type: 'test'
+  ...
+# Subtest: new and legacy users resolve safe default preferences
+ok 288 - new and legacy users resolve safe default preferences
+  ---
+  duration_ms: 14.3245
+  type: 'test'
+  ...
+# Subtest: preference validation accepts partial supported values and rejects invalid or extra fields
+ok 289 - preference validation accepts partial supported values and rejects invalid or extra fields
+  ---
+  duration_ms: 0.5001
+  type: 'test'
+  ...
+# Subtest: authenticated preference update preserves privacy and other user fields
+ok 290 - authenticated preference update preserves privacy and other user fields
+  ---
+  duration_ms: 0.9083
+  type: 'test'
+  ...
+# Subtest: preference update returns stable validation codes without mutating the user
+ok 291 - preference update returns stable validation codes without mutating the user
+  ---
+  duration_ms: 1.4678
+  type: 'test'
+  ...
+1..291
+# tests 301
+# suites 0
+# pass 295
+# fail 0
+# cancelled 0
+# skipped 6
+# todo 0
+# duration_ms 5242.6429
