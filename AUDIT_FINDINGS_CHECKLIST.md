@@ -1,5 +1,37 @@
 # PetLostApp — original 22-finding audit checklist
 
+## Cancellation follow-up completed — 27 October 2026
+
+**BROW-UP-01: Fixed and verified.** Intentional abort in the initiating session is now normalized to `IMAGE_CANCELLED`; the lost-pet form suppresses only that cancellation result within its existing active-context guard. Genuine upload/posting errors retain their useful feedback. Draft/image/key retention, account guards and cleanup logic were not replaced. Application repair files: `src/composables/useImageUpload.ts` and `src/components/PostPetScreen.vue`; focused tests extend `PostPetImages.test.ts` and `useImageUpload.test.ts`.
+
+### Verification results
+
+| Check | Actual result / boundary |
+| --- | --- |
+| Focused cancellation/upload component tests | **42 passed** in two files, including 12 added regressions: all three locales, aborted transport rejection, draft/key retention, genuine failure feedback, same-token/round-trip invalidation and still-mounted obsolete success/failure. API promises are mocked in these tests. |
+| Relevant API/authentication/status regressions | **159 passed** in four files; actual Axios interceptor and mounted component coverage with isolated/mock transport. Total targeted frontend result: **201 passed**. |
+| Relevant backend image regressions | **64 passed** across lifecycle, authorization, attachment and HTTP flow suites. Model/provider mocks in those suites are not described as real MongoDB verification. |
+| Vue TypeScript / ESLint / production build | **Passed** for the repair before the interruption; existing large-chunk warning remains. Application repair source is unchanged in the resumed verification. |
+| Production browser cancellation | **Passed**, 26 October, run `0eb769b6fbbc4443aa906aef5ce27f41`: Cancel at 99% showed only the useful cancellation/retry alert; no generic posting error. Draft/photo/confirmed point retained; cached same-key retry plus explicit Post created one pet/attachment. |
+| Production cross-tab invalidation | **Passed**, same run: tab B logout/login invalidated untouched tab A's upload form. Reporter login preceded old provider success by **27.705 seconds**; the old form did not reappear. Normal App intentionally unmounts its auth-scoped tree. |
+| Retained actual component, old success | **Passed**, same run: harness-only host mounted the real report component once; actual component/session listeners cleared old fields/image on cross-tab change. After old provider success, mount count remained 1, new marker text remained and no old image/error/success returned. This host is not a production route. |
+| Retained actual component, old failure | **Passed**, 27 October, fresh run `cf6c850fb751472aa0622c6f4472cff6`: reporter login completed at 12:20:47.090Z, new marker entered at 12:20:47.813Z, old provider failed at 12:21:15.349Z. At 12:21:33.848Z, the same component still had mount count 1, preserved the new marker and showed no stale image/error/success. No new content was submitted. |
+| Read-only evidence assertions | **Passed**: `verify-followup.mjs` validates retry identity, unique attachment/content, upload chronology, uploader attribution, failure compensation and exact cleanup across both ledgers/recovery evidence. |
+
+Browser reports: `verification/browser-integration-2026-10-26/0eb769b6fbbc4443aa906aef5ce27f41/BROWSER_RESULTS.md` and `verification/browser-integration-2026-10-27/cf6c850fb751472aa0622c6f4472cff6/BROWSER_RESULTS.md`. Screenshots are retained inline in supported browser-tool transcripts, with capture titles in those reports; no exported screenshot paths are invented. Previous completed journeys and all-five-category image results remain unchanged.
+
+The first retained-failure attempt was interrupted before its final DOM observation. That missing assertion was not retrospectively marked passed; only that case was repeated in the fresh run. Actual component storage handlers abort HTTP transport, so browser evidence covers safe state while old provider work completes. Mocked delayed-promise regressions separately cover a late resolved/rejected completion reaching component code. No real Cloudinary or forced response delivery through an aborted request is claimed.
+
+### Label status and cleanup
+
+**Still open, unchanged:** the lost-pet form passes its own title/guidance to `SightingLocationPicker`, but its confirmation summary still uses `sightings.confirmedPoint` (`Confirmed sighting point` in English). The corresponding Chinese labels remain sighting-specific too. This wording issue is outside the approved cancellation repair; no label/translation changes were made.
+
+Interrupted-run exact recovery on 27 October reopened only its identified local replica-set files and the exact `fyp_transactions_browser_0eb769b6fbbc4443aa906aef5ce27f41` database. IDs were checked against its ledger before deletion: **3 users, 1 pet, 4 media assets and 1 upload budget** removed; every collection verified empty; recovery replica stopped and its validated temporary directory removed. `recovery.json` preserves final asset states: one attached, two pending and the failed asset deleted. The original mock provider lived only in the stopped process; no retrospective provider lookup/deletion is claimed. Its original `cleanupComplete: false` ledger is retained as history, with separate successful recovery evidence.
+
+Fresh-run normal teardown confirmed **3 users, 1 failed media asset and 1 upload budget** removed; all collections empty, zero mock objects, `cleanupComplete: true`, process exit 0 and replica shutdown. The frontend/API was independently unreachable afterward. Both created test tabs were closed after synthetic logout; unrelated tabs were untouched. No Atlas record, real provider asset, original image, runtime environment file, seed, migration or live cleanup was involved. No commit or push was issued by this work.
+
+Final resumed checks: harness/recovery/evidence-script syntax and `git diff --check` passed; secret audit scanned **346 worktree files and 338 index files with zero findings**, excepting only the eight occurrences of precisely reviewed fictional test URI values. No tracked runtime environment file was found. No MongoDB test process remained, and the interrupted run's validated temporary directory was absent. The application repair and tests were already present in current HEAD when this resume began; this resume adds verification/recovery reports and scripts without further application/configuration/package changes.
+
 ## Completed targeted upload browser checks — 26 October 2026
 
 This entry supersedes the earlier pending status for active-upload cancellation and controlled provider-failure/retry. All previously completed browser results, including happy-path uploads for all five image categories, remain preserved. Detailed new evidence: `verification/browser-integration-2026-10-26/73ce3fb9e2f84728beac5d9e1de6bfd5/BROWSER_RESULTS.md`, `ledger.json` and read-only `verify-ledger.mjs`.

@@ -1,0 +1,100 @@
+{
+  "run": "0eb769b6fbbc4443aa906aef5ce27f41",
+  "database": "fyp_transactions_browser_0eb769b6fbbc4443aa906aef5ce27f41",
+  "target": "C:\\Users\\user\\AppData\\Local\\Temp\\mongo-mem-ZjJ9i0",
+  "records": {
+    "notifications": [],
+    "pets": [
+      "6adf33cd4c9fc006ad621e6c"
+    ],
+    "straycomments": [],
+    "mediaassets": [
+      "6adf33984c9fc006ad621e46",
+      "6adf33ea4c9fc006ad621e92",
+      "6adf344e4c9fc006ad621f19",
+      "6adf34bf4c9fc006ad621f75"
+    ],
+    "users": [
+      "6adf32fd4c9fc006ad621e0c",
+      "6adf32fd4c9fc006ad621e10",
+      "6adf32fd4c9fc006ad621e14"
+    ],
+    "userblocks": [],
+    "contentreports": [],
+    "strays": [],
+    "savedstrays": [],
+    "messages": [],
+    "mediauploadbudgets": [
+      "6adf3398cda1c2fcefafaf89"
+    ],
+    "sightings": []
+  },
+  "cleanupComplete": true,
+  "final": {
+    "users": [
+      {
+        "_id": "6adf32fd4c9fc006ad621e0c",
+        "name": "Browser owner",
+        "avatar": ""
+      },
+      {
+        "_id": "6adf32fd4c9fc006ad621e10",
+        "name": "Browser reporter",
+        "avatar": ""
+      },
+      {
+        "_id": "6adf32fd4c9fc006ad621e14",
+        "name": "Browser shelter",
+        "avatar": ""
+      }
+    ],
+    "pets": [
+      {
+        "_id": "6adf33cd4c9fc006ad621e6c",
+        "name": "Cancel Fixed Fixture",
+        "submissionId": "image_b8098dcfca8a567b76de5a2ffb27daf8",
+        "reportedBy": "6adf32fd4c9fc006ad621e0c",
+        "imageIds": [
+          "6adf33984c9fc006ad621e46"
+        ]
+      }
+    ],
+    "assets": [
+      {
+        "_id": "6adf33984c9fc006ad621e46",
+        "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+        "purpose": "pet",
+        "state": "attached",
+        "idempotencyKey": "image_86d88e33c73584745dbb8acc4d72cef1",
+        "attachedTo": {
+          "type": "pet",
+          "id": "6adf33cd4c9fc006ad621e6c"
+        }
+      },
+      {
+        "_id": "6adf33ea4c9fc006ad621e92",
+        "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+        "purpose": "pet",
+        "state": "pending",
+        "idempotencyKey": "image_8c85cbf8e54389141ab92aa7dd429ac6"
+      },
+      {
+        "_id": "6adf344e4c9fc006ad621f19",
+        "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+        "purpose": "pet",
+        "state": "pending",
+        "idempotencyKey": "image_a237d504535d93f138cab50affa4f0d6"
+      },
+      {
+        "_id": "6adf34bf4c9fc006ad621f75",
+        "uploadedBy": "6adf32fd4c9fc006ad621e0c",
+        "purpose": "pet",
+        "state": "deleted",
+        "idempotencyKey": "image_b6c2befb62b3ca79f7ecb248203ff3aa",
+        "failureCode": "IMAGE_STORAGE_UNAVAILABLE"
+      }
+    ]
+  },
+  "emptyCollectionsVerified": true,
+  "mockProvider": "Original process was stopped; its provider was memory-only. No real provider objects existed. No provider lookup/deletion is claimed for interrupted teardown."
+}

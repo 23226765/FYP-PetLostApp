@@ -880,6 +880,20 @@
       "status": 200,
       "startedAt": "2026-10-26T11:09:50.106Z",
       "finishedAt": "2026-10-26T11:09:50.109Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-26T11:10:20.042Z",
+      "finishedAt": "2026-10-26T11:10:20.047Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-26T11:10:20.103Z",
+      "finishedAt": "2026-10-26T11:10:20.107Z"
     }
   ],
   "providerEvents": [

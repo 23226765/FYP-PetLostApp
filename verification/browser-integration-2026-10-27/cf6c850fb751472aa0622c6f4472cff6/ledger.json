@@ -1,0 +1,330 @@
+{
+  "run": "cf6c850fb751472aa0622c6f4472cff6",
+  "database": "fyp_transactions_browser_cf6c850fb751472aa0622c6f4472cff6",
+  "provider": "in-memory mock",
+  "records": {
+    "mediauploadbudgets": [
+      "6ae0971d49455c66034a977a"
+    ],
+    "strays": [],
+    "users": [
+      "6ae096b553b8ddb724b92b5c",
+      "6ae096b553b8ddb724b92b60",
+      "6ae096b553b8ddb724b92b64"
+    ],
+    "sightings": [],
+    "messages": [],
+    "mediaassets": [
+      "6ae0971d53b8ddb724b92b93"
+    ],
+    "savedstrays": [],
+    "contentreports": [],
+    "straycomments": [],
+    "userblocks": [],
+    "pets": [],
+    "notifications": []
+  },
+  "objects": [],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T12:19:01.400Z",
+      "finishedAt": "2026-10-27T12:19:01.510Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T12:19:01.524Z",
+      "finishedAt": "2026-10-27T12:19:01.606Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T12:19:01.612Z",
+      "finishedAt": "2026-10-27T12:19:01.682Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:03.882Z",
+      "finishedAt": "2026-10-27T12:19:03.883Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:10.936Z",
+      "finishedAt": "2026-10-27T12:19:10.937Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401,
+      "startedAt": "2026-10-27T12:19:30.547Z",
+      "finishedAt": "2026-10-27T12:19:30.549Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:35.759Z",
+      "finishedAt": "2026-10-27T12:19:35.766Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:38.156Z",
+      "finishedAt": "2026-10-27T12:19:38.236Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:38.264Z",
+      "finishedAt": "2026-10-27T12:19:38.273Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:41.504Z",
+      "finishedAt": "2026-10-27T12:19:41.516Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:41.518Z",
+      "finishedAt": "2026-10-27T12:19:41.527Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:43.717Z",
+      "finishedAt": "2026-10-27T12:19:43.720Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:43.758Z",
+      "finishedAt": "2026-10-27T12:19:43.764Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:43.772Z",
+      "finishedAt": "2026-10-27T12:19:43.777Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:43.781Z",
+      "finishedAt": "2026-10-27T12:19:43.786Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "startedAt": "2026-10-27T12:19:47.092Z",
+      "finishedAt": "2026-10-27T12:19:47.096Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:08.264Z",
+      "finishedAt": "2026-10-27T12:20:08.268Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:13.806Z",
+      "finishedAt": "2026-10-27T12:20:13.810Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:38.268Z",
+      "finishedAt": "2026-10-27T12:20:38.271Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:43.794Z",
+      "finishedAt": "2026-10-27T12:20:43.798Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:47.025Z",
+      "finishedAt": "2026-10-27T12:20:47.090Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:47.118Z",
+      "finishedAt": "2026-10-27T12:20:47.123Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:52.116Z",
+      "finishedAt": "2026-10-27T12:20:52.120Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:52.127Z",
+      "finishedAt": "2026-10-27T12:20:52.131Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T12:20:52.135Z",
+      "finishedAt": "2026-10-27T12:20:52.138Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T12:21:17.122Z",
+      "finishedAt": "2026-10-27T12:21:17.125Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T12:21:22.150Z",
+      "finishedAt": "2026-10-27T12:21:22.153Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-27T12:21:41.555Z",
+      "finishedAt": "2026-10-27T12:21:41.564Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-27T12:21:41.566Z",
+      "finishedAt": "2026-10-27T12:21:41.573Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me/privacy",
+      "status": 200,
+      "startedAt": "2026-10-27T12:21:42.576Z",
+      "finishedAt": "2026-10-27T12:21:42.578Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T12:21:47.795Z",
+      "finishedAt": "2026-10-27T12:21:47.797Z"
+    }
+  ],
+  "providerEvents": [
+    {
+      "event": "upload-start",
+      "at": "2026-10-27T12:20:45.347Z",
+      "assetId": "6ae0971d53b8ddb724b92b93",
+      "key": "image_f93394a6c5a6ac14dd042081a36d97ca"
+    },
+    {
+      "event": "upload-failed",
+      "at": "2026-10-27T12:21:15.349Z",
+      "assetId": "6ae0971d53b8ddb724b92b93"
+    }
+  ],
+  "cleanupComplete": true,
+  "snapshots": [
+    {
+      "at": "2026-10-27T12:21:09.117Z",
+      "database": "fyp_transactions_browser_cf6c850fb751472aa0622c6f4472cff6",
+      "users": [
+        {
+          "_id": "6ae096b553b8ddb724b92b5c",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6ae096b553b8ddb724b92b60",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6ae096b553b8ddb724b92b64",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [],
+      "assets": [
+        {
+          "_id": "6ae0971d53b8ddb724b92b93",
+          "uploadedBy": "6ae096b553b8ddb724b92b5c",
+          "purpose": "pet",
+          "state": "uploading",
+          "idempotencyKey": "image_f93394a6c5a6ac14dd042081a36d97ca",
+          "expiresAt": "2026-10-28T12:20:45.321Z"
+        }
+      ],
+      "mockObjects": []
+    },
+    {
+      "at": "2026-10-27T12:22:35.762Z",
+      "database": "fyp_transactions_browser_cf6c850fb751472aa0622c6f4472cff6",
+      "users": [
+        {
+          "_id": "6ae096b553b8ddb724b92b5c",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6ae096b553b8ddb724b92b60",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6ae096b553b8ddb724b92b64",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [],
+      "assets": [
+        {
+          "_id": "6ae0971d53b8ddb724b92b93",
+          "uploadedBy": "6ae096b553b8ddb724b92b5c",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_f93394a6c5a6ac14dd042081a36d97ca",
+          "expiresAt": "2026-10-28T12:20:45.321Z",
+          "failureCode": "IMAGE_STORAGE_UNAVAILABLE"
+        }
+      ],
+      "mockObjects": []
+    }
+  ]
+}
