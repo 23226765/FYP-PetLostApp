@@ -25,6 +25,21 @@ export type LocationPrecision = 'exact' | 'approximate'
 export interface MapBounds { west: number; south: number; east: number; north: number }
 export interface MapViewChange { lat: number; lng: number; zoom: number; bounds: MapBounds; initial?: boolean }
 
+export interface AreaInsights {
+  total: number
+  speciesCounts: { dog: number; cat: number; other: number }
+  unclassifiedSpeciesCount: number
+  topDistricts: string[]
+  topDistrictCount: number
+  unknownDistrictCount: number
+  unknownIsTop: boolean
+  recentCount: number
+  unknownDateCount: number
+  futureDateCount: number
+  windowStart: string
+  windowEnd: string
+}
+
 export interface MapPetMarker {
   id: string
   name: string
@@ -43,6 +58,7 @@ export interface MapPetPage {
   gridSizeMeters: number
   radiusKm?: number
   bounds?: MapBounds
+  insights?: AreaInsights | null
 }
 
 export interface Pet {

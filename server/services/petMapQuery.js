@@ -2,9 +2,10 @@ import mongoose from 'mongoose'
 import { anonymousSearchCoordinates, publicCellCentre, PUBLIC_GRID_SIZE_METERS, EARTH_RADIUS_METERS, MAX_MERCATOR_LATITUDE } from './locationPrivacy.js'
 import { hotspotCandidateRadiusMeters, publicCellMembership, publicGridCellExpressions } from './hotspotAnalytics.js'
 import { visibleContentFilter } from './moderationVisibility.js'
+import { MAP_DISTRICTS, mapInsightFacets, publicMapInsights } from './mapInsights.js'
 
 export const PET_MAP_QUERY_OPTIONS = Object.freeze({ maxTimeMS: 10000, allowDiskUse: false })
-const DISTRICTS = new Set(['Central and Western', 'Eastern', 'Southern', 'Wan Chai', 'Kowloon City', 'Kwun Tong', 'Sham Shui Po', 'Wong Tai Sin', 'Yau Tsim Mong', 'Islands', 'Kwai Tsing', 'North', 'Sai Kung', 'Sha Tin', 'Tai Po', 'Tsuen Wan', 'Tuen Mun', 'Yuen Long'])
+const DISTRICTS = new Set(MAP_DISTRICTS)
 const invalid = () => Object.assign(new Error('Invalid map query.'), { status: 400, code: 'MAP_QUERY_INVALID' })
 function number(value, fallback, min, max, integer = false) {
   if (value === undefined && fallback !== undefined) return fallback
@@ -57,7 +58,7 @@ export function parsePetMapQuery(query = {}, requester) {
     ownerId: mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(String(id)) : null }
 }
 
-export function petMapPipeline(options) {
+export function petMapPipeline(options, now = new Date()) {
   const { longitude, latitude, radiusKm, page, limit, ownerId, species, district, projectedBounds } = options
   const filter = visibleContentFilter({ status: { $in: ['lost', 'sighted'] } })
   if (ownerId) filter.reportedBy = { $ne: ownerId }
@@ -71,6 +72,7 @@ export function petMapPipeline(options) {
     } },
     // location remains the stored report point; never join or substitute sightings.
     { $project: { _id: 1, name: 1, species: 1, breed: 1, status: 1, district: 1, photo: 1, photos: 1,
+      ...(options.bounds ? { createdAt: 1 } : {}),
       publicCell: publicGridCellExpressions() } },
     projectedBounds ? { $match: { $expr: { $and: [
       { $gte: [{ $multiply: [{ $add: ['$publicCell.x', 0.5] }, PUBLIC_GRID_SIZE_METERS] }, projectedBounds.west] },
@@ -81,14 +83,15 @@ export function petMapPipeline(options) {
     { $facet: {
       markers: [{ $sort: { _id: 1 } }, { $skip: (page - 1) * limit }, { $limit: limit }],
       totals: [{ $count: 'count' }],
+      ...(options.bounds ? mapInsightFacets(now) : {}),
     } },
   ]
 }
 
-export function publicPetMapResult(result, { page, limit, radiusKm, bounds }) {
+export function publicPetMapResult(result, { page, limit, radiusKm, bounds }, now = new Date()) {
   const markers = (result?.markers || []).map(pet => ({
     id: String(pet._id), name: pet.name, species: pet.species, breed: pet.breed || '',
-    status: pet.status, district: pet.district || '',
+    status: pet.status, district: DISTRICTS.has(pet.district) ? pet.district : '',
     photo: (typeof pet.photo === 'string' && pet.photo.trim()) ||
       (Array.isArray(pet.photos) ? pet.photos.find(photo => typeof photo === 'string' && photo.trim()) : '') || '',
     coordinates: publicCellCentre(pet.publicCell.x, pet.publicCell.y),
@@ -96,5 +99,5 @@ export function publicPetMapResult(result, { page, limit, radiusKm, bounds }) {
   }))
   const total = result?.totals?.[0]?.count || 0
   return { markers, pagination: { page, limit, total, totalPages: Math.ceil(total / limit), hasMore: page * limit < total },
-    gridSizeMeters: PUBLIC_GRID_SIZE_METERS, ...(bounds ? { bounds } : { radiusKm }) }
+    gridSizeMeters: PUBLIC_GRID_SIZE_METERS, ...(bounds ? { bounds, insights: publicMapInsights(result, now) } : { radiusKm }) }
 }

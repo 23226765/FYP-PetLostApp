@@ -11,6 +11,7 @@ import { approximateCoordinates, publicCellCentre, EARTH_RADIUS_METERS } from '.
 import { openTransactionDatabase } from './helpers/localTransactions.js'
 
 const uri = process.env.MEDIA_TEST_MONGODB_URI
+const NOW = new Date('2026-10-28T12:00:00Z'), WEEK = 7 * 86400000
 const point = coordinates => ({ type: 'Point', coordinates })
 const centre = approximateCoordinates([114.188123, 22.381456])
 const cell = ([lng, lat]) => [Math.floor(EARTH_RADIUS_METERS * lng * Math.PI / 180 / 750), Math.floor(EARTH_RADIUS_METERS * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / 750)]
@@ -21,7 +22,7 @@ function distanceKm(a, b) {
 }
 const markerKeys = ['id', 'name', 'species', 'breed', 'status', 'district', 'photo', 'coordinates', 'locationPrecision', 'locationSource'].sort()
 function assertPublic(payload, bounds) {
-  assert.deepEqual(Object.keys(payload).sort(), bounds ? ['bounds', 'gridSizeMeters', 'markers', 'pagination'] : ['gridSizeMeters', 'markers', 'pagination', 'radiusKm'])
+  assert.deepEqual(Object.keys(payload).sort(), bounds ? ['bounds', 'gridSizeMeters', 'insights', 'markers', 'pagination'] : ['gridSizeMeters', 'markers', 'pagination', 'radiusKm'])
   if (bounds) assert.deepEqual(payload.bounds, bounds)
   assert.deepEqual(Object.keys(payload.pagination).sort(), ['hasMore', 'limit', 'page', 'total', 'totalPages'])
   for (const marker of payload.markers) {
@@ -99,7 +100,8 @@ test('real MongoDB map: complete public-cell membership, role exclusions, pagina
       for (const scenario of cases) assert.deepEqual(await execute(scenario.origin, scenario.radius, scenario.user, scenario.page), scenario.before)
       t.diagnostic(`${cases.length} full public-response invariance comparisons using real geospatial aggregation (including 805 moved records).`)
     })
-    await t.test('viewport queries paginate all eligible records and preserve role and filter exclusions', async () => {
+    await t.test('viewport queries paginate all eligible records and preserve role and filter exclusions', async caseTest => {
+      caseTest.mock.timers.enable({ apis: ['Date'], now: NOW })
       const bounds = { west: 113.82, south: 22.15, east: 114.50, north: 22.57 }
       const pages = await Promise.all(Array.from({ length: 9 }, (_, index) => executeViewport(bounds, undefined, index + 1)))
       assert.equal(pages[0].pagination.total, 815)
@@ -108,13 +110,18 @@ test('real MongoDB map: complete public-cell membership, role exclusions, pagina
       const ids = pages.flatMap(page => page.markers.map(marker => marker.id))
       assert.equal(ids.length, 815); assert.equal(new Set(ids).size, 815)
       assert.deepEqual(ids, [...ids].sort())
+      for (const page of pages) assert.deepEqual(page.insights, pages[0].insights)
+      assert.equal(pages[0].insights.total, 815)
+      assert.deepEqual(pages[0].insights.speciesCounts, { dog: 805, cat: 10, other: 0 })
+      assert.equal(pages[0].insights.unknownDateCount, 815)
       assert.equal((await executeViewport(bounds, owner)).pagination.total, 412)
       assert.equal((await executeViewport(bounds, reporter)).pagination.total, 403)
       for (const user of [unrelated, admin]) assert.equal((await executeViewport(bounds, user)).pagination.total, 815)
       assert.equal((await executeViewport(bounds, undefined, 1, { species: 'Cat' })).pagination.total, 10)
       assert.equal((await executeViewport(bounds, undefined, 1, { district: 'Tai Po' })).pagination.total, 0)
     })
-    await t.test('viewport edge and corner membership depends only on public cells, even when source points lie outside bounds', async () => {
+    await t.test('viewport edge and corner membership depends only on public cells, even when source points lie outside bounds', async caseTest => {
+      caseTest.mock.timers.enable({ apis: ['Date'], now: NOW })
       // Use unrounded public centres for boundary comparisons, matching MongoDB.
       const lng = (x + .5) * 750 / EARTH_RADIUS_METERS * 180 / Math.PI
       const lat = (2 * Math.atan(Math.exp((y + .5) * 750 / EARTH_RADIUS_METERS)) - Math.PI / 2) * 180 / Math.PI
@@ -145,6 +152,44 @@ test('real MongoDB map: complete public-cell membership, role exclusions, pagina
       await Pets.updateMany({ _id: { $in: rows.slice(0, 805).map(row => row._id) } }, { $set: { location: point(moved) } })
       for (const scenario of cases) assert.deepEqual(await executeViewport(scenario.bounds, scenario.user, scenario.page), scenario.before)
       t.diagnostic(`${cases.length} full viewport-response invariance comparisons across edges, corners, roles and pages; exact source points moved within the same public cell.`)
+    })
+    await t.test('area insights count reports once with exact time boundaries, unknown values and complete pre-page metrics', async caseTest => {
+      caseTest.mock.timers.enable({ apis: ['Date'], now: NOW })
+      const location = point(approximateCoordinates([114.32, 22.36]))
+      const area = { west: 114.31, south: 22.35, east: 114.33, north: 22.37 }
+      const common = { ...base, location }
+      await insert([
+        { ...common, district: 'Sha Tin', species: 'Dog', createdAt: new Date(+NOW - WEEK), lastSeen: new Date(+NOW + WEEK) },
+        { ...common, district: 'Tai Po', species: 'Cat', createdAt: NOW, reportedBy: reporter._id },
+        { ...common, district: 'Sha Tin', species: 'Other', createdAt: new Date(+NOW - WEEK - 1) },
+        { ...common, district: 'Tai Po', species: 'Dog', createdAt: new Date(+NOW + 1) },
+        { ...common, district: 'PRIVATE_UNSUPPORTED_DISTRICT', species: 'legacy-invalid', createdAt: NOW.toISOString() },
+        { ...common, district: null, species: 'Dog' },
+        { ...common, createdAt: NOW, moderationStatus: 'hidden' },
+        { ...common, createdAt: NOW, status: 'reunited' },
+        { ...common, createdAt: NOW, location: point([114.4, 22.36]) },
+      ])
+      const first = await executeViewport(area, undefined, 1, { limit: 1 })
+      const second = await executeViewport(area, undefined, 2, { limit: 1 })
+      assert.equal(first.markers.length, 1); assert.equal(first.pagination.total, 6)
+      assert.deepEqual(first.insights, second.insights)
+      assert.deepEqual(first.insights, {
+        total: 6, speciesCounts: { dog: 3, cat: 1, other: 1 }, unclassifiedSpeciesCount: 1,
+        topDistricts: ['Sha Tin', 'Tai Po'], topDistrictCount: 2, unknownDistrictCount: 2, unknownIsTop: true,
+        recentCount: 2, unknownDateCount: 2, futureDateCount: 1,
+        windowStart: new Date(+NOW - WEEK).toISOString(), windowEnd: NOW.toISOString(),
+      })
+      assert.equal(JSON.stringify(first).includes('PRIVATE'), false)
+      const ownExcluded = await executeViewport(area, owner)
+      assert.equal(ownExcluded.insights.total, 1); assert.equal(ownExcluded.insights.recentCount, 1)
+      assert.deepEqual(ownExcluded.insights.topDistricts, ['Tai Po'])
+      await insert([{ ...common, district: '', species: 'Other' }])
+      const unknownLeader = (await executeViewport(area)).insights
+      assert.equal(unknownLeader.unknownDistrictCount, 3); assert.equal(unknownLeader.unknownIsTop, true)
+      assert.deepEqual(unknownLeader.topDistricts, [])
+      const empty = await executeViewport({ west: 114.48, south: 22.54, east: 114.49, north: 22.55 })
+      assert.equal(empty.insights.total, 0); assert.equal(empty.insights.recentCount, 0)
+      assert.deepEqual(empty.insights.topDistricts, []); assert.equal(empty.insights.unknownIsTop, false)
     })
     await t.test('actual sighting transaction changes status but preserves original report A instead of subsequent sighting B', async () => {
       const petId = new mongoose.Types.ObjectId(); petIds.push(petId)

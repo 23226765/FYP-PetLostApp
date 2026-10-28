@@ -174,7 +174,8 @@ describe('authenticated creation entry points', () => {
     let wrapper: Awaited<ReturnType<typeof renderApp>>['wrapper'] | undefined
     try {
       apiMocks.getNearbyPets.mockImplementation(({ radiusKm }) => Promise.resolve(radiusKm === 20 ? [pet, { ...pet, id: 'radar-only' }] : [pet]))
-      apiMocks.getMapPets.mockResolvedValue({ markers: [{ ...pet, id: 'map-only', locationSource: 'stored_report' }], pagination: { page: 1, limit: 100, total: 1, totalPages: 1, hasMore: false }, bounds: { west: 113.82, south: 22.15, east: 114.5, north: 22.57 }, gridSizeMeters: 750 })
+      const areaInsights = { total: 1, speciesCounts: { dog: 1, cat: 0, other: 0 }, unclassifiedSpeciesCount: 0, topDistricts: ['Sha Tin'], topDistrictCount: 1, unknownDistrictCount: 0, unknownIsTop: false, recentCount: 1, unknownDateCount: 0, futureDateCount: 0, windowStart: '2026-10-21T12:00:00Z', windowEnd: '2026-10-28T12:00:00Z' }
+      apiMocks.getMapPets.mockResolvedValue({ markers: [{ ...pet, id: 'map-only', locationSource: 'stored_report' }], pagination: { page: 1, limit: 100, total: 1, totalPages: 1, hasMore: false }, bounds: { west: 113.82, south: 22.15, east: 114.5, north: 22.57 }, gridSizeMeters: 750, insights: areaInsights })
       ;({ wrapper } = await renderApp(undefined, true))
       const nav = (label: string) => wrapper!.findAll('.tabbar > button').find(button => button.text() === label)!
       await nav('Map').trigger('click'); await flushPromises()
@@ -198,6 +199,7 @@ describe('authenticated creation entry points', () => {
       expect(restored.props('center')).toEqual({ lat: 22.4, lng: 114.2 })
       expect(restored.props('initialZoom')).toBe(15)
       expect(restored.props('discoveryPets')).toEqual(markers)
+      expect(wrapper.getComponent({ name: 'AreaInsightsCard' }).props('insights')).toEqual(areaInsights)
       expect(wrapper.get('.stub-radar-radius').text()).toBe('20')
       expect(apiMocks.getMapPets.mock.calls.at(-1)?.[0]).toEqual(request)
       expect(apiMocks.updateNotificationPreferences).not.toHaveBeenCalled()

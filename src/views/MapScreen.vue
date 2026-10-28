@@ -18,15 +18,17 @@
         <template v-else><p>{{ t('mapViewport.loaded', { count: markers.length, total }) }}</p><button v-if="hasMore && page < 10000" type="button" @click="load(false)">{{ t('discoveryMap.more') }}</button><p v-else-if="hasMore">{{ t('mapViewport.zoomIn') }}</p></template>
       </div>
     </div>
+    <AreaInsightsCard :insights="insights" :loading="loading" :failed="Boolean(error) || !queryBounds" />
     <p class="map-disclaimer">{{ t('discoveryMap.history') }}</p>
   </section>
 </template>
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import MapView from '../components/MapView.vue'
+import AreaInsightsCard from '../components/AreaInsightsCard.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { getMapPets } from '../services/api'
-import type { MapPetMarker, MapBounds, MapViewChange } from '../types/pet'
+import type { AreaInsights, MapPetMarker, MapBounds, MapViewChange } from '../types/pet'
 import { MAP_OVERVIEW_CENTER, SUPPORTED_MAP_BOUNDS, sameMapBounds, supportedViewport } from '../utils/mapViewport'
 import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import { translateApiError, useAppI18n } from '../i18n'
@@ -39,16 +41,17 @@ const view = ref<MapViewChange>({ ...MAP_OVERVIEW_CENTER, zoom: 10, bounds: { ..
 const hasView = ref(false), hasLoaded = ref(false)
 const queryBounds = ref<MapBounds | null>({ ...SUPPORTED_MAP_BOUNDS })
 const markers = ref<MapPetMarker[]>([])
+const insights = ref<AreaInsights | null>(null)
 const loading = ref(false), error = ref(''), page = ref(0), total = ref(0), hasMore = ref(false)
 let sequence = 0, disposed = false
 let controller: AbortController | null = null
 let moveTimer: ReturnType<typeof setTimeout> | undefined
 function invalidate() { sequence++; clearTimeout(moveTimer); moveTimer = undefined; controller?.abort(); controller = null; loading.value = false }
-function clear() { invalidate(); markers.value = []; page.value = 0; total.value = 0; hasMore.value = false; error.value = ''; hasLoaded.value = false }
+function clear() { invalidate(); markers.value = []; insights.value = null; page.value = 0; total.value = 0; hasMore.value = false; error.value = ''; hasLoaded.value = false }
 async function load(reset = true) {
   if (!props.active || disposed || !queryBounds.value || (!reset && page.value >= 10000)) return
   invalidate()
-  if (reset) { markers.value = []; page.value = 0; total.value = 0; hasMore.value = false }
+  if (reset) { markers.value = []; insights.value = null; page.value = 0; total.value = 0; hasMore.value = false }
   const request = ++sequence, context = captureAuthContext()
   const active = () => !disposed && props.active && request === sequence && isAuthContextCurrent(context)
   const abort = new AbortController(); controller = abort
@@ -60,6 +63,7 @@ async function load(reset = true) {
     result.markers.forEach(marker => byId.set(marker.id, marker))
     markers.value = [...byId.values()]; page.value = result.pagination.page
     total.value = result.pagination.total; hasMore.value = result.pagination.hasMore
+    insights.value = result.insights || null
     hasLoaded.value = true
   } catch (cause) {
     if (active() && !abort.signal.aborted) {
@@ -90,7 +94,7 @@ window.addEventListener('auth:unauthorized', refreshContext)
 onBeforeUnmount(() => { disposed = true; invalidate(); window.removeEventListener('auth:changed', refreshContext); window.removeEventListener('auth:unauthorized', refreshContext) })
 </script>
 <style scoped>
-.discovery-map { height: calc(100dvh - 90px - var(--safe-bottom)); min-height: 360px; max-width: 480px; margin: auto; display: flex; flex-direction: column; background: var(--page-bg); }
+.discovery-map { height: calc(100dvh - 90px - var(--safe-bottom)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; max-width: 480px; margin: auto; display: flex; flex-direction: column; background: var(--page-bg); }
 .map-heading { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: calc(12px + var(--safe-top)) 16px 10px; }
 h1 { font-size: 23px; color: var(--color-text-primary); }
 .map-heading p,.map-disclaimer { font-size: 11px; color: var(--color-text-secondary); line-height: 1.4; }

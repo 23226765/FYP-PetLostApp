@@ -298,8 +298,9 @@ export async function listMapPets(req, res, next) {
   try {
     setLocationPrivacyHeaders(res)
     const options = parsePetMapQuery(req.query, req.user)
-    const [result] = await Pet.aggregate(petMapPipeline(options), PET_MAP_QUERY_OPTIONS)
-    res.json(publicPetMapResult(result, options))
+    const now = new Date()
+    const [result] = await Pet.aggregate(petMapPipeline(options, now), PET_MAP_QUERY_OPTIONS)
+    res.json(publicPetMapResult(result, options, now))
   } catch (error) {
     if (error?.code === 'MAP_QUERY_INVALID') return res.status(400).json({ code: error.code, error: 'Invalid map query.' })
     next(error)
