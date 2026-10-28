@@ -50,7 +50,7 @@ try {
   const code = await new Promise((resolve, reject) => {
     const args = realProvider
       ? ['--experimental-test-module-mocks', 'scripts/verifyManagedImagesE2E.js', '--confirm-isolated-cloudinary-writes']
-      : ['--experimental-test-module-mocks', '--test', '--test-timeout=120000', 'tests/mediaTransactions.test.js', 'tests/sightingTransactions.test.js', 'tests/mediaQuotaTransactions.test.js', 'tests/rescueTransactions.test.js', 'tests/rescueEditTransactions.test.js', 'tests/hotspotMongo.test.js']
+      : ['--experimental-test-module-mocks', '--test', '--test-timeout=120000', 'tests/mediaTransactions.test.js', 'tests/sightingTransactions.test.js', 'tests/mediaQuotaTransactions.test.js', 'tests/rescueTransactions.test.js', 'tests/rescueEditTransactions.test.js', 'tests/hotspotMongo.test.js', 'tests/petMapMongo.test.js']
     child = spawn(process.execPath, args, {
       cwd: serverDirectory, env, stdio: 'inherit', windowsHide: true,
     })

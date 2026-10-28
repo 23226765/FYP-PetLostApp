@@ -25,6 +25,7 @@ import {
 } from '../services/locationPrivacy.js'
 import { blockedUserIdsFor } from '../services/trustSafety.js'
 import { visibleContentFilter, isContentVisible } from '../services/moderationVisibility.js'
+import { parsePetMapQuery, petMapPipeline, publicPetMapResult, PET_MAP_QUERY_OPTIONS } from '../services/petMapQuery.js'
 
 /* ───────────────────────── Helpers ───────────────────────── */
 
@@ -289,6 +290,19 @@ export async function listPets(req, res, next) {
     })
   } catch (err) {
     next(err)
+  }
+}
+
+// GET /api/pets/map — discovery always uses public grid locations, for every role.
+export async function listMapPets(req, res, next) {
+  try {
+    setLocationPrivacyHeaders(res)
+    const options = parsePetMapQuery(req.query, req.user)
+    const [result] = await Pet.aggregate(petMapPipeline(options), PET_MAP_QUERY_OPTIONS)
+    res.json(publicPetMapResult(result, options))
+  } catch (error) {
+    if (error?.code === 'MAP_QUERY_INVALID') return res.status(400).json({ code: error.code, error: 'Invalid map query.' })
+    next(error)
   }
 }
 

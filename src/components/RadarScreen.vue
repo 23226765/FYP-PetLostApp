@@ -47,15 +47,12 @@
       </button>
     </div>
 
-    <div class="detail-filters" :aria-label="t('radar.filterBreedDistrict')">
+    <div class="detail-filters" :aria-label="t('compactFilters.title')">
       <label>
-        <span>{{ t('radar.breed') }}</span>
-        <input
-          type="search"
-          :value="breed"
-          :placeholder="t('radar.anyBreed')"
-          @input="handleBreed"
-        />
+        <span>{{ t('compactFilters.animal') }}</span>
+        <select :value="species" @change="emit('species-change', ($event.target as HTMLSelectElement).value as typeof species)">
+          <option v-for="animal in animals" :key="animal" :value="animal">{{ speciesLabel(animal) }}</option>
+        </select>
       </label>
       <label>
         <span>{{ t('radar.district') }}</span>
@@ -66,34 +63,16 @@
       </label>
     </div>
 
-    <div class="chips" role="group" :aria-label="t('radar.filterSpecies')">
-      <button
-        v-for="chip in chips"
-        :key="chip"
-        class="chip"
-        :class="{ active: species === chip }"
-        @click="handleSpecies(chip)"
-      >
-        {{ speciesLabel(chip) }}
+    <div class="radius-compact">
+      <button class="radius-trigger" type="button" aria-haspopup="dialog" :aria-label="t('radar.radiusA11y')" @click="radiusOpen = true">
+        <AppIcon name="radar" :size="19" />{{ t('common.kilometres', { count: radiusKm }) }}<AppIcon name="chevron" :size="14" />
       </button>
     </div>
-
-    <div class="radius">
-      <div class="radius-head">
-        <span>{{ t('radar.searchRadius') }}</span>
-        <span class="radius-value">{{ t('common.kilometres', { count: radiusKm }) }}</span>
-      </div>
-      <input
-        type="range"
-        min="1"
-        max="20"
-        step="1"
-        :value="radiusKm"
-        :aria-label="t('radar.radiusA11y')"
-        @change="handleRadius"
-      />
-      <div class="radius-labels"><span>{{ t('common.kilometres', { count: 1 }) }}</span><span>{{ t('common.kilometres', { count: 20 }) }}</span></div>
-    </div>
+    <FilterSheet :open="radiusOpen" :title="t('compactFilters.radius')" @close="radiusOpen = false">
+      <fieldset class="radius-options"><legend class="sr-only">{{ t('compactFilters.radius') }}</legend>
+        <label v-for="radius in radiusOptions" :key="radius" :class="{ selected: radiusKm === radius }"><input type="radio" name="radar-radius" :value="radius" :checked="radiusKm === radius" @change="emit('radius-change', radius); radiusOpen = false" />{{ t('common.kilometres', { count: radius }) }}</label>
+      </fieldset>
+    </FilterSheet>
 
     <p class="count">{{ t('radar.petsNearby', { count: pets.length }, pets.length) }}</p>
 
@@ -190,6 +169,7 @@ import { getHotspots } from '../services/api'
 import AppIcon from './AppIcon.vue'
 import PetCard from './PetCard.vue'
 import MapView from './MapView.vue'
+import FilterSheet from './FilterSheet.vue'
 import { translateApiError, useAppI18n } from '../i18n'
 import { districtLabel, speciesLabel } from '../i18n/formatters'
 
@@ -225,7 +205,9 @@ const hotspotCells = ref<HotspotCell[]>([])
 const hotspotSummary = ref<HotspotSummary | null>(null)
 const hotspotLoading = ref(false)
 const hotspotError = ref('')
-const chips = ['All', 'Dogs', 'Cats', 'Other'] as const
+const animals = ['All', 'Dogs', 'Cats', 'Other'] as const
+const radiusOpen = ref(false)
+const radiusOptions = [1, 5, 10, 15, 20]
 const HK_CENTER = { lat: 22.3193, lng: 114.1694 }
 let hotspotRequestSequence = 0
 let hotspotAbortController: AbortController | null = null
@@ -291,25 +273,24 @@ onBeforeUnmount(() => {
   hotspotAbortController = null
 })
 
-function handleRadius(e: Event) {
-  emit('radius-change', Number((e.target as HTMLInputElement).value))
-}
-
-function handleSpecies(chip: (typeof chips)[number]) {
-  emit('species-change', chip)
-}
-
-function handleBreed(event: Event) {
-  emit('breed-change', (event.target as HTMLInputElement).value)
-}
-
 function handleDistrict(event: Event) {
   emit('district-change', (event.target as HTMLSelectElement).value)
 }
 </script>
 
 <style scoped>
+.radius-compact { display: flex; justify-content: flex-end; margin: 8px 0; }
+.radius-trigger { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 14px; background: var(--color-surface-selected); color: var(--color-text-accent); font-weight: 750; }
+.radius-options { border: 0; display: grid; gap: 8px; }
+.radius-options label { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); color: var(--color-text-primary); }
+.radius-options label.selected { border-color: var(--color-border-accent); background: var(--color-surface-selected); }
+.radius-options input { accent-color: var(--teal); }
+.radius-options label:has(:focus-visible), .radius-trigger:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
 .radar {
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: calc(var(--safe-top) + 18px) 18px 120px;
   max-width: 480px;
   margin: 0 auto;

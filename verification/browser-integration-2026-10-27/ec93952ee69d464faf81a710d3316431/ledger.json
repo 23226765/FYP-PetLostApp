@@ -1,0 +1,2298 @@
+{
+  "run": "ec93952ee69d464faf81a710d3316431",
+  "database": "fyp_transactions_browser_ec93952ee69d464faf81a710d3316431",
+  "provider": "in-memory mock",
+  "records": {
+    "users": [
+      "6ae0a0855a38654447418a71",
+      "6ae0a0855a38654447418a75",
+      "6ae0a0855a38654447418a79"
+    ],
+    "messages": [
+      "6ae0a0ad5a38654447418a88",
+      "6ae0a0ad5a38654447418a8e",
+      "6ae0a0ad5a38654447418a95",
+      "6ae0a0ad5a38654447418aaa",
+      "6ae0a3365a38654447418ea0"
+    ],
+    "contentreports": [],
+    "strays": [],
+    "mediauploadbudgets": [
+      "6ae0a0ad9b7c2616593baeab"
+    ],
+    "userblocks": [],
+    "notifications": [
+      "6ae0a0ad9b7c2616593baea8",
+      "6ae0a0ad9b7c2616593baea9",
+      "6ae0a0ad9b7c2616593baeaa",
+      "6ae0a0ad9b7c2616593baeac",
+      "6ae0a3379b7c2616593baead"
+    ],
+    "sightings": [],
+    "mediaassets": [
+      "6ae0a0ad5a38654447418a9a"
+    ],
+    "straycomments": [],
+    "savedstrays": [],
+    "pets": [
+      "6ae0a0ad9b7c2616593baea7"
+    ]
+  },
+  "objects": [
+    {
+      "publicId": "petlostapp/test/ec93952ee69d464faf81a710d3316431/message/e7575b58-8c0b-49e0-9ec9-f7df2bceaf1d",
+      "assetId": "6ae0a0ad5a38654447418a9a",
+      "absentConfirmed": true
+    }
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T13:00:53.400Z",
+      "finishedAt": "2026-10-27T13:00:53.500Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T13:00:53.599Z",
+      "finishedAt": "2026-10-27T13:00:53.674Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T13:00:53.681Z",
+      "finishedAt": "2026-10-27T13:00:53.752Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-27T13:00:54.079Z",
+      "finishedAt": "2026-10-27T13:00:54.080Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-27T13:01:33.611Z",
+      "finishedAt": "2026-10-27T13:01:33.612Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-27T13:01:33.629Z",
+      "finishedAt": "2026-10-27T13:01:33.701Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-27T13:01:33.706Z",
+      "finishedAt": "2026-10-27T13:01:33.771Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-27T13:01:33.776Z",
+      "finishedAt": "2026-10-27T13:01:33.843Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pets/report",
+      "status": 201,
+      "startedAt": "2026-10-27T13:01:33.848Z",
+      "finishedAt": "2026-10-27T13:01:33.867Z",
+      "submissionId": "1cdd3fa4-0ca3-4ef0-b388-afe72f95b612"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 201,
+      "startedAt": "2026-10-27T13:01:33.871Z",
+      "finishedAt": "2026-10-27T13:01:33.887Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 201,
+      "startedAt": "2026-10-27T13:01:33.891Z",
+      "finishedAt": "2026-10-27T13:01:33.903Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 201,
+      "startedAt": "2026-10-27T13:01:33.907Z",
+      "finishedAt": "2026-10-27T13:01:33.919Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/managed",
+      "status": 201,
+      "startedAt": "2026-10-27T13:01:33.926Z",
+      "finishedAt": "2026-10-27T13:01:33.962Z",
+      "imageKey": "fc7741fd-075d-4682-ab7e-6b79bbd13803"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 201,
+      "startedAt": "2026-10-27T13:01:33.966Z",
+      "finishedAt": "2026-10-27T13:01:33.988Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-27T13:01:36.806Z",
+      "finishedAt": "2026-10-27T13:01:36.806Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T13:02:17.087Z",
+      "finishedAt": "2026-10-27T13:02:17.093Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-27T13:02:17.573Z",
+      "finishedAt": "2026-10-27T13:02:17.642Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:02:17.670Z",
+      "finishedAt": "2026-10-27T13:02:17.682Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T13:02:22.673Z",
+      "finishedAt": "2026-10-27T13:02:22.677Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-27T13:02:22.685Z",
+      "finishedAt": "2026-10-27T13:02:22.689Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:02:22.693Z",
+      "finishedAt": "2026-10-27T13:02:22.700Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:02:47.668Z",
+      "finishedAt": "2026-10-27T13:02:47.678Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:02:52.710Z",
+      "finishedAt": "2026-10-27T13:02:52.716Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:13.257Z",
+      "finishedAt": "2026-10-27T13:03:13.261Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:15.891Z",
+      "finishedAt": "2026-10-27T13:03:15.957Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:15.982Z",
+      "finishedAt": "2026-10-27T13:03:15.994Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:17.678Z",
+      "finishedAt": "2026-10-27T13:03:17.687Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:18.031Z",
+      "finishedAt": "2026-10-27T13:03:18.044Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:18.045Z",
+      "finishedAt": "2026-10-27T13:03:18.056Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:20.985Z",
+      "finishedAt": "2026-10-27T13:03:20.991Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:21.000Z",
+      "finishedAt": "2026-10-27T13:03:21.004Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:21.008Z",
+      "finishedAt": "2026-10-27T13:03:21.014Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:22.722Z",
+      "finishedAt": "2026-10-27T13:03:22.727Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:30.949Z",
+      "finishedAt": "2026-10-27T13:03:30.956Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6ae0a0ad5a38654447418a9a/content",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:31.036Z",
+      "finishedAt": "2026-10-27T13:03:31.054Z"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7/read",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:31.038Z",
+      "finishedAt": "2026-10-27T13:03:31.055Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:31.067Z",
+      "finishedAt": "2026-10-27T13:03:31.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:31.068Z",
+      "finishedAt": "2026-10-27T13:03:31.079Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:36.079Z",
+      "finishedAt": "2026-10-27T13:03:36.084Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:41.083Z",
+      "finishedAt": "2026-10-27T13:03:41.090Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:45.981Z",
+      "finishedAt": "2026-10-27T13:03:45.988Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:46.072Z",
+      "finishedAt": "2026-10-27T13:03:46.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:47.682Z",
+      "finishedAt": "2026-10-27T13:03:47.688Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:51.024Z",
+      "finishedAt": "2026-10-27T13:03:51.029Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:51.070Z",
+      "finishedAt": "2026-10-27T13:03:51.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:52.711Z",
+      "finishedAt": "2026-10-27T13:03:52.716Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:03:56.075Z",
+      "finishedAt": "2026-10-27T13:03:56.079Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:01.071Z",
+      "finishedAt": "2026-10-27T13:04:01.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:06.081Z",
+      "finishedAt": "2026-10-27T13:04:06.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:11.071Z",
+      "finishedAt": "2026-10-27T13:04:11.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:15.980Z",
+      "finishedAt": "2026-10-27T13:04:15.986Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:16.071Z",
+      "finishedAt": "2026-10-27T13:04:16.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:17.675Z",
+      "finishedAt": "2026-10-27T13:04:17.682Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:21.049Z",
+      "finishedAt": "2026-10-27T13:04:21.055Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:21.082Z",
+      "finishedAt": "2026-10-27T13:04:21.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:22.717Z",
+      "finishedAt": "2026-10-27T13:04:22.723Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:26.069Z",
+      "finishedAt": "2026-10-27T13:04:26.074Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:31.071Z",
+      "finishedAt": "2026-10-27T13:04:31.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:36.082Z",
+      "finishedAt": "2026-10-27T13:04:36.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:41.079Z",
+      "finishedAt": "2026-10-27T13:04:41.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:45.998Z",
+      "finishedAt": "2026-10-27T13:04:46.005Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:46.078Z",
+      "finishedAt": "2026-10-27T13:04:46.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:47.672Z",
+      "finishedAt": "2026-10-27T13:04:47.679Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:51.041Z",
+      "finishedAt": "2026-10-27T13:04:51.046Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:51.072Z",
+      "finishedAt": "2026-10-27T13:04:51.077Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:52.715Z",
+      "finishedAt": "2026-10-27T13:04:52.720Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:04:56.080Z",
+      "finishedAt": "2026-10-27T13:04:56.085Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:01.071Z",
+      "finishedAt": "2026-10-27T13:05:01.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:06.076Z",
+      "finishedAt": "2026-10-27T13:05:06.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:11.077Z",
+      "finishedAt": "2026-10-27T13:05:11.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:15.977Z",
+      "finishedAt": "2026-10-27T13:05:15.984Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:16.069Z",
+      "finishedAt": "2026-10-27T13:05:16.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:17.674Z",
+      "finishedAt": "2026-10-27T13:05:17.681Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:21.031Z",
+      "finishedAt": "2026-10-27T13:05:21.037Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:21.067Z",
+      "finishedAt": "2026-10-27T13:05:21.071Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:22.713Z",
+      "finishedAt": "2026-10-27T13:05:22.718Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:26.079Z",
+      "finishedAt": "2026-10-27T13:05:26.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:31.077Z",
+      "finishedAt": "2026-10-27T13:05:31.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:36.076Z",
+      "finishedAt": "2026-10-27T13:05:36.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:41.082Z",
+      "finishedAt": "2026-10-27T13:05:41.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:45.987Z",
+      "finishedAt": "2026-10-27T13:05:45.993Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:46.081Z",
+      "finishedAt": "2026-10-27T13:05:46.085Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:47.671Z",
+      "finishedAt": "2026-10-27T13:05:47.678Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:51.047Z",
+      "finishedAt": "2026-10-27T13:05:51.052Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:51.080Z",
+      "finishedAt": "2026-10-27T13:05:51.084Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:52.717Z",
+      "finishedAt": "2026-10-27T13:05:52.721Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:05:56.077Z",
+      "finishedAt": "2026-10-27T13:05:56.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:01.076Z",
+      "finishedAt": "2026-10-27T13:06:01.080Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:06.079Z",
+      "finishedAt": "2026-10-27T13:06:06.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:11.079Z",
+      "finishedAt": "2026-10-27T13:06:11.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:15.990Z",
+      "finishedAt": "2026-10-27T13:06:15.996Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:16.082Z",
+      "finishedAt": "2026-10-27T13:06:16.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:17.670Z",
+      "finishedAt": "2026-10-27T13:06:17.676Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:21.029Z",
+      "finishedAt": "2026-10-27T13:06:21.034Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:21.068Z",
+      "finishedAt": "2026-10-27T13:06:21.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:22.724Z",
+      "finishedAt": "2026-10-27T13:06:22.728Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:26.072Z",
+      "finishedAt": "2026-10-27T13:06:26.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:31.073Z",
+      "finishedAt": "2026-10-27T13:06:31.077Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:36.072Z",
+      "finishedAt": "2026-10-27T13:06:36.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:41.071Z",
+      "finishedAt": "2026-10-27T13:06:41.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:45.986Z",
+      "finishedAt": "2026-10-27T13:06:45.993Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:46.079Z",
+      "finishedAt": "2026-10-27T13:06:46.084Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:47.667Z",
+      "finishedAt": "2026-10-27T13:06:47.675Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:51.025Z",
+      "finishedAt": "2026-10-27T13:06:51.030Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:51.067Z",
+      "finishedAt": "2026-10-27T13:06:51.071Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:52.718Z",
+      "finishedAt": "2026-10-27T13:06:52.723Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:06:56.071Z",
+      "finishedAt": "2026-10-27T13:06:56.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:01.077Z",
+      "finishedAt": "2026-10-27T13:07:01.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:06.069Z",
+      "finishedAt": "2026-10-27T13:07:06.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:11.078Z",
+      "finishedAt": "2026-10-27T13:07:11.082Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:15.988Z",
+      "finishedAt": "2026-10-27T13:07:15.994Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:16.066Z",
+      "finishedAt": "2026-10-27T13:07:16.071Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:17.670Z",
+      "finishedAt": "2026-10-27T13:07:17.677Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:21.023Z",
+      "finishedAt": "2026-10-27T13:07:21.028Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:21.067Z",
+      "finishedAt": "2026-10-27T13:07:21.071Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:22.722Z",
+      "finishedAt": "2026-10-27T13:07:22.727Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:26.075Z",
+      "finishedAt": "2026-10-27T13:07:26.079Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:31.073Z",
+      "finishedAt": "2026-10-27T13:07:31.077Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:36.082Z",
+      "finishedAt": "2026-10-27T13:07:36.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:41.072Z",
+      "finishedAt": "2026-10-27T13:07:41.077Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:45.980Z",
+      "finishedAt": "2026-10-27T13:07:45.986Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:46.072Z",
+      "finishedAt": "2026-10-27T13:07:46.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:47.673Z",
+      "finishedAt": "2026-10-27T13:07:47.681Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:51.042Z",
+      "finishedAt": "2026-10-27T13:07:51.047Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:51.067Z",
+      "finishedAt": "2026-10-27T13:07:51.071Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:52.722Z",
+      "finishedAt": "2026-10-27T13:07:52.727Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:07:56.069Z",
+      "finishedAt": "2026-10-27T13:07:56.074Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:01.071Z",
+      "finishedAt": "2026-10-27T13:08:01.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:06.079Z",
+      "finishedAt": "2026-10-27T13:08:06.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:11.071Z",
+      "finishedAt": "2026-10-27T13:08:11.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:15.985Z",
+      "finishedAt": "2026-10-27T13:08:15.992Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:16.078Z",
+      "finishedAt": "2026-10-27T13:08:16.082Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:17.670Z",
+      "finishedAt": "2026-10-27T13:08:17.676Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:21.047Z",
+      "finishedAt": "2026-10-27T13:08:21.052Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:21.080Z",
+      "finishedAt": "2026-10-27T13:08:21.084Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:22.710Z",
+      "finishedAt": "2026-10-27T13:08:22.715Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:26.068Z",
+      "finishedAt": "2026-10-27T13:08:26.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:31.068Z",
+      "finishedAt": "2026-10-27T13:08:31.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:36.074Z",
+      "finishedAt": "2026-10-27T13:08:36.078Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:41.079Z",
+      "finishedAt": "2026-10-27T13:08:41.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:45.978Z",
+      "finishedAt": "2026-10-27T13:08:45.984Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:46.069Z",
+      "finishedAt": "2026-10-27T13:08:46.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:47.677Z",
+      "finishedAt": "2026-10-27T13:08:47.683Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:51.023Z",
+      "finishedAt": "2026-10-27T13:08:51.028Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:51.067Z",
+      "finishedAt": "2026-10-27T13:08:51.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:52.715Z",
+      "finishedAt": "2026-10-27T13:08:52.720Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:08:56.081Z",
+      "finishedAt": "2026-10-27T13:08:56.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:01.075Z",
+      "finishedAt": "2026-10-27T13:09:01.079Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:06.067Z",
+      "finishedAt": "2026-10-27T13:09:06.071Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:11.069Z",
+      "finishedAt": "2026-10-27T13:09:11.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:15.985Z",
+      "finishedAt": "2026-10-27T13:09:15.991Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:16.079Z",
+      "finishedAt": "2026-10-27T13:09:16.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:17.673Z",
+      "finishedAt": "2026-10-27T13:09:17.681Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:21.043Z",
+      "finishedAt": "2026-10-27T13:09:21.048Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:21.076Z",
+      "finishedAt": "2026-10-27T13:09:21.080Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:22.710Z",
+      "finishedAt": "2026-10-27T13:09:22.715Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:26.078Z",
+      "finishedAt": "2026-10-27T13:09:26.082Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:31.067Z",
+      "finishedAt": "2026-10-27T13:09:31.071Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:36.076Z",
+      "finishedAt": "2026-10-27T13:09:36.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:41.081Z",
+      "finishedAt": "2026-10-27T13:09:41.085Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:45.981Z",
+      "finishedAt": "2026-10-27T13:09:45.986Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:46.073Z",
+      "finishedAt": "2026-10-27T13:09:46.077Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:47.676Z",
+      "finishedAt": "2026-10-27T13:09:47.682Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:51.023Z",
+      "finishedAt": "2026-10-27T13:09:51.028Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:51.068Z",
+      "finishedAt": "2026-10-27T13:09:51.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:52.711Z",
+      "finishedAt": "2026-10-27T13:09:52.717Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:09:56.070Z",
+      "finishedAt": "2026-10-27T13:09:56.074Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:01.083Z",
+      "finishedAt": "2026-10-27T13:10:01.087Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:06.077Z",
+      "finishedAt": "2026-10-27T13:10:06.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:11.081Z",
+      "finishedAt": "2026-10-27T13:10:11.085Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:15.978Z",
+      "finishedAt": "2026-10-27T13:10:15.984Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:16.071Z",
+      "finishedAt": "2026-10-27T13:10:16.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:17.676Z",
+      "finishedAt": "2026-10-27T13:10:17.682Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:21.037Z",
+      "finishedAt": "2026-10-27T13:10:21.042Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:21.068Z",
+      "finishedAt": "2026-10-27T13:10:21.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:22.715Z",
+      "finishedAt": "2026-10-27T13:10:22.719Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:26.081Z",
+      "finishedAt": "2026-10-27T13:10:26.085Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:31.072Z",
+      "finishedAt": "2026-10-27T13:10:31.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:36.076Z",
+      "finishedAt": "2026-10-27T13:10:36.080Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:41.069Z",
+      "finishedAt": "2026-10-27T13:10:41.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:45.980Z",
+      "finishedAt": "2026-10-27T13:10:45.985Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:46.071Z",
+      "finishedAt": "2026-10-27T13:10:46.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:47.674Z",
+      "finishedAt": "2026-10-27T13:10:47.680Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:51.037Z",
+      "finishedAt": "2026-10-27T13:10:51.042Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:51.069Z",
+      "finishedAt": "2026-10-27T13:10:51.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:52.713Z",
+      "finishedAt": "2026-10-27T13:10:52.718Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:10:56.076Z",
+      "finishedAt": "2026-10-27T13:10:56.080Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:01.075Z",
+      "finishedAt": "2026-10-27T13:11:01.079Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:06.078Z",
+      "finishedAt": "2026-10-27T13:11:06.082Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:11.072Z",
+      "finishedAt": "2026-10-27T13:11:11.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:15.982Z",
+      "finishedAt": "2026-10-27T13:11:15.988Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:16.075Z",
+      "finishedAt": "2026-10-27T13:11:16.079Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:17.668Z",
+      "finishedAt": "2026-10-27T13:11:17.675Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:21.032Z",
+      "finishedAt": "2026-10-27T13:11:21.036Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:21.078Z",
+      "finishedAt": "2026-10-27T13:11:21.082Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:22.714Z",
+      "finishedAt": "2026-10-27T13:11:22.719Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:26.068Z",
+      "finishedAt": "2026-10-27T13:11:26.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:31.079Z",
+      "finishedAt": "2026-10-27T13:11:31.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:36.072Z",
+      "finishedAt": "2026-10-27T13:11:36.077Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:37.146Z",
+      "finishedAt": "2026-10-27T13:11:37.147Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:41.072Z",
+      "finishedAt": "2026-10-27T13:11:41.077Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:45.979Z",
+      "finishedAt": "2026-10-27T13:11:45.985Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:46.070Z",
+      "finishedAt": "2026-10-27T13:11:46.074Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:47.673Z",
+      "finishedAt": "2026-10-27T13:11:47.680Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:51.038Z",
+      "finishedAt": "2026-10-27T13:11:51.044Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:51.068Z",
+      "finishedAt": "2026-10-27T13:11:51.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:52.718Z",
+      "finishedAt": "2026-10-27T13:11:52.723Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:56.079Z",
+      "finishedAt": "2026-10-27T13:11:56.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:57.427Z",
+      "finishedAt": "2026-10-27T13:11:57.431Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6ae0a0ad5a38654447418a9a/content",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:57.513Z",
+      "finishedAt": "2026-10-27T13:11:57.522Z"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7/read",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:57.514Z",
+      "finishedAt": "2026-10-27T13:11:57.523Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:57.535Z",
+      "finishedAt": "2026-10-27T13:11:57.542Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:11:57.535Z",
+      "finishedAt": "2026-10-27T13:11:57.545Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:01.067Z",
+      "finishedAt": "2026-10-27T13:12:01.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:02.547Z",
+      "finishedAt": "2026-10-27T13:12:02.552Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:06.068Z",
+      "finishedAt": "2026-10-27T13:12:06.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:07.534Z",
+      "finishedAt": "2026-10-27T13:12:07.539Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:11.082Z",
+      "finishedAt": "2026-10-27T13:12:11.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:12.539Z",
+      "finishedAt": "2026-10-27T13:12:12.543Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:15.986Z",
+      "finishedAt": "2026-10-27T13:12:15.992Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:16.077Z",
+      "finishedAt": "2026-10-27T13:12:16.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:17.550Z",
+      "finishedAt": "2026-10-27T13:12:17.554Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:17.676Z",
+      "finishedAt": "2026-10-27T13:12:17.682Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:21.038Z",
+      "finishedAt": "2026-10-27T13:12:21.043Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:21.067Z",
+      "finishedAt": "2026-10-27T13:12:21.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:22.547Z",
+      "finishedAt": "2026-10-27T13:12:22.552Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:22.718Z",
+      "finishedAt": "2026-10-27T13:12:22.722Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 201,
+      "startedAt": "2026-10-27T13:12:22.992Z",
+      "finishedAt": "2026-10-27T13:12:23.007Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:26.078Z",
+      "finishedAt": "2026-10-27T13:12:26.082Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:27.541Z",
+      "finishedAt": "2026-10-27T13:12:27.545Z"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7/read",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:27.552Z",
+      "finishedAt": "2026-10-27T13:12:27.558Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:27.564Z",
+      "finishedAt": "2026-10-27T13:12:27.571Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:27.565Z",
+      "finishedAt": "2026-10-27T13:12:27.574Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:31.076Z",
+      "finishedAt": "2026-10-27T13:12:31.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:32.543Z",
+      "finishedAt": "2026-10-27T13:12:32.547Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:36.080Z",
+      "finishedAt": "2026-10-27T13:12:36.084Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:37.542Z",
+      "finishedAt": "2026-10-27T13:12:37.547Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:41.074Z",
+      "finishedAt": "2026-10-27T13:12:41.078Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:42.537Z",
+      "finishedAt": "2026-10-27T13:12:42.541Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:45.997Z",
+      "finishedAt": "2026-10-27T13:12:46.004Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:46.077Z",
+      "finishedAt": "2026-10-27T13:12:46.081Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:47.543Z",
+      "finishedAt": "2026-10-27T13:12:47.547Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:47.670Z",
+      "finishedAt": "2026-10-27T13:12:47.677Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:51.023Z",
+      "finishedAt": "2026-10-27T13:12:51.028Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:51.067Z",
+      "finishedAt": "2026-10-27T13:12:51.072Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:52.548Z",
+      "finishedAt": "2026-10-27T13:12:52.552Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:52.717Z",
+      "finishedAt": "2026-10-27T13:12:52.722Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:56.082Z",
+      "finishedAt": "2026-10-27T13:12:56.087Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:12:57.545Z",
+      "finishedAt": "2026-10-27T13:12:57.549Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:01.079Z",
+      "finishedAt": "2026-10-27T13:13:01.084Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:02.541Z",
+      "finishedAt": "2026-10-27T13:13:02.545Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:06.079Z",
+      "finishedAt": "2026-10-27T13:13:06.083Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:07.541Z",
+      "finishedAt": "2026-10-27T13:13:07.547Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:11.068Z",
+      "finishedAt": "2026-10-27T13:13:11.073Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:12.547Z",
+      "finishedAt": "2026-10-27T13:13:12.551Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:15.986Z",
+      "finishedAt": "2026-10-27T13:13:15.993Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:16.077Z",
+      "finishedAt": "2026-10-27T13:13:16.082Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:17.545Z",
+      "finishedAt": "2026-10-27T13:13:17.550Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:17.670Z",
+      "finishedAt": "2026-10-27T13:13:17.680Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:21.036Z",
+      "finishedAt": "2026-10-27T13:13:21.047Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:21.080Z",
+      "finishedAt": "2026-10-27T13:13:21.086Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:22.542Z",
+      "finishedAt": "2026-10-27T13:13:22.547Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:22.710Z",
+      "finishedAt": "2026-10-27T13:13:22.716Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:26.071Z",
+      "finishedAt": "2026-10-27T13:13:26.076Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:27.538Z",
+      "finishedAt": "2026-10-27T13:13:27.544Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:31.070Z",
+      "finishedAt": "2026-10-27T13:13:31.074Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:32.549Z",
+      "finishedAt": "2026-10-27T13:13:32.554Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:36.071Z",
+      "finishedAt": "2026-10-27T13:13:36.075Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:37.539Z",
+      "finishedAt": "2026-10-27T13:13:37.544Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:41.074Z",
+      "finishedAt": "2026-10-27T13:13:41.079Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:42.537Z",
+      "finishedAt": "2026-10-27T13:13:42.542Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:42.567Z",
+      "finishedAt": "2026-10-27T13:13:42.570Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:42.593Z",
+      "finishedAt": "2026-10-27T13:13:42.605Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:42.755Z",
+      "finishedAt": "2026-10-27T13:13:42.758Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:42.819Z",
+      "finishedAt": "2026-10-27T13:13:42.829Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:47.593Z",
+      "finishedAt": "2026-10-27T13:13:47.597Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:47.606Z",
+      "finishedAt": "2026-10-27T13:13:47.609Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:47.614Z",
+      "finishedAt": "2026-10-27T13:13:47.619Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:47.825Z",
+      "finishedAt": "2026-10-27T13:13:47.829Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:47.840Z",
+      "finishedAt": "2026-10-27T13:13:47.843Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:47.847Z",
+      "finishedAt": "2026-10-27T13:13:47.851Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.779Z",
+      "finishedAt": "2026-10-27T13:13:52.784Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.803Z",
+      "finishedAt": "2026-10-27T13:13:52.808Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6ae0a0ad5a38654447418a9a/content",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.848Z",
+      "finishedAt": "2026-10-27T13:13:52.856Z"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7/read",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.849Z",
+      "finishedAt": "2026-10-27T13:13:52.858Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6ae0a0ad5a38654447418a9a/content",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.866Z",
+      "finishedAt": "2026-10-27T13:13:52.877Z"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7/read",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.867Z",
+      "finishedAt": "2026-10-27T13:13:52.878Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.875Z",
+      "finishedAt": "2026-10-27T13:13:52.886Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.873Z",
+      "finishedAt": "2026-10-27T13:13:52.889Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.892Z",
+      "finishedAt": "2026-10-27T13:13:52.899Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:52.891Z",
+      "finishedAt": "2026-10-27T13:13:52.901Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:57.878Z",
+      "finishedAt": "2026-10-27T13:13:57.883Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:13:57.894Z",
+      "finishedAt": "2026-10-27T13:13:57.898Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:02.872Z",
+      "finishedAt": "2026-10-27T13:14:02.876Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:02.903Z",
+      "finishedAt": "2026-10-27T13:14:02.909Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:07.875Z",
+      "finishedAt": "2026-10-27T13:14:07.879Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:07.891Z",
+      "finishedAt": "2026-10-27T13:14:07.896Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:12.576Z",
+      "finishedAt": "2026-10-27T13:14:12.582Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:12.763Z",
+      "finishedAt": "2026-10-27T13:14:12.771Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:12.872Z",
+      "finishedAt": "2026-10-27T13:14:12.876Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:12.903Z",
+      "finishedAt": "2026-10-27T13:14:12.908Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:17.630Z",
+      "finishedAt": "2026-10-27T13:14:17.635Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:17.881Z",
+      "finishedAt": "2026-10-27T13:14:17.886Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:22.878Z",
+      "finishedAt": "2026-10-27T13:14:22.883Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:27.875Z",
+      "finishedAt": "2026-10-27T13:14:27.879Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:32.870Z",
+      "finishedAt": "2026-10-27T13:14:32.874Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:37.873Z",
+      "finishedAt": "2026-10-27T13:14:37.877Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:42.572Z",
+      "finishedAt": "2026-10-27T13:14:42.578Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:42.880Z",
+      "finishedAt": "2026-10-27T13:14:42.884Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:47.628Z",
+      "finishedAt": "2026-10-27T13:14:47.634Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:47.874Z",
+      "finishedAt": "2026-10-27T13:14:47.879Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/6ae0a0ad9b7c2616593baea7",
+      "status": 200,
+      "startedAt": "2026-10-27T13:14:52.871Z",
+      "finishedAt": "2026-10-27T13:14:52.875Z"
+    }
+  ],
+  "providerEvents": [
+    {
+      "event": "upload-start",
+      "at": "2026-10-27T13:01:33.954Z",
+      "assetId": "6ae0a0ad5a38654447418a9a",
+      "key": "fc7741fd-075d-4682-ab7e-6b79bbd13803"
+    },
+    {
+      "event": "upload-finished",
+      "at": "2026-10-27T13:01:33.956Z",
+      "assetId": "6ae0a0ad5a38654447418a9a"
+    }
+  ],
+  "cleanupComplete": true,
+  "snapshots": [
+    {
+      "at": "2026-10-27T13:14:59.815Z",
+      "database": "fyp_transactions_browser_ec93952ee69d464faf81a710d3316431",
+      "users": [
+        {
+          "_id": "6ae0a0855a38654447418a71",
+          "name": "Browser owner",
+          "avatar": ""
+        },
+        {
+          "_id": "6ae0a0855a38654447418a75",
+          "name": "Browser reporter",
+          "avatar": ""
+        },
+        {
+          "_id": "6ae0a0855a38654447418a79",
+          "name": "Browser shelter",
+          "avatar": ""
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6ae0a0ad9b7c2616593baea7",
+          "submissionId": "1cdd3fa4-0ca3-4ef0-b388-afe72f95b612",
+          "reportedBy": "6ae0a0855a38654447418a71",
+          "name": "Messaging Batch Fixture"
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6ae0a0ad5a38654447418a9a",
+          "uploadedBy": "6ae0a0855a38654447418a71",
+          "purpose": "message",
+          "state": "attached",
+          "idempotencyKey": "fc7741fd-075d-4682-ab7e-6b79bbd13803",
+          "expiresAt": "2026-10-28T13:01:33.937Z",
+          "attachedTo": {
+            "type": "message",
+            "id": "6ae0a0ad5a38654447418aaa"
+          }
+        }
+      ],
+      "mockObjects": [
+        "petlostapp/test/ec93952ee69d464faf81a710d3316431/message/e7575b58-8c0b-49e0-9ec9-f7df2bceaf1d"
+      ]
+    }
+  ]
+}

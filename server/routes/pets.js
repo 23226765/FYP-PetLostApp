@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import {
   listPets,
+  listMapPets,
   listMyPets,
   listMySightings,
   getNearbyPets,
@@ -19,6 +20,7 @@ const router = Router()
 
 // Static path segments first so they don't collide with `/:id`.
 router.get('/', optionalAuth, listPets)
+router.get('/map', optionalAuth, listMapPets)
 router.get('/mine', requireAuth, listMyPets)
 router.get('/nearby', optionalAuth, getNearbyPets)
 router.post('/smart-match', optionalAuth, smartMatch)

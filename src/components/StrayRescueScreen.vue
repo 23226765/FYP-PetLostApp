@@ -20,10 +20,16 @@
       </button>
     </div>
 
+    <div class="compact-filter-bar">
+      <button class="filter-trigger" type="button" aria-haspopup="dialog" @click="openFilters"><AppIcon name="filter" :size="18" />{{ t('compactFilters.title') }}<span v-if="activeFilterCount">{{ activeFilterCount }}</span></button>
+      <span class="filter-summary">{{ filterSummary }}</span>
+      <button v-if="activeFilterCount" class="reset-filters" type="button" @click="resetFilters">{{ t('compactFilters.reset') }}</button>
+    </div>
+    <FilterSheet :open="filtersOpen" :title="t('compactFilters.title')" @close="filtersOpen = false">
     <div class="filters">
       <label>
         <span>{{ t('strays.animal') }}</span>
-        <select v-model="speciesFilter">
+        <select v-model="draftFilters.species">
           <option value="">{{ t('strays.allAnimals') }}</option>
           <option value="Dog">{{ speciesLabel('Dog') }}</option>
           <option value="Cat">{{ speciesLabel('Cat') }}</option>
@@ -32,7 +38,7 @@
       </label>
       <label>
         <span>{{ t('strays.rescueStatus') }}</span>
-        <select v-model="statusFilter">
+        <select v-model="draftFilters.status">
           <option value="">{{ t('strays.allStatuses') }}</option>
           <option value="reported">{{ t('strays.needsHelpStatus') }}</option>
           <option value="rescue_dispatched">{{ t('strays.helpDispatched') }}</option>
@@ -41,12 +47,14 @@
       </label>
       <label class="district-filter">
         <span>{{ t('radar.district') }}</span>
-        <select v-model="districtFilter">
+        <select v-model="draftFilters.district">
           <option value="">{{ t('radar.allDistricts') }}</option>
           <option v-for="district in HK_DISTRICTS" :key="district" :value="district">{{ districtLabel(district) }}</option>
         </select>
       </label>
     </div>
+    <button class="apply-filters" type="button" @click="applyFilters">{{ t('compactFilters.apply') }}</button>
+    </FilterSheet>
 
     <div class="result-head">
       <strong>{{ t('strays.nearbyReports', { count: strays.length }) }}</strong>
@@ -64,16 +72,24 @@
       <p>{{ t('strays.changeFilters') }}</p>
     </div>
     <div v-else-if="view === 'list'" class="report-list">
-      <article v-for="stray in strays" :key="stray.id" class="stray-card" tabindex="0" role="link" :aria-label="t('strays.openPost', { species: animalLabel(stray), author: stray.author.name })" @click="openStray(stray)" @keydown.enter="openStray(stray)">
+      <article v-for="stray in strays" :key="stray.id" class="stray-card" tabindex="0" role="link" :aria-label="t('strays.openPost', { species: animalLabel(stray), author: stray.author.name })" @click="openStray(stray)" @keydown.enter.self="openStray(stray)">
         <div class="post-author">
           <span class="author-avatar"><ManagedImage v-if="stray.author.avatar" :src="normalizedImageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="17" /></span>
           <span><strong>{{ stray.author.name }}</strong><small>{{ formatRelativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></span>
           <span class="rescue-status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
-        <div class="photo-wrap">
-          <ManagedImage v-if="imageUrl(stray) && !failedImages.has(stray.id)" :src="imageUrl(stray)" :alt="t('strays.reportedAlt', { species: animalLabel(stray) })" @error="markImageFailed(stray.id)" />
+        <div class="photo-carousel">
+        <div v-for="(photo, index) in imageUrls(stray)" :key="photo || 'placeholder'" class="photo-wrap">
+          <ManagedImage v-if="photo && !failedImages.has(stray.id + photo)" :src="photo" :alt="t('strays.reportedAlt', { species: animalLabel(stray) })" @error="markImageFailed(stray.id + photo)" />
           <span v-else class="photo-placeholder"><AppIcon name="paw" :size="34" /></span>
           <span class="condition" :class="stray.condition">{{ conditionLabel(stray.condition) }}</span>
+          <span v-if="imageUrls(stray).length > 1" class="photo-position">{{ index + 1 }} / {{ imageUrls(stray).length }}</span>
+        </div>
+        </div>
+        <div class="card-actions">
+          <button type="button" @click.stop="openStray(stray)"><AppIcon name="message" :size="18" />{{ t('strays.comment') }}</button>
+          <button type="button" :class="{ active: stray.isSaved }" @click.stop="toggleSave(stray)"><AppIcon name="bookmark" :size="18" />{{ stray.isSaved ? t('strays.unsave') : t('strays.save') }}</button>
+          <button type="button" @click.stop="openStray(stray, true)"><AppIcon name="send" :size="18" />{{ t('strays.share') }}</button>
         </div>
         <div class="card-body">
           <div class="card-title"><strong>{{ animalLabel(stray) }}</strong><span v-if="stray.distanceKm !== undefined">{{ t('common.kilometres', { count: stray.distanceKm }) }}</span></div>
@@ -81,11 +97,6 @@
           <p class="description">{{ stray.description }}</p>
           <p v-if="stray.commentPreview" class="comment-preview">💬 {{ stray.commentPreview }}</p>
           <div class="card-foot"><span>{{ t('strays.commentsCount', { count: stray.commentCount }) }}</span><span>{{ conditionLabel(stray.condition) }}</span></div>
-        </div>
-        <div class="card-actions">
-          <button type="button" @click.stop="openStray(stray)"><AppIcon name="message" :size="18" />{{ t('strays.comment') }}</button>
-          <button type="button" :class="{ active: stray.isSaved }" @click.stop="toggleSave(stray)"><span aria-hidden="true">🔖</span>{{ stray.isSaved ? t('strays.unsave') : t('strays.save') }}</button>
-          <button type="button" @click.stop="openStray(stray)"><AppIcon name="send" :size="18" />{{ t('strays.share') }}</button>
         </div>
       </article>
     </div>
@@ -141,6 +152,7 @@ import { useRouter } from 'vue-router'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
+import FilterSheet from './FilterSheet.vue'
 import SightingLocationPicker from './SightingLocationPicker.vue'
 import { getNearbyStrays, reportStray, setStraySaved } from '../services/api'
 import { useImageUpload } from '../composables/useImageUpload'
@@ -151,12 +163,13 @@ import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
 import { translateApiError, useAppI18n } from '../i18n'
 import { districtLabel, formatRelativeDate, rescueStatusLabel, speciesLabel, strayAnimalLabel, strayConditionLabel } from '../i18n/formatters'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   user: User | null
   radiusKm: number
   userLocation: { lat: number; lng: number } | null
   reportRequest?: number
-}>()
+  active?: boolean
+}>(), { active: true })
 const emit = defineEmits<{ 'auth-needed': [] }>()
 const router = useRouter()
 const { t } = useAppI18n()
@@ -169,6 +182,13 @@ const error = ref('')
 const speciesFilter = ref('')
 const statusFilter = ref('')
 const districtFilter = ref('')
+const filtersOpen = ref(false)
+const draftFilters = reactive({ species: '', status: '', district: '' })
+const activeFilterCount = computed(() => [speciesFilter.value, statusFilter.value, districtFilter.value].filter(Boolean).length)
+const filterSummary = computed(() => [speciesFilter.value && speciesLabel(speciesFilter.value), statusFilter.value && rescueStatusLabel(statusFilter.value), districtFilter.value && districtLabel(districtFilter.value)].filter(Boolean).join(' · ') || t('compactFilters.all'))
+function openFilters() { Object.assign(draftFilters, { species: speciesFilter.value, status: statusFilter.value, district: districtFilter.value }); filtersOpen.value = true }
+function applyFilters() { speciesFilter.value = draftFilters.species; statusFilter.value = draftFilters.status; districtFilter.value = draftFilters.district; filtersOpen.value = false }
+function resetFilters() { speciesFilter.value = ''; statusFilter.value = ''; districtFilter.value = ''; filtersOpen.value = false }
 const failedImages = ref(new Set<string>())
 const showReportForm = ref(false)
 const submitting = ref(false)
@@ -205,7 +225,7 @@ function normalizedImageUrl(value: string): string {
     return ['http:', 'https:', 'data:', 'blob:'].includes(resolved.protocol) ? resolved.href : ''
   } catch { return '' }
 }
-function imageUrl(stray: StrayReport) { return normalizedImageUrl(stray.photo) }
+function imageUrls(stray: StrayReport) { const urls = [...new Set([stray.photo, ...(stray.photos || [])].map(normalizedImageUrl).filter(Boolean))]; return urls.length ? urls : [''] }
 function markImageFailed(id: string) { failedImages.value = new Set([...failedImages.value, id]) }
 function conditionLabel(value: StrayCondition) {
   return strayConditionLabel(value)
@@ -220,6 +240,7 @@ function animalLabel(stray: StrayReport) {
 async function loadStrays() {
   const sequence = ++requestSequence
   abortController?.abort()
+  if (!props.active) { loading.value = false; filtersOpen.value = false; return }
   const controller = new AbortController()
   abortController = controller
   loading.value = true
@@ -250,7 +271,7 @@ function openReportForm() {
   showReportForm.value = true
 }
 
-function openStray(stray: StrayReport) { void router.push(`/strays/${stray.id}`) }
+function openStray(stray: StrayReport, share = false) { void router.push({ path: `/strays/${stray.id}`, query: share ? { share: '1' } : undefined }) }
 
 async function toggleSave(stray: StrayReport) {
   if (!props.user) { emit('auth-needed'); return }
@@ -327,7 +348,7 @@ async function submitReport() {
 }
 
 watch(
-  [() => props.radiusKm, () => props.userLocation, () => props.user?.id, speciesFilter, statusFilter, districtFilter],
+  [() => props.active, () => props.radiusKm, () => props.userLocation, () => props.user?.id, speciesFilter, statusFilter, districtFilter],
   loadStrays,
   { immediate: true, deep: true },
 )
@@ -339,7 +360,12 @@ onBeforeUnmount(() => { disposed = true; requestSequence += 1; abortController?.
 </script>
 
 <style scoped>
-.rescue-screen { max-width: 480px; min-height: 100dvh; margin: 0 auto; padding: calc(var(--safe-top) + 18px) 18px 120px; }
+.compact-filter-bar { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; }
+.filter-trigger, .reset-filters { min-height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: 14px; background: var(--color-surface-selected); color: var(--color-text-accent); font-weight: 750; }
+.filter-summary { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); font-size: 12px; }
+.apply-filters { width: 100%; min-height: 46px; border-radius: 14px; background: var(--teal); color: var(--color-text-on-accent); font-weight: 800; }
+.filter-trigger:focus-visible, .reset-filters:focus-visible, .apply-filters:focus-visible, .card-actions button:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
+.rescue-screen { max-width: 480px; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; margin: 0 auto; padding: calc(var(--safe-top) + 18px) 18px 120px; }
 .top, .detail-heading, .result-head, .card-title, .card-foot, .detail-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .top { margin-bottom: 16px; }
 .eyebrow { color: var(--color-text-urgent); font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -356,7 +382,7 @@ select:focus, input:focus, textarea:focus { border-color: var(--color-border-acc
 .result-head { margin: 4px 2px 12px; color: var(--ink-muted); font-size: 12.5px; }
 .result-head strong { color: var(--ink); font-size: 13.5px; }
 .report-list { display: flex; flex-direction: column; gap: 14px; }
-.stray-card { width: 100%; display: grid; grid-template-columns: 112px 1fr; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); text-align: left; transition: transform .2s cubic-bezier(.4,0,.2,1); }
+.stray-card { width: 100%; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-card); text-align: left; transition: transform .2s cubic-bezier(.4,0,.2,1); }
 .stray-card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 .stray-card:active { transform: scale(.98); }
 .post-author { grid-column: 1 / -1; display: flex; align-items: center; gap: 9px; padding: 11px 12px; }
@@ -365,7 +391,9 @@ select:focus, input:focus, textarea:focus { border-color: var(--color-border-acc
 .post-author small { margin-top: 2px; color: var(--ink-muted); font-size: 10.5px; }
 .author-avatar { width: 34px; height: 34px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: var(--teal-soft); color: var(--color-icon-primary); }
 .author-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.photo-wrap { position: relative; min-height: 150px; overflow: hidden; background: var(--color-surface-subtle); }
+.photo-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
+.photo-wrap { flex: 0 0 100%; scroll-snap-align: start; position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--color-surface-subtle); }
+.photo-position { position: absolute; right: 10px; top: 10px; padding: 4px 8px; border-radius: 999px; background: var(--color-surface-elevated); color: var(--color-text-primary); font-size: 11px; }
 .photo-wrap img, .photo-button img { width: 100%; height: 100%; object-fit: cover; }
 .photo-placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--color-icon-primary); background: radial-gradient(circle, color-mix(in srgb, var(--color-icon-primary) 13%, transparent), transparent 45%), var(--color-surface-subtle); }
 .condition { position: absolute; left: 9px; bottom: 9px; padding: 4px 8px; border-radius: 999px; background: var(--teal); color: #fff; font-size: 9.5px; font-weight: 800; }

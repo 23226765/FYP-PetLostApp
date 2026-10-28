@@ -121,11 +121,11 @@ export function hotspotCandidateRadiusMeters(latitude, radiusKm) {
   return radiusKm * 1000 + CELL_SEARCH_PADDING_METERS + (reachesClamp ? POLAR_CLAMP_PADDING_METERS : 0)
 }
 
-function publicCellMembership(longitude, latitude, radiusKm) {
+export function publicCellMembership(longitude, latitude, radiusKm, cellPath = '$_id') {
   // Deterministic unrounded grid centres, independent of source coordinates.
   // Output uses the same centres rounded to six decimal places for display.
-  const centreLng = { $divide: [{ $multiply: [{ $add: ['$_id.x', 0.5] }, PUBLIC_GRID_SIZE_METERS] }, EARTH_RADIUS_METERS] }
-  const centreLat = { $subtract: [{ $multiply: [2, { $atan: { $exp: { $divide: [{ $multiply: [{ $add: ['$_id.y', 0.5] }, PUBLIC_GRID_SIZE_METERS] }, EARTH_RADIUS_METERS] } } }] }, Math.PI / 2] }
+  const centreLng = { $divide: [{ $multiply: [{ $add: [`${cellPath}.x`, 0.5] }, PUBLIC_GRID_SIZE_METERS] }, EARTH_RADIUS_METERS] }
+  const centreLat = { $subtract: [{ $multiply: [2, { $atan: { $exp: { $divide: [{ $multiply: [{ $add: [`${cellPath}.y`, 0.5] }, PUBLIC_GRID_SIZE_METERS] }, EARTH_RADIUS_METERS] } } }] }, Math.PI / 2] }
   const originLat = latitude * Math.PI / 180
   const sineSquared = (angle) => ({ $pow: [{ $sin: { $divide: [angle, 2] } }, 2] })
   const haversine = { $add: [
@@ -134,6 +134,15 @@ function publicCellMembership(longitude, latitude, radiusKm) {
   ] }
   const distance = { $multiply: [2 * EARTH_RADIUS_METERS, { $asin: { $sqrt: { $max: [0, { $min: [1, haversine] }] } } }] }
   return { $match: { $expr: { $lte: [distance, radiusKm * 1000] } } }
+}
+
+// Shared deterministic grid math; callers must never serialize source points.
+export function publicGridCellExpressions(coordinates = '$location.coordinates') {
+  const lat = { $max: [-MAX_MERCATOR_LATITUDE, { $min: [MAX_MERCATOR_LATITUDE, { $arrayElemAt: [coordinates, 1] }] }] }
+  return {
+    x: { $floor: { $divide: [{ $multiply: [EARTH_RADIUS_METERS, { $divide: [{ $multiply: [{ $arrayElemAt: [coordinates, 0] }, Math.PI] }, 180] }] }, PUBLIC_GRID_SIZE_METERS] } },
+    y: { $floor: { $divide: [{ $multiply: [EARTH_RADIUS_METERS, { $ln: { $tan: { $add: [Math.PI / 4, { $divide: [{ $multiply: [lat, Math.PI] }, 360] }] } } }] }, PUBLIC_GRID_SIZE_METERS] } },
+  }
 }
 
 // Visibility/time filters precede grouping; final public radius membership
@@ -151,7 +160,7 @@ function sourcePipeline(source, { longitude, latitude, radiusKm, since, windowDa
     { $lookup: { from: 'pets', localField: 'pet', foreignField: '_id', as: 'parentPet' } },
     { $match: { 'parentPet.0': { $exists: true }, 'parentPet.moderationStatus': { $ne: 'hidden' } } },
   )
-  const lat = { $max: [-MAX_MERCATOR_LATITUDE, { $min: [MAX_MERCATOR_LATITUDE, { $arrayElemAt: ['$location.coordinates', 1] }] }] }
+  const grid = publicGridCellExpressions()
   const recency = { $max: [0, { $min: [1, { $subtract: [1, { $divide: [{ $divide: [{ $max: [0, { $subtract: [now, '$createdAt'] }] }, DAY_MS] }, windowDays] }] }] }] }
   const factor = isSighting
     ? { $add: [0.55, { $multiply: [0.08, { $min: [4, { $cond: [{ $isArray: '$confirmedBy' }, { $size: '$confirmedBy' }, 0] }] }] }] }
@@ -163,8 +172,8 @@ function sourcePipeline(source, { longitude, latitude, radiusKm, since, windowDa
   pipeline.push(
     { $project: {
       _id: 0,
-      cellX: { $floor: { $divide: [{ $multiply: [EARTH_RADIUS_METERS, { $divide: [{ $multiply: [{ $arrayElemAt: ['$location.coordinates', 0] }, Math.PI] }, 180] }] }, PUBLIC_GRID_SIZE_METERS] } },
-      cellY: { $floor: { $divide: [{ $multiply: [EARTH_RADIUS_METERS, { $ln: { $tan: { $add: [Math.PI / 4, { $divide: [{ $multiply: [lat, Math.PI] }, 360] }] } } }] }, PUBLIC_GRID_SIZE_METERS] } },
+      cellX: grid.x,
+      cellY: grid.y,
       // Nonnegative Math.round parity, not MongoDB's ties-to-even $round.
       weightUnits: { $floor: { $add: [{ $multiply: [weight, 100] }, 0.5] } },
     } },

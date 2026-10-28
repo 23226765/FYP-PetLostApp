@@ -1,5 +1,23 @@
 # PetLostApp — original 22-finding audit checklist
 
+## Dedicated Map viewport independence — 28 October 2026
+
+Map no longer receives Radar radius/filters/GPS. It owns Hong Kong overview/viewport queries, camera, paging and cached tab state; Radar radius selections update Radar alone. Public-cell viewport membership preserves original-location fallback, privacy and visibility policies, with existing resource limits. Focused frontend 171 tests plus strengthened App/Map 35 tests, backend unit five and actual isolated Mongo six passed; 815-record pagination and 130 viewport/90 legacy-radius invariance comparisons are verified. Read-only Atlas viewport/paging/privacy checks passed through the updated temporary service. Existing backend process must be restarted to load the new bounds contract. No browser automation, live record/provider/environment changes or commit/push. [Evidence, changed files and limitations](verification/MAP_VIEWPORT_INDEPENDENCE_2026-10-28.md).
+
+## Targeted Map marker follow-up — 28 October 2026
+
+**MAP-HTTP-01 — confirmed stale backend route loading:** the old running process treated `/pets/map` as a pet ID and returned HTTP 400 despite healthy database connectivity. Current source route order was already correct. Fresh current router/controllers returned HTTP 200 via actual Vite and direct API with three default-area markers; no data seeding or permission change was required. Separate marker-failure, genuine-empty and background-tile messages now replace the misleading generic failure. Targeted frontend 142/backend three tests, typecheck, lint, changed backend syntax and build passed. Actual read-only Atlas/proxy checks passed after a temporary connectivity interruption; zero database writes. No browser automation. Temporary verification services stopped. [Detailed evidence and limitations](verification/MAP_MARKER_FIX_2026-10-28.md).
+
+## Approved UI batches — 27 October 2026
+
+Messaging repair/search, dedicated privacy-safe `/map`, compact Radar radius/animal controls and Rescue filters/photo-first feed are implemented. Original finding numbers and repair evidence below are preserved. Full details and changed paths: [approved UI batch report](verification/APP_UI_BATCHES_2026-10-27.md).
+
+- Complete frontend: **438 passed**; complete backend: **299 passed, zero failed, seven opt-in skipped**. The seven actual isolated MongoDB suites ran separately: **46 passed, zero skipped**, including complete Map paging above 750 records, 90 whole-response privacy comparisons and report-origin preservation through an actual sighting transaction.
+- TypeScript, lint, 134 backend syntax checks, production build, temporary frontend HTTP startup, diff and configured-secret/index checks passed. Final map authentication-refresh/share tests passed after the complete run. Existing main-bundle warning remains; no backend intermittent failure recurred in this run.
+- Browser reviewing was **stopped at the user's request**. Partial messaging observations are preserved in [the browser report](verification/browser-integration-2026-10-27/ec93952ee69d464faf81a710d3316431/BATCH1_BROWSER.md). No new Map/filter browser coverage or exhaustive visual matrix is claimed. Native focus, visual fit and touch usability remain human-review items.
+- Both browser ledgers confirm exact fixture cleanup; owned servers/local databases stopped. No Atlas/provider operations, existing-record changes, environment changes, migration, seed, commit or push. No schema/index/dependency/routing-configuration changes.
+- Historical report origins remain unverifiable where old records lack provenance. The Map discloses its approximate stored-report fallback and never reconstructs positions from sightings or rewrites records. Radar Breed UI was intentionally replaced; API/backend/Smart Match breed support remains. Existing custom radius preferences were not normalized or overwritten.
+
 ## Cancellation follow-up completed — 27 October 2026
 
 **BROW-UP-01: Fixed and verified.** Intentional abort in the initiating session is now normalized to `IMAGE_CANCELLED`; the lost-pet form suppresses only that cancellation result within its existing active-context guard. Genuine upload/posting errors retain their useful feedback. Draft/image/key retention, account guards and cleanup logic were not replaced. Application repair files: `src/composables/useImageUpload.ts` and `src/components/PostPetScreen.vue`; focused tests extend `PostPetImages.test.ts` and `useImageUpload.test.ts`.

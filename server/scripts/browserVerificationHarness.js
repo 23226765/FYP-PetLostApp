@@ -87,7 +87,7 @@ try {
   for (const Model of Object.values(mongoose.models)) { await Model.createCollection(); await Model.createIndexes() }
   const app = express()
   const { configureHttpSecurity, resolveHttpSecurityConfig } = await import('../config/httpSecurity.js')
-  configureHttpSecurity(app, resolveHttpSecurityConfig({ NODE_ENV: 'test', CORS_ORIGINS: 'http://127.0.0.1:4179' }))
+  configureHttpSecurity(app, resolveHttpSecurityConfig({ NODE_ENV: 'test', CORS_ORIGINS: 'http://127.0.0.1:4179,http://localhost:4179' }))
   app.use(express.json({ limit: '10mb' })); app.use(express.urlencoded({ extended: true, limit: '10mb' }))
   app.use((req, res, next) => { const requestPath = req.originalUrl.split('?')[0], startedAt = new Date().toISOString(); res.once('finish', () => { ledger.requests.push({ method: req.method, path: requestPath, status: res.statusCode, startedAt, finishedAt: new Date().toISOString(), ...(req.body?.idempotencyKey ? { imageKey: req.body.idempotencyKey } : {}), ...(req.body?.submissionId ? { submissionId: req.body.submissionId } : {}) }); void save() }); next() })
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', database, readyState: mongoose.connection.readyState, isolated: true }))

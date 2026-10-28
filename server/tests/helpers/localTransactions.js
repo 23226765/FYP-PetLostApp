@@ -18,7 +18,7 @@ export function validateLocalTransactionUri(uri) {
 
 export async function openTransactionDatabase(uri, category, t) {
   const parsed = validateLocalTransactionUri(uri)
-  assert.ok(['media', 'sighting', 'quota', 'rescue', 'analytics'].includes(category))
+  assert.ok(['media', 'sighting', 'quota', 'rescue', 'analytics', 'map'].includes(category))
   const database = `fyp_transactions_${category}_${randomUUID().replaceAll('-', '')}`
   const connection = await mongoose.createConnection(uri, {
     dbName: database, autoIndex: false, autoCreate: false, serverSelectionTimeoutMS: 5000,

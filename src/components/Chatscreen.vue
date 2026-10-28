@@ -5,13 +5,13 @@
       <button class="back-btn" :aria-label="t('messages.backToPet')" @click="emit('close')">
         <AppIcon name="back" :size="22" />
       </button>
-      <ManagedImage v-if="conversationAvailable" class="pet-avatar" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" />
+      <ManagedImage v-if="conversationAvailable && pet.photo?.trim()" class="pet-avatar" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" />
       <div class="chat-title">
         <h1>
           {{
             !conversationAvailable ? (loading ? t('messages.loadingMessages') : t('messages.unavailable')) : currentSender === 'owner'
               ? t('messages.chattingWith', { name: pet.participantName || t('messages.finder') })
-              : t('messages.chattingWith', { name: pet.owner || t('messages.petOwner') })
+              : t('messages.chattingWith', { name: pet.ownerDisplayName || pet.owner || t('messages.petOwner') })
           }}
         </h1>
         <p v-if="conversationAvailable">{{ t('messages.context', { name: pet.name }) }}</p>
@@ -65,7 +65,7 @@
       <template v-for="msg in group.messages" :key="msg.id">
         <div class="bubble-row" :class="msg.sender === currentSender ? 'out' : 'in'">
           <ManagedImage
-            v-if="msg.sender !== currentSender"
+            v-if="msg.sender !== currentSender && pet.photo?.trim()"
             class="bubble-avatar"
             :src="pet.photo"
             alt=""
@@ -77,13 +77,13 @@
             </button>
             <div v-else-if="msg.sharedStrayUnavailable" class="shared-unavailable">{{ t('messages.sharedUnavailable') }}</div>
             <ManagedImage
-              v-if="msg.photo"
+              v-if="msg.photo?.trim()"
               class="bubble-photo"
               :src="msg.photo"
               :alt="t('messages.sharedChatPhotoAlt', { name: pet.name })"
             />
             <p v-if="msg.text">{{ msg.text }}</p>
-            <ContentImageEditor v-if="msg.sender === currentSender && !sending" type="message" :id="msg.id" :allow-remove="Boolean(msg.text || msg.sharedStray)" @updated="images => { msg.photo = images[0]?.url || '' }" />
+            <ContentImageEditor v-if="msg.photo?.trim() && msg.sender === currentSender && !sending" type="message" :id="msg.id" :allow-remove="Boolean(msg.text || msg.sharedStray)" @updated="images => { msg.photo = images[0]?.url || '' }" />
             <span class="time">{{ formatTime(msg.createdAt) }}</span>
             <SafetyActions
               v-if="msg.sender !== currentSender"
@@ -129,11 +129,14 @@
       />
       <button
         class="send-btn"
-        :aria-label="t('messages.sendMessage')"
-        :disabled="sending || loading || !conversationAvailable"
+        type="button"
+        :aria-label="sending ? t('messagingUpdates.sending') : t('messages.sendMessage')"
+        :aria-busy="sending"
+        :disabled="sending || loading || !conversationAvailable || (!draft.trim() && !pendingPhoto)"
         @click="send"
       >
-        <AppIcon name="send" :size="19" />
+        <span v-if="sending" class="send-spinner" aria-hidden="true" />
+        <AppIcon v-else name="send" :size="20" />
       </button>
     </footer>
   </div>
@@ -192,7 +195,7 @@ const messageGroups = computed(() => {
 })
 const currentSender = ref<ChatMessage['sender'] | null>(null)
 const counterpartId = computed(() => currentSender.value === 'owner' ? props.pet.participantId : props.pet.reportedBy)
-const counterpartName = computed(() => currentSender.value === 'owner' ? props.pet.participantName : props.pet.owner)
+const counterpartName = computed(() => currentSender.value === 'owner' ? props.pet.participantName : props.pet.ownerDisplayName || props.pet.owner)
 const ownerContactActions = computed(() => {
   if (currentSender.value !== 'finder') return null
   if (!props.pet.canViewContact) return null
@@ -419,6 +422,10 @@ onBeforeUnmount(() => {
   max-width: 480px;
   margin: 0 auto;
 }
+.send-spinner { width: 20px; height: 20px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: message-send-spin .7s linear infinite; }
+.send-btn:focus-visible { outline: 3px solid var(--color-border-accent); outline-offset: 3px; }
+@keyframes message-send-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .send-spinner { animation: none; } }
 
 /* Header */
 .chat-header {

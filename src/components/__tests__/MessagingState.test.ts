@@ -6,6 +6,7 @@ import Chat from '../Chatscreen.vue'
 import { setSessionToken } from '../../services/authSession'
 import { i18n } from '../../i18n'
 import { chatDayLabel, formatClockTime } from '../../i18n/formatters'
+import AppIcon from '../AppIcon.vue'
 
 const api = vi.hoisted(() => ({ getChatInbox: vi.fn(), getMessages: vi.fn(), markChatMessagesRead: vi.fn(), sendMessage: vi.fn(), discardManagedImage: vi.fn(), uploadManagedImage: vi.fn() }))
 vi.mock('../../services/api', () => api)
@@ -159,4 +160,65 @@ it.each(['en', 'zh-HK', 'zh-CN'] as const)('groups historical dates and uses app
   expect(wrapper.findAll('.time').at(-1)?.text()).toBe(formatClockTime('2026-10-19T12:00:00'))
   expect(wrapper.text()).toContain('User-written older')
   expect(wrapper.text()).toContain('User-written today')
+})
+it('renders the send icon and disables empty sends, with a busy state during a single send', async () => {
+  expect(mount(AppIcon, { props: { name: 'send' } }).findAll('path')).toHaveLength(2)
+  const wrapper = await chat()
+  expect(wrapper.get('.send-btn').attributes('disabled')).toBeDefined()
+  await wrapper.get('.chat-input').setValue('A text-only reply')
+  let finish!: (value: unknown) => void
+  api.sendMessage.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  await wrapper.get('.send-btn').trigger('click')
+  expect(wrapper.get('.send-btn').attributes('aria-busy')).toBe('true')
+  expect(wrapper.find('.send-spinner').exists()).toBe(true)
+  await wrapper.get('.send-btn').trigger('click')
+  expect(api.sendMessage).toHaveBeenCalledTimes(1)
+  finish(message('sent-text', 'owner')); await flushPromises()
+  expect(wrapper.find('content-image-editor-stub').exists()).toBe(false)
+  expect(wrapper.find('.bubble-photo').exists()).toBe(false)
+})
+it('offers image editing only for genuine outgoing attachments through polls, removal and reload', async () => {
+  api.getMessages.mockResolvedValue({ viewerRole: 'owner', messages: [message('text', 'owner'), { ...message('legacy-empty', 'owner'), photo: '  ' }, { ...message('incoming-photo'), photo: '/api/uploads/managed/incoming/content' }] })
+  const wrapper = await chat()
+  expect(wrapper.find('content-image-editor-stub').exists()).toBe(false)
+  expect(wrapper.findAll('.bubble-photo')).toHaveLength(1)
+  api.getMessages.mockResolvedValue({ viewerRole: 'owner', messages: [message('text', 'owner'), { ...message('photo', 'owner'), photo: '/api/uploads/managed/owned/content' }] })
+  await vi.advanceTimersByTimeAsync(5000); await flushPromises()
+  const editor = wrapper.getComponent({ name: 'ContentImageEditor' })
+  expect(editor.props('id')).toBe('photo')
+  editor.vm.$emit('updated', []); await flushPromises()
+  expect(wrapper.find('content-image-editor-stub').exists()).toBe(false)
+  expect(wrapper.find('.bubble-photo').exists()).toBe(false)
+  api.getMessages.mockResolvedValue({ viewerRole: 'owner', messages: [message('text', 'owner'), { ...message('photo', 'owner'), photo: '' }] })
+  await vi.advanceTimersByTimeAsync(5000); await flushPromises()
+  expect(wrapper.find('content-image-editor-stub').exists()).toBe(false)
+})
+it.each(['en', 'zh-HK', 'zh-CN'] as const)('searches authorized participant names without changing unread totals in %s', async locale => {
+  i18n.global.locale.value = locale
+  api.getChatInbox.mockResolvedValue([
+    { ...conversation(2), id: 'maya', pet: { ...pet, participantName: 'Maya Demo' } },
+    { ...conversation(1), id: 'jason', pet: { ...pet, participantName: 'Jason' } },
+  ])
+  const wrapper = mount(Inbox, { props: { user: owner }, global: { stubs } }); await flushPromises()
+  await wrapper.get('input[type="search"]').setValue('ＭＡＹＡ')
+  expect(wrapper.findAll('.conversation-card')).toHaveLength(1)
+  expect(wrapper.text()).toContain('Maya Demo')
+  expect(wrapper.emitted('unread-change')?.at(-1)).toEqual([3])
+  await wrapper.get('input[type="search"]').setValue('Maple')
+  expect(wrapper.text()).toContain(i18n.global.t('messagingUpdates.noResults'))
+  expect(api.getChatInbox).toHaveBeenCalledTimes(1)
+  await wrapper.get('.conversation-search button').trigger('click')
+  expect(wrapper.findAll('.conversation-card')).toHaveLength(2)
+})
+it('retains search during polling, searches the public owner display name, and clears it across accounts', async () => {
+  api.getChatInbox.mockResolvedValue([{ ...conversation(0), pet: { ...pet, owner: 'Report contact', ownerDisplayName: 'Ava Public' } }])
+  const wrapper = mount(Inbox, { props: { user: finder }, global: { stubs } }); await flushPromises()
+  await wrapper.get('input[type="search"]').setValue('ava')
+  expect(wrapper.text()).toContain('Ava Public')
+  await vi.advanceTimersByTimeAsync(30000); await flushPromises()
+  expect((wrapper.get('input[type="search"]').element as HTMLInputElement).value).toBe('ava')
+  setSessionToken('next-account'); await flushPromises()
+  expect(wrapper.find('input[type="search"]').exists()).toBe(false)
+  await wrapper.setProps({ user: owner }); await flushPromises()
+  expect((wrapper.get('input[type="search"]').element as HTMLInputElement).value).toBe('')
 })

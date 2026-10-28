@@ -32,6 +32,11 @@
     </header>
 
     <div class="inbox-content">
+      <div v-if="isAuthenticated" class="conversation-search" role="search">
+        <label class="sr-only" for="conversation-search">{{ t('messagingUpdates.searchLabel') }}</label>
+        <input id="conversation-search" v-model="search" type="search" :placeholder="t('messagingUpdates.searchPlaceholder')" autocomplete="off" />
+        <button v-if="search" type="button" :aria-label="t('messagingUpdates.clearSearch')" @click="search = ''"><AppIcon name="close" :size="18" /></button>
+      </div>
       <div v-if="!isAuthenticated" class="inbox-state empty">
         <span class="empty-illustration" aria-hidden="true">
           <svg viewBox="0 0 88 88" fill="none">
@@ -79,8 +84,14 @@
         <button type="button" @click="emit('explore-radar')">{{ t('pets.exploreRadar') }}</button>
       </div>
 
+      <div v-else-if="filteredConversations.length === 0" class="inbox-state empty" role="status">
+        <AppIcon name="message" :size="32" />
+        <h2>{{ t('messagingUpdates.noResults') }}</h2>
+        <p>{{ t('messagingUpdates.searchHelp') }}</p>
+        <button type="button" @click="search = ''">{{ t('messagingUpdates.clearSearch') }}</button>
+      </div>
       <ul v-else class="conversation-list">
-        <li v-for="conversation in conversations" :key="conversation.id">
+        <li v-for="conversation in filteredConversations" :key="conversation.id">
           <button
             class="conversation-card"
             :class="{ unread: isConversationUnread(conversation) }"
@@ -147,6 +158,11 @@ const emit = defineEmits<{
 }>()
 
 const conversations = ref<ChatConversation[]>([])
+const search = ref('')
+const filteredConversations = computed(() => {
+  const query = search.value.trim().normalize('NFKC').toLocaleLowerCase()
+  return query ? conversations.value.filter(item => conversationName(item).normalize('NFKC').toLocaleLowerCase().includes(query)) : conversations.value
+})
 const loading = ref(false)
 const error = ref('')
 const failedPhotos = ref<Set<string>>(new Set())
@@ -190,7 +206,7 @@ function viewerRole(conversation: ChatConversation): 'owner' | 'finder' {
 function conversationName(conversation: ChatConversation): string {
   return viewerRole(conversation) === 'owner'
     ? conversation.pet.participantName || t('messages.finder')
-    : conversation.pet.owner || t('messages.petOwner')
+    : conversation.pet.ownerDisplayName || conversation.pet.owner || t('messages.petOwner')
 }
 
 function isConversationUnread(conversation: ChatConversation): boolean {
@@ -257,12 +273,13 @@ function clearInbox() {
   refreshing.value = false
   conversations.value = []; failedPhotos.value = new Set(); error.value = ''; loading.value = false
 }
-function invalidateInbox() { authInvalidated.value = true; clearInbox() }
+function invalidateInbox() { authInvalidated.value = true; search.value = ''; clearInbox() }
 function refreshReadState() { clearInbox(); if (props.user) void loadInbox() }
 
 watch(
   () => props.user?.id,
   () => {
+    search.value = ''
     clearInbox()
     authInvalidated.value = false
     void loadInbox(true)
@@ -295,6 +312,10 @@ onBeforeUnmount(() => {
   padding-bottom: calc(106px + var(--safe-bottom));
   background: var(--page-bg);
 }
+.conversation-search { position: relative; display: flex; align-items: center; margin-bottom: 14px; }
+.conversation-search input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 48px 10px 14px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); color: var(--color-text-primary); }
+.conversation-search button { position: absolute; right: 0; width: 44px; height: 44px; display: grid; place-items: center; color: var(--color-text-accent); }
+.conversation-search :focus-visible { outline: 3px solid var(--color-border-accent); outline-offset: 2px; }
 
 .inbox-header {
   position: sticky;

@@ -91,6 +91,7 @@ function serializeChatPet(pet, contactOwner, requester, participant, participant
     name: pet.name,
     photo: pet.photo || '',
     owner: pet.ownerName || 'Pet owner',
+    ownerDisplayName: contactOwner?.name || undefined,
     ...serializeContact({ requester, contactOwner, phoneField: 'ownerPhone' }),
     reportedBy: pet.reportedBy ? String(pet.reportedBy) : undefined,
     participantId: participant ? String(participant) : undefined,

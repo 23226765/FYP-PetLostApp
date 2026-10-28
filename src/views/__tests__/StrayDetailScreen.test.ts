@@ -24,13 +24,13 @@ const post: StrayReport = {
   commentCount: 0, isSaved: false, canManage: true, canEdit: true, canDelete: true, canUpdateStatus: true,
 }
 
-async function render() {
+async function render(query = '') {
   apiMocks.getStrayById.mockResolvedValue({ ...post })
   apiMocks.getStrayComments.mockResolvedValue({ comments: [], pagination: { page: 1, limit: 50, total: 0, hasMore: false } })
   const router = createRouter({ history: createMemoryHistory(), routes: [
     { path: '/strays/:id', component: { template: '<div />' } }, { path: '/', component: { template: '<div />' } },
   ] })
-  await router.push('/strays/stray-one'); await router.isReady()
+  await router.push('/strays/stray-one' + query); await router.isReady()
   const wrapper = mount(StrayDetailScreen, {
     props: { user: { id: 'owner-id', name: 'Owner', email: 'owner@example.test' } },
     global: { plugins: [router], stubs: { AppIcon: { template: '<span />' }, MapView: { template: '<div class="map-stub" />' } } },
@@ -56,6 +56,15 @@ async function renderAsFinder(overrides: Partial<StrayReport> = {}, page = { com
 
 describe('StrayDetailScreen community actions', () => {
   beforeEach(() => { Object.values(apiMocks).forEach((mock) => mock.mockReset()); applyAccountPreferences({ language: 'en', theme: 'light' }) })
+
+  it('opens the existing authorized in-app share sheet from the feed action', async () => {
+    apiMocks.getChatInbox.mockResolvedValue([])
+    const wrapper = await render('?share=1')
+    expect(apiMocks.getChatInbox).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('.share-sheet').exists()).toBe(true)
+    expect(apiMocks.sendMessage).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
 
   it('shelter staff get status controls, never another author’s edit/image/delete controls', async () => {
     const wrapper = await renderAsFinder({ canUpdateStatus: true, interactionBlocked: false })

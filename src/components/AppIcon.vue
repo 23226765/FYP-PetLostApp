@@ -44,6 +44,9 @@
       <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
       <path d="M9 4v14M15 6v14" />
     </template>
+    <template v-else-if="name === 'filter'">
+      <path d="M4 7h16M7 12h10M10 17h4" />
+    </template>
     <template v-else-if="name === 'pin'">
       <path d="M12 21s-7-5.3-7-11a7 7 0 0 1 14 0c0 5.7-7 11-7 11z" />
       <circle cx="12" cy="10" r="2.5" />
@@ -59,6 +62,10 @@
       <path
         d="M5 4h4l1.5 4L8 9.5a12 12 0 0 0 6.5 6.5L16 13.5l4 1.5v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"
       />
+    </template>
+    <template v-else-if="name === 'send'">
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
     </template>
     <template v-else-if="name === 'message'">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />

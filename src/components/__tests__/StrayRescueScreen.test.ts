@@ -46,7 +46,44 @@ async function render(initial: StrayReport[] = [stray]) {
 }
 
 describe('Stray community feed and report flow', () => {
-  beforeEach(() => Object.values(apiMocks).forEach((mock) => mock.mockReset()))
+  beforeEach(() => {
+    Object.values(apiMocks).forEach((mock) => mock.mockReset())
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
+  })
+
+  it('stages filters until Apply, resets them, and retains filters and Map selection while inactive', async () => {
+    const { wrapper } = await render()
+    await wrapper.get('.filter-trigger').trigger('click')
+    const selects = wrapper.findAll('.filters select')
+    await selects[0].setValue('Cat'); await selects[1].setValue('reported'); await selects[2].setValue('Wan Chai')
+    expect(apiMocks.getNearbyStrays).toHaveBeenCalledTimes(1)
+    await wrapper.get('.apply-filters').trigger('click'); await flushPromises()
+    expect(apiMocks.getNearbyStrays).toHaveBeenCalledTimes(2)
+    expect(apiMocks.getNearbyStrays.mock.calls.at(-1)?.[0]).toMatchObject({ species: 'Cat', status: 'reported', district: 'Wan Chai' })
+    await wrapper.get('.view-toggle button:nth-child(2)').trigger('click')
+    await wrapper.setProps({ active: false }); await wrapper.setProps({ active: true }); await flushPromises()
+    expect(wrapper.find('.map-stub').exists()).toBe(true)
+    expect(apiMocks.getNearbyStrays.mock.calls.at(-1)?.[0]).toMatchObject({ species: 'Cat', district: 'Wan Chai' })
+    await wrapper.get('.reset-filters').trigger('click'); await flushPromises()
+    expect(apiMocks.getNearbyStrays.mock.calls.at(-1)?.[0]).toMatchObject({ species: undefined, status: undefined, district: undefined })
+    wrapper.unmount()
+  })
+
+  it('puts actions before the caption, retains multiple photos, and does not navigate from nested keyboard actions', async () => {
+    apiMocks.setStraySaved.mockResolvedValue(true)
+    const { wrapper, router } = await render([{ ...stray, photos: [stray.photo, 'https://example.test/cat-2.jpg'] }])
+    const children = wrapper.get('.stray-card').element.children
+    expect([...children].map(element => element.className)).toEqual(['post-author', 'photo-carousel', 'card-actions', 'card-body'])
+    expect(wrapper.findAll('.photo-wrap')).toHaveLength(2)
+    const save = wrapper.findAll('.card-actions button')[1]
+    await save.trigger('keydown', { key: 'Enter' }); await save.trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/')
+    expect(apiMocks.setStraySaved).toHaveBeenCalledTimes(1)
+    await wrapper.findAll('.card-actions button')[2].trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one?share=1')
+    wrapper.unmount()
+  })
 
   it('opens the canonical post route and preserves one filtered record across List/Map', async () => {
     const { wrapper, router } = await render()

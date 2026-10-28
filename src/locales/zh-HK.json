@@ -1,4 +1,9 @@
 {
+  "mapViewport": { "coverage": "香港報告 · 概略位置", "loaded": "此範圍內已載入 {count}／{total} 份報告", "outside": "此地圖涵蓋香港。請移回支援範圍以搜尋報告。", "zoomIn": "請放大地圖，在較小範圍內載入其餘報告。" },
+  "mapStatus": { "markersFailed": "無法載入報告標記，請重試。", "empty": "此範圍內沒有符合條件的報告。", "tilesFailed": "部分背景地圖圖塊未能載入，報告標記仍可能顯示。" },
+  "discoveryMap": { "title": "地圖", "approximate": "以概略位置探索走失報告", "searchHere": "搜尋此範圍", "loading": "正在載入報告位置…", "empty": "此範圍內暫無未尋回報告。", "failed": "無法載入地圖，請重試。", "loaded": "{radius} 公里內已載入 {count}／{total} 份報告", "history": "標記顯示報告所儲存的概略位置，而非目擊軌跡。較舊報告可能未保留最初位置。", "cluster": "{count} 份報告", "refresh": "重新載入地圖", "more": "載入更多報告" },
+  "compactFilters": { "title": "篩選", "animal": "動物類型", "apply": "套用篩選", "reset": "重設", "radius": "搜尋半徑", "active": "已套用 {count} 個篩選", "all": "所有報告" },
+  "messagingUpdates": { "sending": "正在傳送訊息", "searchLabel": "搜尋對話", "searchPlaceholder": "按名稱搜尋", "clearSearch": "清除搜尋", "noResults": "找不到符合的對話", "searchHelp": "請嘗試其他對話者名稱。" },
   "savedRepair": {
     "fetchFailed": "部分已收藏帖文暫時未能載入，收藏記錄並無變更。請重試。",
     "storageIssue": "未能在此瀏覽器完整讀取或儲存收藏。變更可能只會保留至本次瀏覽結束。",

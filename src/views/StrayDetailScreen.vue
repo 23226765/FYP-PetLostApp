@@ -181,6 +181,7 @@ async function load() {
     const nextStray = await getStrayById(id())
     if (sequence !== loadSequence) return
     stray.value = nextStray; blockedAuthor.value = Boolean(nextStray.interactionBlocked); editCaption.value = nextStray.description; editAnimalType.value = nextStray.animalType; await loadComments(sequence)
+    if (sequence === loadSequence && route.query.share === '1' && props.user) await openShare()
   }
   catch (cause) { if (sequence === loadSequence) error.value = translateApiError(cause, 'errors.loadPost') }
   finally { if (sequence === loadSequence) loading.value = false }
@@ -275,7 +276,14 @@ async function removePost() {
   catch (cause) { if (active()) deleteError.value = translateApiError(cause, 'rescueRepair.deleteFailed') }
   finally { if (active()) deleting.value = false }
 }
-async function openShare() { if (!requireUser()) return; shareOpen.value = true; shareLoading.value = true; shareError.value = ''; try { conversations.value = await getChatInbox() } catch (cause) { shareError.value = translateApiError(cause, 'errors.loadConversations') } finally { shareLoading.value = false } }
+async function openShare() {
+  if (!requireUser()) return
+  const active = requestGuard()
+  shareOpen.value = true; shareLoading.value = true; shareError.value = ''
+  try { const inbox = await getChatInbox(); if (active()) conversations.value = inbox }
+  catch (cause) { if (active()) shareError.value = translateApiError(cause, 'errors.loadConversations') }
+  finally { if (active()) shareLoading.value = false }
+}
 async function shareTo(conversation: ChatConversation) { if (!stray.value || sharing.value) return; sharing.value = true; shareError.value = ''; try { await sendMessage(conversation.pet.id, { text: t('messages.sharedRescueText', { species: strayAnimalLabel(stray.value.species, stray.value.animalType) }), participantId: conversation.pet.participantId, sharedStrayId: stray.value.id, clientRequestId: uniqueId() }); shareOpen.value = false } catch (cause) { shareError.value = translateApiError(cause, 'errors.sharePost') } finally { sharing.value = false } }
 watch([id, () => props.user?.id, () => props.user?.role], () => void load(), { immediate: true })
 const onAuthChange = () => void load()

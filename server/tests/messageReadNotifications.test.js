@@ -123,6 +123,21 @@ test('finder sees no unread for outgoing-only messages and reads are independent
   await call(markMessagesRead, f.req(f.finder, { messageIds: [String(incoming._id)] }))
   assert.equal((await call(listConversations, f.req(f.finder))).payload.conversations[0].unreadCount, 0)
 })
+test('authorized inbox supplies the public display name without a user-directory or private-profile payload', async t => {
+  const f = fixture(t)
+  f.owner.name = 'Public display name'
+  f.owner.realName = 'Private identity sentinel'
+  f.owner.email = 'private-email@example.test'
+  f.pet.ownerName = 'Report contact label'
+  f.message('finder')
+  const result = await call(listConversations, f.req(f.finder))
+  assert.equal(result.payload.conversations[0].pet.ownerDisplayName, 'Public display name')
+  const serialized = JSON.stringify(result.payload)
+  assert.ok(!serialized.includes('Private identity sentinel'))
+  assert.ok(!serialized.includes('private-email@example.test'))
+  assert.ok(!serialized.includes('private-phone'))
+  assert.equal(result.payload.conversations.length, 1)
+})
 
 test('acknowledgment updates only explicit incoming IDs in the authorized thread and is idempotent', async (t) => {
   const f = fixture(t)

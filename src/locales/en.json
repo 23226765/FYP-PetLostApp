@@ -1,4 +1,9 @@
 {
+  "mapViewport": { "coverage": "Hong Kong reports · approximate locations", "loaded": "{count} of {total} reports in this area", "outside": "This map covers Hong Kong. Pan back to the supported region to find reports.", "zoomIn": "Zoom in to load the remaining reports in a smaller area." },
+  "mapStatus": { "markersFailed": "Could not load report markers. Please try again.", "empty": "No eligible reports in this area.", "tilesFailed": "Some background map tiles could not load. Report markers may still be available." },
+  "discoveryMap": { "title": "Map", "approximate": "Approximate report locations for discovery", "searchHere": "Search this area", "loading": "Loading report locations…", "empty": "No unresolved reports in this area.", "failed": "Could not load the map. Please try again.", "loaded": "{count} of {total} reports within {radius} km", "history": "Pins show approximate stored report locations, not sighting movements. Older reports may not retain their original location.", "cluster": "{count} reports", "refresh": "Refresh map", "more": "Load more reports" },
+  "compactFilters": { "title": "Filters", "animal": "Animal type", "apply": "Apply filters", "reset": "Reset", "radius": "Search radius", "active": "{count} active filters", "all": "All reports" },
+  "messagingUpdates": { "sending": "Sending message", "searchLabel": "Search conversations", "searchPlaceholder": "Search by name", "clearSearch": "Clear search", "noResults": "No conversations found", "searchHelp": "Try another participant name." },
   "savedRepair": {
     "fetchFailed": "Some saved posts could not be loaded. Your saved list is unchanged. Please retry.",
     "storageIssue": "Saved posts could not be fully read or saved in this browser. Changes may last only for this visit.",

@@ -5,6 +5,9 @@ import type { HotspotCell } from '../../types/analytics'
 import MapView from '../MapView.vue'
 
 const leafletState = vi.hoisted(() => ({
+  tileHandlers: {} as Record<string, (event: any) => void>,
+  tileOff: vi.fn(),
+  pins: [] as Array<{ position: [number, number]; popup: HTMLElement; handlers: Record<string, () => void> }>,
   trajectoryMarkers: [] as Array<{
     position: [number, number]
     handlers: Record<string, () => void>
@@ -30,6 +33,9 @@ vi.mock('leaflet', () => {
     fitBounds: leafletState.fitBounds,
     panTo: vi.fn(),
     getZoom: vi.fn(() => 13),
+    getCenter: vi.fn(() => ({ lat: 22.3, lng: 114.1 })),
+    getBounds: vi.fn(() => ({ getWest: () => 113.8, getSouth: () => 22.1, getEast: () => 114.6, getNorth: () => 22.7 })),
+    on: vi.fn(),
     invalidateSize: vi.fn(),
     remove: vi.fn(),
     hasLayer: vi.fn(() => true),
@@ -46,7 +52,10 @@ vi.mock('leaflet', () => {
   return {
     default: {
       map: vi.fn(() => mapInstance),
-      tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
+      tileLayer: vi.fn(() => {
+        const layer: any = { addTo: vi.fn(() => layer), off: leafletState.tileOff, on: vi.fn((event: string, handler: (event: any) => void) => { leafletState.tileHandlers[event] = handler; return layer }) }
+        return layer
+      }),
       layerGroup: vi.fn(makeLayerGroup),
       markerClusterGroup: vi.fn((options: any) => {
         leafletState.clusterOptions = options
@@ -69,9 +78,11 @@ vi.mock('leaflet', () => {
       }),
       marker: vi.fn((position: [number, number], options: any) => {
         const handlers: Record<string, () => void> = {}
+        const popup = document.createElement('div')
+        leafletState.pins.push({ position, popup, handlers })
         const openPopup = vi.fn()
         const instance: any = {
-          bindPopup: vi.fn(() => instance),
+          bindPopup: vi.fn((html: string) => { popup.innerHTML = html; return instance }),
           on: vi.fn((event: string, handler: () => void) => {
             handlers[event] = handler
             return instance
@@ -80,7 +91,7 @@ vi.mock('leaflet', () => {
             layer.addLayer?.(instance)
             return instance
           }),
-          getPopup: vi.fn(() => null),
+          getPopup: vi.fn(() => ({ getElement: () => popup })),
           getElement: vi.fn(() => null),
           getLatLng: vi.fn(() => ({ lat: position[0], lng: position[1] })),
           openPopup,
@@ -136,6 +147,9 @@ function mountMap(sightings: Sighting[], focusedSightingId?: string) {
 
 describe('MapView sighting trajectory', () => {
   beforeEach(() => {
+    leafletState.tileHandlers = {}
+    leafletState.tileOff.mockClear()
+    leafletState.pins = []
     leafletState.trajectoryMarkers = []
     leafletState.clusterLayers = []
     leafletState.clusterOptions = null
@@ -145,6 +159,43 @@ describe('MapView sighting trajectory', () => {
     leafletState.setView.mockClear()
     leafletState.heatPoints = []
     leafletState.heatOptions = null
+  })
+
+  it.each(['en', 'zh-HK', 'zh-CN'] as const)('%s reports tile failures independently and clears only after failed tiles recover/unload', async locale => {
+    const { i18n } = await import('../../i18n')
+    i18n.global.locale.value = locale
+    const wrapper = mount(MapView, { props: { pets: [], center: { lat: 22.3, lng: 114.1 }, showUserLocation: false,
+      discoveryPets: [{ id: 'public-tile-test', name: 'Synthetic', species: 'Dog', breed: '', status: 'lost', district: '', photo: '', coordinates: [114.1, 22.3], locationPrecision: 'approximate', locationSource: 'stored_report' }] } })
+    await flushPromises()
+    expect(wrapper.find('.tile-notice').exists()).toBe(false)
+    const first = document.createElement('img'), second = document.createElement('img')
+    leafletState.tileHandlers.tileerror({ tile: first }); leafletState.tileHandlers.tileerror({ tile: second })
+    await flushPromises()
+    expect(wrapper.get('.tile-notice').text()).toBe(i18n.global.t('mapStatus.tilesFailed'))
+    expect(leafletState.pins).toHaveLength(1)
+    expect(wrapper.text()).not.toContain(i18n.global.t('mapStatus.markersFailed'))
+    leafletState.tileHandlers.tileload({ tile: first }); await flushPromises()
+    expect(wrapper.find('.tile-notice').exists()).toBe(true)
+    leafletState.tileHandlers.tileunload({ tile: second }); await flushPromises()
+    expect(wrapper.find('.tile-notice').exists()).toBe(false)
+    wrapper.unmount(); expect(leafletState.tileOff).toHaveBeenCalledTimes(1)
+    i18n.global.locale.value = 'en'
+  })
+
+  it('clusters minimal discovery markers at their supplied public points without distance or user pins', async () => {
+    const wrapper = mount(MapView, { props: { pets: [], center: { lat: 22.3, lng: 114.1 }, clusterPets: true, fillHeight: true, showUserLocation: false, showRadius: false,
+      discoveryPets: [{ id: 'public-one', name: '<Public pet>', species: 'Dog', breed: '', status: 'lost', district: 'Sha Tin', photo: '', coordinates: [114.1, 22.3], locationPrecision: 'approximate', locationSource: 'stored_report' }] } })
+    await flushPromises()
+    expect(leafletState.pins).toHaveLength(1)
+    const pin = leafletState.pins[0]
+    expect(pin.position).toEqual([22.3, 114.1])
+    expect(pin.popup.textContent).toContain('<Public pet>')
+    expect(pin.popup.querySelector('public')).toBeNull()
+    expect(pin.popup.textContent).not.toContain('km')
+    pin.handlers.popupopen()
+    pin.popup.querySelector<HTMLButtonElement>('button')?.click()
+    expect(wrapper.emitted('open-marker')).toEqual([['public-one']])
+    wrapper.unmount()
   })
 
   it('creates three separate marker positions for three distinct locations', async () => {

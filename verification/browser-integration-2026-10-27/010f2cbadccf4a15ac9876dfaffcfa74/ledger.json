@@ -1,0 +1,56 @@
+{
+  "run": "010f2cbadccf4a15ac9876dfaffcfa74",
+  "database": "fyp_transactions_browser_010f2cbadccf4a15ac9876dfaffcfa74",
+  "provider": "in-memory mock",
+  "records": {
+    "savedstrays": [],
+    "userblocks": [],
+    "notifications": [],
+    "straycomments": [],
+    "contentreports": [],
+    "messages": [],
+    "users": [
+      "6ae0a02afc8eeddc6538c8af",
+      "6ae0a02afc8eeddc6538c8b3",
+      "6ae0a02bfc8eeddc6538c8b7"
+    ],
+    "mediauploadbudgets": [],
+    "sightings": [],
+    "strays": [],
+    "mediaassets": [],
+    "pets": []
+  },
+  "objects": [],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T12:59:22.774Z",
+      "finishedAt": "2026-10-27T12:59:22.879Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T12:59:22.893Z",
+      "finishedAt": "2026-10-27T12:59:22.979Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-10-27T12:59:22.987Z",
+      "finishedAt": "2026-10-27T12:59:23.077Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-10-27T12:59:23.457Z",
+      "finishedAt": "2026-10-27T12:59:23.458Z"
+    }
+  ],
+  "providerEvents": [],
+  "cleanupComplete": true
+}

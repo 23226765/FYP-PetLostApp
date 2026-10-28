@@ -19,6 +19,7 @@ const operations = {
   getPet: () => api.getPet('pet'),
   getPublicPet: () => api.getPublicPet('pet'),
   getPetSightings: () => api.getPetSightings('pet'),
+  getMapPets: () => api.getMapPets({ west: 114.1, east: 114.3, south: 22.3, north: 22.5 }),
   confirmSighting: () => api.confirmSighting('pet', 'sighting'),
   getNotifications: () => api.getNotifications(),
   updateNotificationPreferences: () => api.updateNotificationPreferences({ enabled: true, radiusKm: 3, coordinates }),

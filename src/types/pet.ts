@@ -22,6 +22,29 @@ export const HK_DISTRICTS = [
 export type HongKongDistrict = (typeof HK_DISTRICTS)[number]
 export type LocationPrecision = 'exact' | 'approximate'
 
+export interface MapBounds { west: number; south: number; east: number; north: number }
+export interface MapViewChange { lat: number; lng: number; zoom: number; bounds: MapBounds; initial?: boolean }
+
+export interface MapPetMarker {
+  id: string
+  name: string
+  species: 'Dog' | 'Cat' | 'Other'
+  breed: string
+  status: 'lost' | 'sighted'
+  district: string
+  photo: string
+  coordinates: [number, number]
+  locationPrecision: 'approximate'
+  locationSource: 'stored_report'
+}
+export interface MapPetPage {
+  markers: MapPetMarker[]
+  pagination: { page: number; limit: number; total: number; totalPages: number; hasMore: boolean }
+  gridSizeMeters: number
+  radiusKm?: number
+  bounds?: MapBounds
+}
+
 export interface Pet {
   id: string
   name: string

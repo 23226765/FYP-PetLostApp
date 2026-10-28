@@ -1,6 +1,7 @@
 import axios, { type AxiosRequestConfig } from 'axios'
 import { captureAuthContext, isAuthContextCurrent, authContextError, setSessionToken, type AuthContext } from './authSession'
 import type { Pet, Sighting } from '../types/pet'
+import type { MapPetPage, MapBounds } from '../types/pet'
 import type { AppNotification } from '../types/notification'
 import type { User } from '../types/user'
 import type { UserPreferences } from '../types/user'
@@ -102,6 +103,11 @@ export interface NearbyParams {
 export interface PageParams {
   page?: number
   limit?: number
+}
+
+export async function getMapPets(params: ({ lat: number; lng: number; radiusKm?: number } | MapBounds) & { page?: number; limit?: number; species?: 'Dog' | 'Cat' | 'Other'; district?: string }, signal?: AbortSignal): Promise<MapPetPage> {
+  const { data } = await http.get<MapPetPage>('/pets/map', { ...authScopedRequestConfig(), params, signal })
+  return data
 }
 
 export interface Pagination {
@@ -311,6 +317,7 @@ export interface ChatPet {
   name: string
   photo: string
   owner: string
+  ownerDisplayName?: string
   ownerPhone?: string
   canViewContact: boolean
   reportedBy?: string

@@ -18,6 +18,7 @@ const router = createRouter({
     { path: '/', name: 'home', component: EmptyRouteView },
     { path: '/login', name: 'login', component: EmptyRouteView },
     { path: '/profile', name: 'profile', component: EmptyRouteView },
+    { path: '/map', name: 'map', component: EmptyRouteView },
     { path: '/pets/:id', name: 'pet-detail', component: EmptyRouteView, props: true },
     { path: '/strays/:id', name: 'stray-detail', component: StrayDetailScreen, props: true },
     { path: '/settings', name: 'settings', component: SettingsScreen },

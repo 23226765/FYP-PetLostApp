@@ -1,11 +1,12 @@
 <template>
-  <div class="map-wrap">
+  <div class="map-wrap" :class="{ 'full-height': fillHeight }">
     <div
       ref="mapEl"
       class="leaflet-map"
       role="application"
       :aria-label="showHeatmap ? t('radar.mapHeatLabel') : strays?.length ? t('radar.mapStraysLabel') : t('radar.mapPetsLabel')"
     ></div>
+    <p v-if="tilesFailed" class="tile-notice" role="alert">{{ t('mapStatus.tilesFailed') }}</p>
     <p v-if="heatmapError" class="heatmap-notice" role="alert">
       {{ heatmapError }}
     </p>
@@ -25,7 +26,7 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
-import type { Pet, Sighting } from '../types/pet'
+import type { Pet, Sighting, MapPetMarker, MapBounds, MapViewChange } from '../types/pet'
 import type { StrayReport } from '../types/stray'
 import type { HotspotCell } from '../types/analytics'
 import { getCurrentLocation } from '../services/geolocation'
@@ -36,6 +37,13 @@ import { formatDateTime, petStatusLabel, rescueStatusLabel, strayAnimalLabel, st
 
 const props = defineProps<{
   pets: Pet[]
+  discoveryPets?: MapPetMarker[]
+  clusterPets?: boolean
+  fillHeight?: boolean
+  showUserLocation?: boolean
+  showRadius?: boolean
+  initialZoom?: number
+  initialBounds?: MapBounds
   center?: { lat: number; lng: number } | null
   radiusKm?: number
   sightings?: Sighting[]
@@ -48,6 +56,8 @@ const { t, locale } = useAppI18n()
 
 const emit = defineEmits<{
   open: [pet: Pet]
+  'open-marker': [id: string]
+  'view-change': [view: MapViewChange]
   'open-stray': [stray: StrayReport]
   'sighting-open': [sightingId: string]
 }>()
@@ -58,6 +68,19 @@ function clearProtectedImages() { protectedImages.clear(true) }
 window.addEventListener('auth:changed', clearProtectedImages)
 
 let map: L.Map | null = null
+let baseTiles: L.TileLayer | null = null
+const tilesFailed = ref(false)
+const failedTiles = new Set<HTMLElement>()
+function tileFailed(event: L.TileErrorEvent) {
+  if (disposed) return
+  failedTiles.add(event.tile)
+  tilesFailed.value = true
+}
+function tileRecovered(event: L.TileEvent) {
+  if (disposed) return
+  failedTiles.delete(event.tile)
+  tilesFailed.value = failedTiles.size > 0
+}
 let markersLayer: L.LayerGroup | null = null
 let trajectoryLayer: L.MarkerClusterGroup | null = null
 let trajectoryRouteLayer: L.LayerGroup | null = null
@@ -184,14 +207,15 @@ async function resolveCenter(): Promise<{
 }
 
 // Pet coordinates are stored as GeoJSON [lng, lat]; Leaflet expects [lat, lng].
-function petLatLng(pet: Pet): [number, number] | null {
+type PetPin = Pick<Pet, 'id' | 'name' | 'photo' | 'breed' | 'status' | 'coordinates' | 'distanceKm'>
+function petLatLng(pet: PetPin): [number, number] | null {
   if (pet.coordinates && pet.coordinates.length === 2) {
     return validLatLng(pet.coordinates[1], pet.coordinates[0])
   }
   return null
 }
 
-function petIcon(pet: Pet): L.DivIcon {
+function petIcon(pet: PetPin): L.DivIcon {
   return L.divIcon({
     className: '',
     html: `<div class="pawradar-pin ${esc(pet.status)}">${imageMarkup(pet.photo, t('pets.photoAlt', { name: pet.name }), 'pawradar-pin-media')}</div>`,
@@ -201,15 +225,15 @@ function petIcon(pet: Pet): L.DivIcon {
   })
 }
 
-function popupHtml(pet: Pet): string {
+function popupHtml(pet: PetPin): string {
   const status = petStatusLabel(pet.status)
-  const breed = pet.breed ? `${esc(pet.breed)} · ` : ''
+  const detail = [pet.breed ? esc(pet.breed) : '', typeof pet.distanceKm === 'number' && Number.isFinite(pet.distanceKm) ? esc(t('radar.distanceAway', { distance: pet.distanceKm })) : ''].filter(Boolean).join(' · ')
   return `<div class="pawradar-popup">
       ${imageMarkup(pet.photo, t('pets.photoAlt', { name: pet.name }), 'pawradar-popup-media')}
       <div class="pawradar-popup-body">
         <strong>${esc(pet.name)}</strong>
         <span class="pawradar-popup-status ${esc(pet.status)}">${status}</span>
-        <p>${breed}${esc(t('radar.distanceAway', { distance: pet.distanceKm }))}</p>
+        ${detail ? `<p>${detail}</p>` : ''}
         <button class="pawradar-view" data-id="${esc(pet.id)}">${esc(t('radar.viewDetails'))}</button>
       </div>
     </div>`
@@ -219,7 +243,11 @@ function renderPets() {
   if (!map || !markersLayer) return
   markersLayer.clearLayers()
   protectedImages.prune()
-  for (const pet of props.pets) {
+  const entries: Array<{ pet: PetPin; open: () => void }> = [
+    ...props.pets.map(pet => ({ pet, open: () => emit('open', pet) })),
+    ...(props.discoveryPets || []).map(pet => ({ pet, open: () => emit('open-marker', pet.id) })),
+  ]
+  for (const { pet, open } of entries) {
     const coordinates = petLatLng(pet)
     if (!coordinates) continue
 
@@ -229,7 +257,7 @@ function renderPets() {
       const popupElement = marker.getPopup()?.getElement()
       bindImageFallback(popupElement)
       const btn = popupElement?.querySelector<HTMLButtonElement>('.pawradar-view')
-      if (btn) btn.onclick = () => emit('open', pet)
+      if (btn) btn.onclick = open
     })
     marker.on('popupclose', () => {
       const btn = marker.getPopup()?.getElement()?.querySelector<HTMLButtonElement>('.pawradar-view')
@@ -465,7 +493,7 @@ function renderRadius() {
 }
 
 function renderUserMarker(center: [number, number]) {
-  if (!map) return
+  if (!map || props.showUserLocation === false) return
   if (userMarker) userMarker.remove()
   userMarker = L.marker(center, {
     icon: L.divIcon({
@@ -511,14 +539,28 @@ async function initialiseMap() {
   const showUserMarker = Boolean(latestSuppliedCenter) || resolved.showUserMarker
   if (latestSuppliedCenter) locationMessage.value = null
 
-  map = L.map(mapEl.value, { center, zoom: 13 })
+  map = L.map(mapEl.value, { center, zoom: props.initialZoom || 13 })
+  if (props.initialBounds) {
+    const { west, south, east, north } = props.initialBounds
+    const lower = validLatLng(south, west), upper = validLatLng(north, east)
+    if (lower && upper && west < east && south < north) map.fitBounds([lower, upper], { padding: [12, 12], animate: false })
+  }
+  const emitView = (initial = false) => {
+    if (!map || disposed) return
+    const current = map.getCenter(), bounds = map.getBounds()
+    emit('view-change', { lat: current.lat, lng: current.lng, zoom: map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }, initial })
+  }
+  if (props.fillHeight) map.on('moveend', () => emitView())
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  baseTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(map)
+  }).on('tileerror', tileFailed).on('tileload', tileRecovered).on('tileunload', tileRecovered).addTo(map)
 
-  markersLayer = L.layerGroup().addTo(map)
+  markersLayer = (props.clusterPets ? L.markerClusterGroup({
+    maxClusterRadius: 42, showCoverageOnHover: false, spiderfyOnMaxZoom: true,
+    iconCreateFunction: cluster => L.divIcon({ className: '', html: `<span class="pawradar-sighting-cluster" aria-label="${esc(t('discoveryMap.cluster', { count: cluster.getChildCount() }))}">${cluster.getChildCount()}</span>`, iconSize: [38, 38] }),
+  }) : L.layerGroup()).addTo(map)
   trajectoryRouteLayer = L.layerGroup().addTo(map)
   trajectoryLayer = L.markerClusterGroup({
     maxClusterRadius: 26,
@@ -548,7 +590,7 @@ async function initialiseMap() {
         }),
       }).addTo(map)
     : L.layerGroup().addTo(map)
-  radiusCircle = L.circle(center, {
+  radiusCircle = props.showRadius === false ? null : L.circle(center, {
     radius: radiusMeters(),
     color: '#1d6360',
     weight: 1.5,
@@ -556,7 +598,7 @@ async function initialiseMap() {
     fillOpacity: 0.08,
   }).addTo(map)
 
-  if (showUserMarker) renderUserMarker(center)
+  if (showUserMarker && props.showUserLocation !== false) renderUserMarker(center)
   renderPets()
   renderTrajectory()
   renderStrays()
@@ -567,6 +609,7 @@ async function initialiseMap() {
     resizeObserver.observe(mapEl.value)
   }
   scheduleInvalidateSize()
+  if (props.fillHeight) emitView(true)
 }
 
 onMounted(() => {
@@ -574,6 +617,7 @@ onMounted(() => {
 })
 
 watch(() => props.pets, () => renderPets(), { deep: true })
+watch(() => props.discoveryPets, () => renderPets(), { deep: true })
 watch(() => props.sightings, () => renderTrajectory(), { deep: true })
 watch(() => props.focusedSightingId, (id) => focusSightingMarker(id))
 watch(() => props.strays, () => renderStrays(), { deep: true })
@@ -604,6 +648,9 @@ onBeforeUnmount(() => {
   protectedImages.dispose()
   window.removeEventListener('auth:changed', clearProtectedImages)
   disposed = true
+  baseTiles?.off()
+  failedTiles.clear()
+  baseTiles = null
   centerRequest += 1
   heatRenderRequest += 1
   resizeObserver?.disconnect()
@@ -633,6 +680,9 @@ onBeforeUnmount(() => {
   overflow: hidden;
   box-shadow: var(--shadow-card);
 }
+.map-wrap.full-height { height: 100%; border-radius: 0; box-shadow: none; }
+.tile-notice { position: absolute; z-index: 500; top: 62px; left: 12px; right: 12px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface-elevated); color: var(--color-text-primary); font-size: 12px; box-shadow: var(--shadow-card); }
+.full-height .leaflet-map { height: 100%; min-height: 220px; }
 
 .location-notice {
   position: absolute;

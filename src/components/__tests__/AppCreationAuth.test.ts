@@ -12,6 +12,7 @@ import { setSessionToken } from '../../services/authSession'
 
 const apiMocks = vi.hoisted(() => ({
   getNearbyPets: vi.fn(),
+  getMapPets: vi.fn(),
   getNotifications: vi.fn(),
   getChatInbox: vi.fn(),
   getPet: vi.fn(),
@@ -56,9 +57,10 @@ const pet: Pet = {
 }
 
 const RadarStub = defineComponent({
-  emits: ['found', 'notifications'],
-  setup(_, { emit }) {
-    return () => h('div', [h('button', { class: 'stub-found', onClick: () => emit('found', pet) }, 'Found'), h('button', { class: 'stub-notifications', onClick: () => emit('notifications') }, 'Notifications')])
+  props: ['pets', 'radiusKm'],
+  emits: ['found', 'notifications', 'radius-change'],
+  setup(props, { emit }) {
+    return () => h('div', [h('p', { class: 'stub-radar-results' }, (props.pets || []).map((item: Pet) => item.id).join(',')), h('button', { class: 'stub-radar-radius', onClick: () => emit('radius-change', 20) }, String(props.radiusKm)), h('button', { class: 'stub-found', onClick: () => emit('found', pet) }, 'Found'), h('button', { class: 'stub-notifications', onClick: () => emit('notifications') }, 'Notifications')])
   },
 })
 
@@ -89,13 +91,15 @@ const AuthStub = defineComponent({
   `,
 })
 
-async function renderApp(token?: string) {
+async function renderApp(token?: string, realMap = false) {
   if (token) localStorage.setItem('token', token)
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: '/', name: 'home', component: { template: '<div />' } },
       { path: '/login', name: 'login', component: { template: '<div />' } },
+      { path: '/map', name: 'map', component: { template: '<div />' } },
+      { path: '/pets/:id', name: 'pet-detail', component: { template: '<div />' } },
       { path: '/profile', name: 'profile', component: { template: '<div />' } },
       { path: '/settings', name: 'settings', component: { emits: ['logout'], template: '<button class="stub-logout" @click="$emit(\'logout\')">Logout</button>' } },
     ],
@@ -109,6 +113,8 @@ async function renderApp(token?: string) {
         AppIcon: { template: '<span />' },
         RadarScreen: RadarStub,
         StrayRescueScreen: { template: '<div />' },
+        MapScreen: realMap ? false : { props: ['active'], emits: ['open-pet'], template: '<button class="stub-map-pet" @click="$emit(\'open-pet\', \'pet-one\')">Map pet</button>' },
+        MapView: { name: 'MapView', props: ['discoveryPets', 'center', 'initialZoom', 'initialBounds'], template: '<div class="stub-map-view" />' },
         PostPetScreen: { template: '<div data-testid="post-pet" />' },
         ChatInboxScreen: { template: '<div />' },
         ProfileScreen: { props: ['user'], template: '<p class="stub-profile-id">{{ user?.id }}</p>' },
@@ -145,6 +151,57 @@ describe('authenticated creation entry points', () => {
     apiMocks.getNotifications.mockResolvedValue([])
     apiMocks.getChatInbox.mockResolvedValue([])
     apiMocks.updateNotificationPreferences.mockResolvedValue(undefined)
+  })
+
+  it('keeps all six destinations and routes a guest map marker to the authorized detail by unique ID', async () => {
+    const { wrapper, router } = await renderApp()
+    const buttons = wrapper.findAll('.tabbar > button')
+    expect(buttons).toHaveLength(6)
+    const mapButton = buttons.find(button => button.text() === 'Map')
+    expect(mapButton).toBeDefined()
+    await mapButton!.trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/map')
+    expect(wrapper.get('.stub-map-pet').isVisible()).toBe(true)
+    await wrapper.get('.stub-map-pet').trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.name).toBe('pet-detail')
+    expect(router.currentRoute.value.params.id).toBe('pet-one')
+    expect(router.currentRoute.value.query.from).toBe('map')
+    wrapper.unmount()
+  })
+
+  it('Radar radius changes Radar results but never Map requests, camera, markers or retained pages', async () => {
+    vi.useFakeTimers()
+    let wrapper: Awaited<ReturnType<typeof renderApp>>['wrapper'] | undefined
+    try {
+      apiMocks.getNearbyPets.mockImplementation(({ radiusKm }) => Promise.resolve(radiusKm === 20 ? [pet, { ...pet, id: 'radar-only' }] : [pet]))
+      apiMocks.getMapPets.mockResolvedValue({ markers: [{ ...pet, id: 'map-only', locationSource: 'stored_report' }], pagination: { page: 1, limit: 100, total: 1, totalPages: 1, hasMore: false }, bounds: { west: 113.82, south: 22.15, east: 114.5, north: 22.57 }, gridSizeMeters: 750 })
+      ;({ wrapper } = await renderApp(undefined, true))
+      const nav = (label: string) => wrapper!.findAll('.tabbar > button').find(button => button.text() === label)!
+      await nav('Map').trigger('click'); await flushPromises()
+      const map = wrapper.getComponent({ name: 'MapView' })
+      const area = { west: 114.1, east: 114.3, south: 22.3, north: 22.5 }
+      map.vm.$emit('view-change', { lat: 22.4, lng: 114.2, zoom: 15, bounds: area })
+      await vi.advanceTimersByTimeAsync(300); await flushPromises()
+      const request = { ...apiMocks.getMapPets.mock.calls.at(-1)?.[0] }
+      const calls = apiMocks.getMapPets.mock.calls.length, markers = map.props('discoveryPets')
+      expect(request).toMatchObject(area)
+      expect(request).not.toHaveProperty('radiusKm')
+      expect(request).not.toHaveProperty('lat')
+      await nav('Radar').trigger('click'); await flushPromises()
+      await wrapper.get('.stub-radar-radius').trigger('click'); await vi.advanceTimersByTimeAsync(400); await flushPromises()
+      expect(apiMocks.getNearbyPets.mock.calls.at(-1)?.[0].radiusKm).toBe(20)
+      expect(wrapper.get('.stub-radar-results').text()).toContain('radar-only')
+      expect(apiMocks.getMapPets).toHaveBeenCalledTimes(calls)
+      await nav('Map').trigger('click'); await flushPromises()
+      expect(apiMocks.getMapPets).toHaveBeenCalledTimes(calls)
+      const restored = wrapper.getComponent({ name: 'MapView' })
+      expect(restored.props('center')).toEqual({ lat: 22.4, lng: 114.2 })
+      expect(restored.props('initialZoom')).toBe(15)
+      expect(restored.props('discoveryPets')).toEqual(markers)
+      expect(wrapper.get('.stub-radar-radius').text()).toBe('20')
+      expect(apiMocks.getMapPets.mock.calls.at(-1)?.[0]).toEqual(request)
+      expect(apiMocks.updateNotificationPreferences).not.toHaveBeenCalled()
+    } finally { wrapper?.unmount(); vi.useRealTimers() }
   })
 
   it('activates only the confirmed restored account and clears its saved scope on logout', async () => {

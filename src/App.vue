@@ -18,7 +18,7 @@
         :pets="pets"
         :loading="loading"
         :error="error"
-        :radius-km="radiusKm"
+        :radius-km="radarRadiusKm"
         :species="species"
         :breed="breed"
         :district="district"
@@ -27,7 +27,7 @@
         @open="openPet"
         @found="openSighting"
         @retry="loadPets"
-        @radius-change="onRadiusChange"
+        @radius-change="onRadarRadiusChange"
         @species-change="onSpeciesChange"
         @breed-change="onBreedChange"
         @district-change="onDistrictChange"
@@ -35,7 +35,9 @@
         @notifications="showNotifications = true"
       />
       <StrayRescueScreen
-        v-if="tab === 'strays'"
+        v-if="rescueVisited"
+        v-show="tab === 'strays'"
+        :active="tab === 'strays'"
         :user="currentUser"
         :radius-km="radiusKm"
         :user-location="userLocation"
@@ -43,6 +45,8 @@
         @auth-needed="openLogin"
       />
       <PostPetScreen v-if="tab === 'post'" :user="currentUser" @done="onPosted" />
+      <MapScreen v-if="mapVisited" v-show="tab === 'map'" :active="tab === 'map' && route.name === 'map'"
+        @open-pet="id => router.push({ name: 'pet-detail', params: { id }, query: { from: 'map' } })" />
       <ChatInboxScreen
         v-show="tab === 'messages'"
         :user="currentUser"
@@ -366,6 +370,10 @@
         <span>{{ t('navigation.messages') }}</span>
       </button>
 
+      <button type="button" class="nav-item" :class="{ active: tab === 'map' }" :aria-current="tab === 'map' ? 'page' : undefined" @click="goTab('map')">
+        <AppIcon name="map" :size="23" /><span>{{ t('discoveryMap.title') }}</span>
+      </button>
+
       <button
         type="button"
         class="nav-item"
@@ -419,11 +427,12 @@ import ChatInboxScreen from './components/ChatInboxScreen.vue'
 import NotificationsPanel from './components/NotificationsPanel.vue'
 import BoostScreen from './components/BoostScreen.vue'
 import StrayRescueScreen from './components/StrayRescueScreen.vue'
+import MapScreen from './views/MapScreen.vue'
 import SightingLocationPicker from './components/SightingLocationPicker.vue'
 import { applyAccountPreferences } from './composables/usePreferences'
 import { translateApiError, useAppI18n } from './i18n'
 
-type Tab = 'radar' | 'strays' | 'post' | 'messages' | 'profile'
+type Tab = 'radar' | 'strays' | 'post' | 'messages' | 'map' | 'profile'
 type PendingAuthAction =
   | { type: 'post-pet' }
   | { type: 'sighting'; petId: string }
@@ -437,11 +446,15 @@ const DEFAULT_CENTER = { lat: 22.2825, lng: 114.1897 }
 
 type SpeciesFilter = 'All' | 'Dogs' | 'Cats' | 'Other'
 
-const tab = ref<Tab>(route.name === 'profile' ? 'profile' : 'radar')
+const tab = ref<Tab>(route.name === 'profile' ? 'profile' : route.name === 'map' ? 'map' : 'radar')
+const mapVisited = ref(route.name === 'map')
+const rescueVisited = ref(false)
 const pets = ref<Pet[]>([])
 const loading = ref(true)
 const error = ref('')
 const radiusKm = ref(3)
+// Radar search radius is not an account notification/rescue preference.
+const radarRadiusKm = ref(3)
 const species = ref<SpeciesFilter>('All')
 const breed = ref('')
 const district = ref('')
@@ -487,6 +500,8 @@ watch(
   () => ({ name: route.name, petId: route.params.id }),
   ({ name: routeName, petId }, previousRoute) => {
     if (routeName === 'profile') tab.value = 'profile'
+    if (routeName === 'map') { mapVisited.value = true; tab.value = 'map' }
+    if (routeName === 'home' && previousRoute?.name === 'map') tab.value = 'radar'
     if (routeName === 'login') authOpen.value = true
     if (routeName === 'pet-detail') {
       authOpen.value = false
@@ -537,7 +552,7 @@ async function loadPets() {
   const controller = new AbortController()
   petsAbortController = controller
 
-  const requestedRadiusKm = radiusKm.value
+  const requestedRadiusKm = radarRadiusKm.value
   const requestedSpecies = species.value
   const requestedBreed = breed.value.trim()
   const requestedDistrict = district.value
@@ -583,10 +598,14 @@ async function loadPets() {
   }
 }
 
+function onRadarRadiusChange(value: number) {
+  radarRadiusKm.value = value
+  schedulePetsReload()
+}
+
 function onRadiusChange(value: number) {
   radiusKm.value = value
   if (currentUser.value) void syncNotificationPreferences().catch(() => undefined)
-  schedulePetsReload()
 }
 
 function onSpeciesChange(value: SpeciesFilter) {
@@ -764,16 +783,21 @@ function goTab(t: Tab) {
     return
   }
   tab.value = t
+  if (t === 'strays') rescueVisited.value = true
+  if (t === 'map') mapVisited.value = true
   selectedPet.value = null
-  if (t === 'profile') {
+  if (t === 'map') {
+    if (route.name !== 'map') void router.push('/map')
+  } else if (t === 'profile') {
     if (route.name !== 'profile') void router.push('/profile')
-  } else if (route.name === 'profile') {
+  } else if (route.name === 'profile' || route.name === 'map') {
     void router.push('/')
   }
   if (t === 'messages' && !currentUser.value) openLogin()
 }
 
 function openRescueReport() {
+  rescueVisited.value = true
   tab.value = 'strays'
   rescueReportRequest.value += 1
   if (route.name === 'profile') void router.push('/')
@@ -868,6 +892,8 @@ function closePetDetail() {
     const returnTab = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
     if (route.query.from === 'profile') {
       void router.push({ name: 'profile', query: { tab: returnTab || 'pets' } })
+    } else if (route.query.from === 'map') {
+      void router.push('/map')
     } else {
       void router.push('/')
     }
@@ -1645,7 +1671,7 @@ main {
   transform: translateX(-50%);
 
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   align-items: end;
   gap: 2px;
 
@@ -1685,7 +1711,7 @@ main {
 
   color: var(--nav-inactive);
   font: inherit;
-  font-size: 12px;
+  font-size: clamp(9px, 2.5vw, 11px);
   font-weight: 650;
   line-height: 1.25;
   cursor: pointer;
