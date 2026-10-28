@@ -96,14 +96,16 @@ onBeforeUnmount(() => { disposed = true; invalidate(); window.removeEventListene
 <style scoped>
 .discovery-map { height: calc(100dvh - 90px - var(--safe-bottom)); min-height: 0; overflow-y: auto; overscroll-behavior: contain; max-width: 480px; margin: auto; display: flex; flex-direction: column; background: var(--page-bg); }
 .map-heading { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: calc(12px + var(--safe-top)) 16px 10px; }
-h1 { font-size: 23px; color: var(--color-text-primary); }
-.map-heading p,.map-disclaimer { font-size: 11px; color: var(--color-text-secondary); line-height: 1.4; }
-button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border-radius: 14px; background: var(--color-surface-selected); color: var(--color-text-accent); font-weight: 750; }
+h1 { font-size: var(--page-title-size); font-weight: var(--page-title-weight); color: var(--color-text-primary); }
+.map-heading p,.map-disclaimer { font-size: 12px; color: var(--color-text-secondary); line-height: 1.4; }
+button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--color-surface-selected); color: var(--color-text-accent); font-size: 13px; font-weight: 600; }
 button:focus-visible { outline: 3px solid var(--color-border-accent); outline-offset: 2px; }
 button:disabled { opacity: .6; cursor: wait; }
 .map-canvas { position: relative; flex: 1; min-height: 220px; }
 .search-area { position: absolute; z-index: 600; top: 10px; left: 50%; transform: translateX(-50%); white-space: nowrap; box-shadow: var(--shadow-card); }
-.map-feedback { position: absolute; z-index: 600; bottom: 12px; left: 12px; right: 12px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface-elevated); color: var(--color-text-primary); box-shadow: var(--shadow-card); font-size: 12px; }
+.map-heading > div { min-width: 0; }
+.map-heading > button { flex-shrink: 0; }
+.map-feedback { position: absolute; z-index: 600; bottom: 12px; left: 12px; right: 12px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-elevated); color: var(--color-text-primary); box-shadow: var(--shadow-card); font-size: 12px; }
 .map-feedback button { margin-top: 5px; }
 .map-disclaimer { padding: 7px 14px; flex-shrink: 0; }
 </style>

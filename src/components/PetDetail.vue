@@ -605,6 +605,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .detail {
+  font-family: var(--font-feed);
+  max-width: 480px;
+  margin: 0 auto;
   position: fixed;
   inset: 0;
   z-index: 45;
@@ -614,8 +617,10 @@ onBeforeUnmount(() => {
 
 .hero {
   position: relative;
-  aspect-ratio: 1 / 1;
-  max-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  padding-top: calc(var(--safe-top) + 70px);
   width: 100%;
   overflow: hidden;
   background: var(--color-surface-subtle);
@@ -623,8 +628,8 @@ onBeforeUnmount(() => {
 
 .hero img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  object-fit: contain;
 }
 
 .photo-placeholder {
@@ -637,19 +642,20 @@ onBeforeUnmount(() => {
     var(--color-surface-subtle);
   color: rgba(29, 99, 96, 0.55);
 }
+.hero-placeholder { position: relative; inset: auto; min-height: 220px; }
 
 .back,
 .save,
 .share {
   position: absolute;
   top: calc(var(--safe-top) + 14px);
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
+  background: var(--color-surface);
+  color: var(--color-icon-primary);
   box-shadow: var(--shadow-card);
 }
 
@@ -677,36 +683,36 @@ onBeforeUnmount(() => {
 }
 
 .badge {
-  position: absolute;
-  bottom: 40px;
-  left: 18px;
+  position: static;
+  align-self: flex-start;
+  margin: 12px 16px;
   padding: 5px 14px;
   border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-accent);
+  background: var(--status-teal-bg);
 }
 
 .badge.lost {
-  background: var(--coral);
+  background: var(--status-coral-bg);
+  color: var(--color-text-urgent);
 }
 
 .badge.sighted {
-  background: var(--teal);
+  background: var(--status-teal-bg);
 }
 
 .badge.reunited {
-  background: #1d6360;
-  box-shadow: 0 5px 16px rgba(29, 99, 96, 0.3);
+  background: var(--status-teal-bg);
 }
 
 .sheet {
   position: relative;
-  margin-top: -26px;
+  margin-top: 0;
   background: var(--bg);
-  border-radius: 26px 26px 0 0;
-  padding: 10px 20px calc(var(--safe-bottom) + 28px);
+  border-radius: 0;
+  padding: 10px 16px calc(var(--safe-bottom) + 28px);
   max-width: 480px;
   margin-left: auto;
   margin-right: auto;

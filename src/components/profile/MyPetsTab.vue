@@ -120,19 +120,19 @@ onBeforeUnmount(() => { sequence += 1; controller?.abort() })
 .tab-panel { min-height: 230px; }
 .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
 .panel-heading h2 { font-size: 16px; }
-.panel-heading button { min-height: 40px; display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; border-radius: 999px; background: var(--color-surface-selected); color: var(--color-text-accent); font-size: 11.5px; font-weight: 850; }
-.my-pets-list { display: flex; flex-direction: column; gap: 10px; }
-.my-pet { display: flex; align-items: center; gap: 13px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); box-shadow: var(--shadow-card); cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
-.my-pet:hover { transform: translateY(-1px); box-shadow: var(--shadow-float); }
-.my-pet:active { transform: scale(.985); }
+.panel-heading button { min-height: 44px; display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; border-radius: 999px; background: var(--color-surface-selected); color: var(--color-text-accent); font-size: 13px; font-weight: 600; }
+.my-pets-list { display: flex; flex-direction: column; gap: 0; }
+.my-pet { display: flex; align-items: center; gap: 13px; padding: 12px 0; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: var(--color-surface); box-shadow: var(--shadow-card); cursor: pointer; transition: background-color .2s ease; }
+.my-pet:hover { background: var(--color-surface-subtle); }
+.my-pet:active { background: var(--color-surface-selected); }
 .my-pet:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
-.pet-photo { width: 56px; height: 56px; display: grid; place-items: center; flex: none; overflow: hidden; border-radius: 13px; background: var(--color-surface-selected); color: var(--color-icon-primary); }
+.pet-photo { width: 56px; height: 56px; display: grid; place-items: center; flex: none; overflow: hidden; border-radius: 8px; background: var(--color-surface-selected); color: var(--color-icon-primary); }
 .pet-photo img { width: 100%; height: 100%; object-fit: cover; }
 .my-pet-info { min-width: 0; display: flex; flex: 1; flex-direction: column; }
 .my-pet-info strong, .my-pet-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .my-pet-info strong { font-size: 15px; }
 .my-pet-info span { color: var(--color-text-muted); font-size: 12px; }
-.status-badge { padding: 4px 9px; border-radius: 999px; background: var(--status-coral-bg); color: var(--color-text-urgent); font-size: 10px; font-weight: 850; }
+.status-badge { padding: 4px 9px; border-radius: 999px; background: var(--status-coral-bg); color: var(--color-text-urgent); font-size: 12px; font-weight: 600; }
 .status-badge.sighted { background: var(--color-surface-selected); color: var(--color-text-accent); }
 .status-badge.reunited { background: var(--teal); color: var(--color-text-on-accent); }
 .panel-state { min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 24px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); color: var(--color-text-muted); text-align: center; }

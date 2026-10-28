@@ -61,7 +61,7 @@
       </label>
 
       <label class="field">
-        <span>{{ t('pets.lastSeenLocation') }}</span>
+        <span>{{ t('reportLocation.descriptionLabel') }}</span>
         <div class="input-icon">
           <AppIcon name="pin" :size="17" />
           <input v-model="form.location" type="text" :placeholder="t('pets.locationPlaceholder')" required />
@@ -71,7 +71,7 @@
       <SightingLocationPicker
         :key="locationGeneration"
         v-model="confirmedCoordinates"
-        :title="t('pets.lastSeenLocation')"
+        :title="t('reportLocation.mapTitle')"
         :guidance="t('reportLocation.guidance')"
         :disabled="submitting"
       />
@@ -257,7 +257,7 @@ async function submit() {
 
 <style scoped>
 .post {
-  padding: calc(var(--safe-top) + 22px) 20px 120px;
+  padding: calc(var(--safe-top) + 12px) var(--page-padding) calc(92px + var(--safe-bottom));
   max-width: 480px;
   margin: 0 auto;
 }
@@ -267,14 +267,14 @@ async function submit() {
 }
 
 h1 {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
 }
 
 .top p {
   color: var(--ink-muted);
-  font-size: 14.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 400;
   margin-top: 2px;
 }
 
@@ -291,10 +291,10 @@ form {
   gap: 4px;
   padding: 28px 0;
   border-radius: var(--radius-lg);
-  border: 2px dashed #bfd8d3;
-  background: var(--teal-soft);
+  border: 1px dashed var(--color-border-accent);
+  background: var(--color-surface-subtle);
   color: var(--color-text-accent);
-  font-weight: 800;
+  font-weight: 600;
   font-size: 15px;
 }
 
@@ -319,7 +319,7 @@ form {
 
 .field > span {
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -327,9 +327,10 @@ input,
 select,
 textarea {
   width: 100%;
-  padding: 14px 16px;
+  min-height: 44px;
+  padding: 12px;
   border-radius: var(--radius-md);
-  border: 1.5px solid var(--line);
+  border: 1px solid var(--line);
   background: var(--surface);
   outline: none;
   transition: border-color 0.15s ease;
@@ -342,9 +343,11 @@ textarea:focus {
   border-color: var(--color-border-accent);
 }
 
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--color-border-accent); outline-offset: 2px; }
+
 input::placeholder,
 textarea::placeholder {
-  color: #b6ada4;
+  color: var(--color-text-muted);
 }
 
 .input-icon {
@@ -366,17 +369,19 @@ textarea::placeholder {
 
 .seg {
   display: flex;
-  background: var(--line);
-  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   padding: 4px;
 }
 
 .seg button {
   flex: 1;
-  padding: 10px 0;
-  border-radius: 999px;
+  min-height: 44px;
+  padding: 10px 4px;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--ink-muted);
   transition: all 0.18s ease;
 }
@@ -397,9 +402,9 @@ textarea::placeholder {
   background: var(--coral);
   color: var(--color-text-on-coral);
   font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  box-shadow: var(--shadow-float);
+  font-weight: 600;
+  letter-spacing: normal;
+  box-shadow: none;
   transition: transform 0.15s ease;
   margin-top: 4px;
 }
@@ -445,14 +450,14 @@ textarea::placeholder {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--teal-soft);
+  background: var(--color-surface-subtle);
   color: var(--color-text-accent);
   margin-bottom: 6px;
 }
 
 .success h2 {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 600;
   text-wrap: balance;
 }
 
@@ -469,7 +474,7 @@ textarea::placeholder {
   border-radius: 999px;
   background: var(--teal);
   color: #fff;
-  font-weight: 800;
+  font-weight: 600;
   font-size: 15px;
 }
 </style>

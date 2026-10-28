@@ -21,6 +21,18 @@ async function showHotspots(wrapper: ReturnType<typeof createWrapper>) {
 describe('honest hotspot coverage', () => {
   beforeEach(() => { vi.resetAllMocks(); i18n.global.locale.value = 'en' })
 
+  it('uses decorative neutral skeletons only while the existing list request is loading', async () => {
+    const wrapper = createWrapper()
+    await wrapper.setProps({ loading: true })
+    expect(wrapper.findAll('.feed-skeleton')).toHaveLength(2)
+    expect(wrapper.findAll('.feed-skeleton').every(item => item.attributes('aria-hidden') === 'true')).toBe(true)
+    expect(wrapper.get('.loading-copy').attributes('role')).toBe('status')
+    expect(api.getHotspots).not.toHaveBeenCalled()
+    await wrapper.setProps({ loading: false })
+    expect(wrapper.find('.feed-skeleton').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it.each(['en', 'zh-HK', 'zh-CN'] as const)('%s separates full totals from a capped map', async (locale) => {
     i18n.global.locale.value = locale
     api.getHotspots.mockResolvedValue(response(true))

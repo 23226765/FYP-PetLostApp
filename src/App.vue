@@ -298,7 +298,7 @@
     </Transition>
 
     <!-- Bottom tab bar -->
-    <nav class="tabbar" :aria-label="t('navigation.main')">
+    <nav class="tabbar feed-theme" :aria-label="t('navigation.main')">
       <button
         type="button"
         class="nav-item"
@@ -306,7 +306,7 @@
         :aria-current="tab === 'radar' ? 'page' : undefined"
         @click="goTab('radar')"
       >
-        <AppIcon name="radar" :size="23" />
+        <AppIcon name="radar" :size="24" />
         <span>{{ t('navigation.radar') }}</span>
       </button>
 
@@ -317,7 +317,7 @@
         :aria-current="tab === 'strays' ? 'page' : undefined"
         @click="goTab('strays')"
       >
-        <AppIcon name="paw" :size="23" />
+        <AppIcon name="paw" :size="24" />
         <span>{{ t('navigation.rescue') }}</span>
       </button>
 
@@ -330,7 +330,7 @@
         @click="goTab('post')"
       >
         <span class="report-icon">
-          <AppIcon name="plus" :size="26" />
+          <AppIcon name="plus" :size="24" />
         </span>
         <span class="report-label">{{ t('navigation.report') }}</span>
       </button>
@@ -371,7 +371,7 @@
       </button>
 
       <button type="button" class="nav-item" :class="{ active: tab === 'map' }" :aria-current="tab === 'map' ? 'page' : undefined" @click="goTab('map')">
-        <AppIcon name="map" :size="23" /><span>{{ t('discoveryMap.title') }}</span>
+        <AppIcon name="map" :size="24" /><span>{{ t('discoveryMap.title') }}</span>
       </button>
 
       <button
@@ -381,7 +381,7 @@
         :aria-current="tab === 'profile' ? 'page' : undefined"
         @click="goTab('profile')"
       >
-        <AppIcon name="user" :size="23" />
+        <AppIcon name="user" :size="24" />
         <span>{{ t('navigation.profile') }}</span>
       </button>
     </nav>
@@ -1660,7 +1660,7 @@ main {
   --nav-active: var(--color-nav-active);
   --nav-inactive: var(--color-nav-inactive);
   --nav-accent: var(--coral);
-  --nav-surface: var(--color-surface-elevated);
+  --nav-surface: var(--color-surface);
   --nav-ease: cubic-bezier(0.4, 0, 0.2, 1);
 
   position: fixed;
@@ -1672,47 +1672,44 @@ main {
 
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  align-items: end;
+  align-items: stretch;
   gap: 2px;
 
   box-sizing: border-box;
   width: 100%;
   max-width: 480px;
-  padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
 
-  border: 1px solid var(--color-border);
-  border-bottom: 0;
-  border-radius: 24px 24px 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
   background: var(--nav-surface);
-  box-shadow:
-    0 -2px 8px rgba(26, 47, 43, 0.025),
-    0 -12px 36px rgba(26, 47, 43, 0.07);
-
-  font-family:
-    ui-rounded, "SF Pro Rounded", system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: none;
+  font-family: var(--font-feed);
 }
+.tabbar.feed-theme { background: var(--nav-surface) !important; }
 
 .tabbar button {
+  position: relative;
   appearance: none;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 38px auto;
   align-items: center;
-  justify-content: center;
+  justify-items: center;
   gap: 4px;
 
   min-width: 44px;
-  min-height: 52px;
+  min-height: 60px;
   margin: 0;
-  padding: 7px 4px;
+  padding: 2px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 0;
   background: transparent;
 
   color: var(--nav-inactive);
   font: inherit;
-  font-size: clamp(9px, 2.5vw, 11px);
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 500;
   line-height: 1.25;
   cursor: pointer;
   touch-action: manipulation;
@@ -1725,13 +1722,14 @@ main {
     box-shadow 0.2s var(--nav-ease);
 }
 
-.nav-item.active {
-  border: 1px solid var(--color-border-accent);
-  background: var(--color-surface-selected);
+.nav-item.active,.report-item.active {
+  border: 0;
+  background: transparent;
   color: var(--nav-active);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-text-inverse) 18%, transparent);
-  font-weight: 750;
+  box-shadow: none;
+  font-weight: 700;
 }
+.tabbar button[aria-current='page']::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 20px; height: 2px; background: currentColor; transform: translateX(-50%); }
 
 .nav-icon-wrap {
   position: relative;
@@ -1755,41 +1753,31 @@ main {
   border-radius: 999px;
   background: var(--nav-accent);
   color: var(--color-text-on-coral);
-  box-shadow: 0 2px 7px rgba(239, 99, 81, 0.42);
+  box-shadow: none;
   font-size: 9.5px;
   font-weight: 900;
   line-height: 1;
 }
 
 .tabbar .report-item {
-  gap: 6px;
-  margin-top: -22px;
-  padding: 0 8px 3px;
-  color: var(--nav-active);
-  font-weight: 750;
+  gap: 4px;
+  margin: 0;
+  padding: 2px;
+  color: var(--nav-inactive);
 }
+.tabbar .report-item.active { color: var(--nav-active); }
 
 .report-icon {
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  width: 58px;
-  height: 58px;
-  border: 4px solid var(--nav-surface);
-  border-radius: 20px;
-
-  background:
-    linear-gradient(
-      155deg,
-      rgba(255, 255, 255, 0.15),
-      rgba(255, 255, 255, 0)
-    ),
-    var(--nav-accent);
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--nav-accent);
   color: var(--color-text-on-accent);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 3px 7px rgba(93, 45, 35, 0.09),
-    0 8px 18px rgba(239, 99, 81, 0.22);
+  box-shadow: none;
 
   transition:
     transform 0.2s var(--nav-ease),
@@ -1797,14 +1785,14 @@ main {
 }
 
 .report-label {
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 0;
+  border-radius: 0;
   transition: background-color 0.2s var(--nav-ease);
 }
 
 .report-item.active .report-label {
-  outline: 1px solid var(--color-border-accent);
-  background: var(--color-surface-selected);
+  outline: none;
+  background: transparent;
 }
 
 .tabbar button:active {
@@ -1812,14 +1800,13 @@ main {
 }
 
 .report-item:active .report-icon {
-  box-shadow:
-    inset 0 1px 3px rgba(93, 45, 35, 0.12),
-    0 3px 8px rgba(239, 99, 81, 0.16);
+  box-shadow: none;
 }
 
 .tabbar button:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 3px;
+  outline: 2px solid var(--color-border-accent);
+  outline-offset: -5px;
+  border-radius: 8px;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1829,11 +1816,11 @@ main {
   }
 
   .nav-item.active:hover {
-    background: var(--color-surface-selected);
+    background: transparent;
   }
 
   .report-item:hover .report-icon {
-    transform: translateY(-2px);
+    transform: none;
   }
 }
 

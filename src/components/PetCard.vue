@@ -1,5 +1,6 @@
 <template>
-  <article class="card" @click="emit('open')">
+  <article class="card" :class="{ 'feed-card': feed }" :tabindex="feed ? 0 : undefined" :role="feed ? 'link' : undefined" :aria-label="feed ? t('feedDesign.openPet', { name: pet.name }) : undefined" @click="emit('open')" @keydown.enter.self="feed && emit('open')">
+    <template v-if="!feed">
     <div class="photo-wrap">
       <ManagedImage
         v-if="photoUrl && !imageFailed"
@@ -45,7 +46,27 @@
         {{ t('common.kilometres', { count: pet.distanceKm }) }}
       </span>
     </div>
-    <div class="body">
+    </template>
+    <template v-else>
+      <header class="feed-card-header">
+        <div><h3>{{ pet.name }}</h3><p><template v-if="pet.breed">{{ pet.breed }} · </template>{{ speciesLabel(pet.species) }} · {{ pet.createdAt ? formatRelativeDate(pet.createdAt) : pet.postedAgo }}</p></div>
+        <span class="feed-status" :class="pet.status">{{ petStatusLabel(pet.status) }}</span>
+      </header>
+      <div class="photo-wrap feed-photo">
+        <ManagedImage v-if="photoUrl && !imageFailed" :src="photoUrl" :alt="t('pets.photoAlt', { name: pet.name })" loading="lazy" referrerpolicy="no-referrer" @error="handleImageError" />
+        <div v-else class="photo-placeholder" :aria-label="t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) })" role="img"><AppIcon name="paw" :size="42" /></div>
+      </div>
+      <div class="feed-card-copy">
+        <p class="feed-location"><AppIcon name="pin" :size="16" />{{ pet.district ? districtLabel(pet.district) : t('feedDesign.districtUnknown') }}<span v-if="Number.isFinite(pet.distanceKm)"> · {{ pet.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: pet.distanceKm }) }) : t('common.kilometres', { count: pet.distanceKm }) }}</span></p>
+        <p class="feed-last-seen">{{ t('pets.lastSeen', { time: pet.lastSeenAt ? formatRelativeDate(pet.lastSeenAt) : pet.lastSeen }) }}</p>
+        <p v-if="pet.reward" class="feed-reward">{{ t('pets.reward', { amount: pet.reward }) }}</p>
+        <div class="feed-card-actions">
+          <button class="found-btn" type="button" :aria-label="t('feedDesign.sightingFor', { name: pet.name })" @click.stop="emit('found')"><AppIcon name="eye" :size="19" />{{ t('feedDesign.sighting') }}</button>
+          <button class="feed-save" :class="{ saved: isSaved(pet.id) }" type="button" :aria-label="isSaved(pet.id) ? t('pets.removeSaved', { name: pet.name }) : t('pets.savePost', { name: pet.name })" :aria-pressed="isSaved(pet.id)" @click.stop="toggleSave(pet.id)"><AppIcon name="bookmark" :size="20" />{{ isSaved(pet.id) ? t('feedDesign.saved') : t('feedDesign.save') }}</button>
+        </div>
+      </div>
+    </template>
+    <div v-if="!feed" class="body">
       <div class="row">
         <h3>{{ pet.name }}</h3>
         <span class="posted">{{ pet.createdAt ? formatRelativeDate(pet.createdAt) : pet.postedAgo }}</span>
@@ -69,9 +90,9 @@ import type { Pet } from '../types/pet'
 import { useSavedPets } from '../composables/useSavedPets'
 import AppIcon from './AppIcon.vue'
 import { useAppI18n } from '../i18n'
-import { formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
+import { districtLabel, formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
 
-const props = defineProps<{ pet: Pet }>()
+const props = withDefaults(defineProps<{ pet: Pet; feed?: boolean }>(), { feed: false })
 const emit = defineEmits<{ open: []; found: [] }>()
 const { isSaved, toggleSave } = useSavedPets()
 const { t } = useAppI18n()
@@ -110,6 +131,32 @@ function handleImageError(event: Event) {
 </script>
 
 <style scoped>
+.card.feed-card { border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; box-shadow: none; cursor: pointer; }
+.feed-card-header { padding: 12px var(--feed-space); display: flex; align-items: flex-start; gap: 12px; }
+.feed-card-header > div { min-width: 0; flex: 1; }
+.feed-card-header h3 { font-size: 18px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+.feed-card-header p { margin-top: 4px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.feed-status { flex-shrink: 0; max-width: 45%; padding: 5px 9px; border-radius: 999px; background: var(--status-teal-bg); color: var(--color-text-accent); font-size: 13px; font-weight: 600; text-align: center; }
+.feed-status.lost { background: var(--status-coral-bg); color: var(--color-text-urgent); }
+.feed-card .feed-photo { aspect-ratio: auto; }
+.feed-card .feed-photo img { display: block; width: 100%; height: auto; max-height: var(--feed-media-max-height); object-fit: contain; }
+.feed-card .feed-photo .photo-placeholder { position: relative; min-height: 128px; background: var(--color-surface-subtle); }
+.feed-card-copy { padding: var(--feed-space); }
+.feed-location { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 13px; color: var(--color-text-secondary); }
+.feed-last-seen { margin-top: 6px; font-size: 14px; line-height: 1.5; }
+.feed-reward { margin-top: 6px; color: var(--color-text-accent); font-size: 14px; font-weight: 600; }
+.feed-card-actions { display: flex; align-items: stretch; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.feed-card .found-btn { flex: 1 1 180px; min-width: 0; min-height: 44px; justify-content: center; border-radius: var(--radius-sm); padding: 10px 14px; background: var(--button-primary); color: var(--button-primary-text); font-size: 14px; font-weight: 600; line-height: 1.4; text-align: center; white-space: normal; overflow-wrap: anywhere; }
+.feed-card .found-btn svg { flex-shrink: 0; }
+.feed-card .found-btn:active { background: color-mix(in srgb, var(--button-primary) 88%, black); }
+.feed-save { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 0 10px 8px; border-radius: 0; border: 0; color: var(--color-text-secondary); font-size: 14px; font-weight: 600; }
+.feed-save.saved { background: transparent; color: var(--color-text-accent); font-weight: 700; }
+.feed-save.saved svg { fill: currentColor; }
+.feed-card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
+.card.feed-card:active { transform: none; }
+.feed-card button { transition: transform .15s ease, background-color .15s ease; }
+.feed-card button:active { transform: scale(.98); }
+@media (prefers-reduced-motion: reduce) { .feed-card, .feed-card button { transition: none; } }
 .card {
   background: var(--surface);
   border-radius: var(--radius-lg);

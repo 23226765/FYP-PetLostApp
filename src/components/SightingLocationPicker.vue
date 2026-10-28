@@ -309,9 +309,9 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-top: 14px;
   padding: 14px;
-  border: 1px solid rgba(29, 99, 96, 0.16);
-  border-radius: 16px;
-  background: rgba(252, 249, 242, 0.72);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
 }
 
 .location-heading {

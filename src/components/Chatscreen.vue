@@ -418,7 +418,7 @@ onBeforeUnmount(() => {
   z-index: 50;
   display: flex;
   flex-direction: column;
-  background: #fcf9f2;
+  background: var(--page-bg);
   max-width: 480px;
   margin: 0 auto;
 }
@@ -432,19 +432,20 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #1d6360;
-  padding: calc(var(--safe-top) + 14px) 16px 14px;
-  border-radius: 0 0 24px 24px;
+  background: var(--page-bg);
+  border-bottom: 1px solid var(--color-border);
+  padding: calc(var(--safe-top) + 12px) 16px 12px;
+  border-radius: 0;
   flex-shrink: 0;
 }
 
 .back-btn {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  color: #ffffff;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: var(--color-icon-primary);
   flex-shrink: 0;
   transition: background 0.15s ease;
 }
@@ -470,7 +471,7 @@ onBeforeUnmount(() => {
 .chat-safety { padding: 2px 14px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
 
 .chat-title h1 {
-  color: #ffffff;
+  color: var(--color-text-primary);
   font-size: 16px;
   font-weight: 800;
   white-space: nowrap;
@@ -479,7 +480,7 @@ onBeforeUnmount(() => {
 }
 
 .chat-title p {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-secondary);
   font-size: 12px;
   font-weight: 700;
 }
@@ -492,14 +493,14 @@ onBeforeUnmount(() => {
 }
 
 .contact-btn {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid var(--color-border);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  background: var(--color-surface-selected);
+  color: var(--color-text-accent);
   font-size: 10.5px;
   font-weight: 900;
   letter-spacing: -0.02em;
@@ -508,7 +509,7 @@ onBeforeUnmount(() => {
 }
 
 .contact-btn.whatsapp {
-  background: rgba(252, 249, 242, 0.18);
+  background: var(--color-surface-selected);
 }
 
 .contact-btn:active {
@@ -518,7 +519,7 @@ onBeforeUnmount(() => {
 
 .contact-missing {
   max-width: 42px;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--color-text-secondary);
   font-size: 9.5px;
   font-weight: 800;
   line-height: 1.15;
@@ -696,7 +697,7 @@ onBeforeUnmount(() => {
   flex: 1;
   min-width: 0;
   border: 1.5px solid rgba(61, 56, 53, 0.1);
-  background: #fcf9f2;
+  background: var(--page-bg);
   border-radius: 999px;
   padding: 12px 18px;
   font-size: 14.5px;

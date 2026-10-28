@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import type { StrayReport } from '../../types/stray'
 import StrayRescueScreen from '../StrayRescueScreen.vue'
+import { i18n } from '../../i18n'
 
 const apiMocks = vi.hoisted(() => ({
   getNearbyStrays: vi.fn(),
@@ -26,8 +27,8 @@ const stray: StrayReport = {
   statusUpdatedAt: '2026-09-18T08:00:00.000Z', commentCount: 2, isSaved: false, canManage: true, canEdit: true, canDelete: true, canUpdateStatus: true,
 }
 
-async function render(initial: StrayReport[] = [stray]) {
-  apiMocks.getNearbyStrays.mockResolvedValue(initial)
+async function render(initial: StrayReport[] = [stray], pending?: Promise<StrayReport[]>) {
+  apiMocks.getNearbyStrays.mockReturnValue(pending || Promise.resolve(initial))
   const router = createRouter({ history: createMemoryHistory(), routes: [
     { path: '/', component: { template: '<div />' } },
     { path: '/strays/:id', component: { template: '<div />' } },
@@ -47,9 +48,38 @@ async function render(initial: StrayReport[] = [stray]) {
 
 describe('Stray community feed and report flow', () => {
   beforeEach(() => {
+    i18n.global.locale.value = 'en'
     Object.values(apiMocks).forEach((mock) => mock.mockReset())
     HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
     HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
+  })
+
+  it.each(['en', 'zh-HK', 'zh-CN'] as const)('renders counts and the specific animal name in %s', async locale => {
+    i18n.global.locale.value = locale
+    const { wrapper } = await render([{ ...stray, species: 'Other', animalType: 'Tiger', commentCount: 1 }])
+    expect(wrapper.text()).toContain('Tiger')
+    expect(wrapper.text()).toContain(i18n.global.t('strays.nearbyReports', { count: 1 }, 1))
+    expect(wrapper.get('.card-foot').text()).toBe(i18n.global.t('strays.commentsCount', { count: 1 }, 1))
+    if (locale === 'en') {
+      expect(wrapper.text()).toContain('1 nearby report')
+      expect(wrapper.get('.card-foot').text()).toBe('1 comment')
+      expect(wrapper.text()).not.toContain('1 nearby reports')
+    }
+    wrapper.unmount()
+    i18n.global.locale.value = 'en'
+  })
+
+  it('removes noninteractive skeletons once the existing rescue request completes', async () => {
+    let finish!: (data: StrayReport[]) => void
+    const pending = new Promise<StrayReport[]>(resolve => { finish = resolve })
+    const { wrapper, router } = await render([], pending)
+    expect(wrapper.findAll('.feed-skeleton')).toHaveLength(2)
+    expect(wrapper.find('.feed-skeleton button').exists()).toBe(false)
+    expect(router.currentRoute.value.path).toBe('/')
+    finish([stray]); await flushPromises()
+    expect(wrapper.find('.feed-skeleton').exists()).toBe(false)
+    expect(wrapper.findAll('.stray-card')).toHaveLength(1)
+    wrapper.unmount()
   })
 
   it('stages filters until Apply, resets them, and retains filters and Map selection while inactive', async () => {
@@ -76,12 +106,35 @@ describe('Stray community feed and report flow', () => {
     const children = wrapper.get('.stray-card').element.children
     expect([...children].map(element => element.className)).toEqual(['post-author', 'photo-carousel', 'card-actions', 'card-body'])
     expect(wrapper.findAll('.photo-wrap')).toHaveLength(2)
+    expect(wrapper.get('.photo-carousel').attributes('tabindex')).toBe('0')
+    expect(wrapper.get('.photo-carousel').attributes('role')).toBe('region')
+    expect(wrapper.find('.photo-wrap .condition').exists()).toBe(false)
+    expect(wrapper.find('.photo-wrap .photo-position').exists()).toBe(false)
     const save = wrapper.findAll('.card-actions button')[1]
     await save.trigger('keydown', { key: 'Enter' }); await save.trigger('click'); await flushPromises()
     expect(router.currentRoute.value.path).toBe('/')
     expect(apiMocks.setStraySaved).toHaveBeenCalledTimes(1)
     await wrapper.findAll('.card-actions button')[2].trigger('click'); await flushPromises()
     expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one?share=1')
+    wrapper.unmount()
+  })
+
+  it('Comment opens the existing detail without share intent; Save retains its pressed state', async () => {
+    const { wrapper, router } = await render()
+    await wrapper.findAll('.card-actions button')[0].trigger('keydown', { key: 'Enter' })
+    await wrapper.findAll('.card-actions button')[0].trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one')
+    expect(wrapper.findAll('.card-actions button')[1].attributes('aria-pressed')).toBe('false')
+    wrapper.unmount()
+  })
+
+  it('makes the complete caption clearly accessible through the existing detail route', async () => {
+    const { wrapper, router } = await render([{ ...stray, description: 'Fictional caption '.repeat(40) }])
+    expect(wrapper.get('.caption-more').text()).toContain('View')
+    await wrapper.get('.caption-more').trigger('keydown', { key: 'Enter' })
+    expect(router.currentRoute.value.path).toBe('/')
+    await wrapper.get('.caption-more').trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one')
     wrapper.unmount()
   })
 

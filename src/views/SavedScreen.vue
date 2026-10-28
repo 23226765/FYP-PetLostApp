@@ -238,13 +238,13 @@ function imageUrl(value: string) {
   gap: 10px;
   padding: calc(var(--safe-top) + 12px) 16px 12px;
   border-bottom: 1px solid rgba(29, 99, 96, 0.09);
-  background: rgba(252, 249, 242, 0.95);
+  background: var(--page-bg);
   backdrop-filter: blur(16px);
 }
 
 .saved-header h1 {
-  font-size: 18px;
-  font-weight: 850;
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
   text-align: center;
 }
 
@@ -260,7 +260,7 @@ function imageUrl(value: string) {
   border-radius: 50%;
   background: var(--color-surface-elevated);
   color: var(--color-icon-primary);
-  box-shadow: 0 4px 14px rgba(29, 99, 96, 0.1);
+  box-shadow: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -285,7 +285,7 @@ function imageUrl(value: string) {
   font-size: 12.5px;
   font-weight: 750;
 }
-.saved-stray { width: 100%; min-height: 108px; display: grid; grid-template-columns: 108px 1fr; overflow: hidden; border-radius: 14px; background: var(--color-surface); box-shadow: var(--shadow-card); color: var(--color-text-primary); text-align: left; }
+.saved-stray { width: 100%; min-height: 108px; display: grid; grid-template-columns: 108px 1fr; overflow: hidden; border-radius: 0; border-bottom: 1px solid var(--color-border); background: var(--color-surface); box-shadow: none; color: var(--color-text-primary); text-align: left; }
 .saved-stray img { width: 108px; height: 108px; object-fit: cover; }
 .saved-stray-copy { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 12px; }
 .saved-stray-copy > span { overflow: hidden; color: var(--ink-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }

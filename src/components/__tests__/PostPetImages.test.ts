@@ -35,6 +35,18 @@ async function selectPhoto(wrapper: ReturnType<typeof render>) {
   Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['raster'], 'pet.png', { type: 'image/png' })] })
   await input.trigger('change')
 }
+
+it.each(['en', 'zh-HK', 'zh-CN'] as const)('distinguishes the location description from map confirmation in %s', async locale => {
+  i18n.global.locale.value = locale
+  const wrapper = render()
+  expect(wrapper.get('.input-icon').element.closest('label')?.textContent).toContain(i18n.global.t('reportLocation.descriptionLabel'))
+  expect(wrapper.get('.input-icon input').attributes('placeholder')).toBe(i18n.global.t('pets.locationPlaceholder'))
+  expect(wrapper.get('.location-heading h3').text()).toBe(i18n.global.t('reportLocation.mapTitle'))
+  await confirm(wrapper)
+  expect(wrapper.get('.location-summary strong').text()).toBe(i18n.global.t('sightings.confirmedPoint'))
+  expect(vi.mocked(getCurrentLocation)).not.toHaveBeenCalled()
+  expect(api.reportLostPet).not.toHaveBeenCalled()
+})
 it('pet report retries reuse uploaded IDs and submission identity with exactly the confirmed lng/lat', async () => {
   api.reportLostPet.mockReset().mockRejectedValueOnce(new Error('Network Error')).mockResolvedValueOnce({})
   const wrapper = render()

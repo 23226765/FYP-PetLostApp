@@ -694,7 +694,7 @@ onBeforeUnmount(() => {
   padding: 9px 12px;
   border: 1px solid rgba(239, 99, 81, 0.35);
   border-radius: var(--radius-lg);
-  background: rgba(252, 249, 242, 0.96);
+  background: var(--color-surface-elevated);
   color: var(--color-text-accent);
   font-size: 12px;
   font-weight: 700;
@@ -711,7 +711,7 @@ onBeforeUnmount(() => {
   padding: 9px 12px;
   border: 1px solid rgba(239, 99, 81, 0.35);
   border-radius: var(--radius-lg);
-  background: rgba(252, 249, 242, 0.96);
+  background: var(--color-surface-elevated);
   color: var(--color-text-urgent);
   font-size: 12px;
   font-weight: 700;
@@ -727,7 +727,7 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(252, 249, 242, 0.96);
+  background: var(--color-surface-elevated);
   color: var(--color-text-accent);
   font-size: 12px;
   font-weight: 700;

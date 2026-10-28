@@ -1,5 +1,5 @@
 <template>
-  <div class="radar">
+  <div class="radar feed-theme">
     <header class="top">
       <div>
         <p class="greeting">{{ t('radar.community') }}</p>
@@ -61,12 +61,11 @@
           <option v-for="item in HK_DISTRICTS" :key="item" :value="item">{{ districtLabel(item) }}</option>
         </select>
       </label>
-    </div>
-
-    <div class="radius-compact">
-      <button class="radius-trigger" type="button" aria-haspopup="dialog" :aria-label="t('radar.radiusA11y')" @click="radiusOpen = true">
-        <AppIcon name="radar" :size="19" />{{ t('common.kilometres', { count: radiusKm }) }}<AppIcon name="chevron" :size="14" />
-      </button>
+      <div class="radius-compact">
+        <button class="radius-trigger" type="button" aria-haspopup="dialog" :aria-label="t('radar.radiusA11y')" @click="radiusOpen = true">
+          <AppIcon name="radar" :size="19" />{{ t('common.kilometres', { count: radiusKm }) }}<AppIcon name="chevron" :size="14" />
+        </button>
+      </div>
     </div>
     <FilterSheet :open="radiusOpen" :title="t('compactFilters.radius')" @close="radiusOpen = false">
       <fieldset class="radius-options"><legend class="sr-only">{{ t('compactFilters.radius') }}</legend>
@@ -101,9 +100,10 @@
       </div>
     </div>
 
-    <div v-if="loading" class="state">
-      <span class="spinner" />
-      {{ t('radar.loadingPets') }}
+    <div v-if="loading" class="state" :class="{ 'feed-loading': view === 'list' }">
+      <p role="status" class="loading-copy">{{ t('radar.loadingPets') }}</p>
+      <template v-if="view === 'list'"><div v-for="index in 2" :key="index" class="feed-skeleton" aria-hidden="true"><div class="feed-skeleton-head"><span class="feed-skeleton-line" /><span class="feed-skeleton-line short" /></div><div class="feed-skeleton-photo" /><div class="feed-skeleton-foot"><span class="feed-skeleton-line" /><span class="feed-skeleton-line short" /></div></div></template>
+      <span v-else class="spinner" aria-hidden="true" />
     </div>
     <div v-else-if="error" class="state error">
       <p>{{ error }}</p>
@@ -118,6 +118,7 @@
           v-for="pet in pets"
           :key="pet.id"
           :pet="pet"
+          :feed="true"
           @open="emit('open', pet)"
           @found="emit('found', pet)"
         />
@@ -279,8 +280,8 @@ function handleDistrict(event: Event) {
 </script>
 
 <style scoped>
-.radius-compact { display: flex; justify-content: flex-end; margin: 8px 0; }
-.radius-trigger { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 14px; background: var(--color-surface-selected); color: var(--color-text-accent); font-weight: 750; }
+.radius-compact { display: flex; flex: 0 0 auto; margin: 0 0 0 auto; }
+.radius-trigger { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 4px; border-radius: 0; background: transparent; color: var(--color-text-accent); font-weight: 600; white-space: nowrap; }
 .radius-options { border: 0; display: grid; gap: 8px; }
 .radius-options label { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); color: var(--color-text-primary); }
 .radius-options label.selected { border-color: var(--color-border-accent); background: var(--color-surface-selected); }
@@ -291,24 +292,26 @@ function handleDistrict(event: Event) {
   height: 100dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: calc(var(--safe-top) + 18px) 18px 120px;
+  padding: calc(var(--safe-top) + 12px) 0 calc(var(--safe-bottom) + 80px);
   max-width: 480px;
   margin: 0 auto;
 }
 
 .top {
+  padding: 0 16px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
   justify-content: space-between;
   margin-bottom: 18px;
 }
+.top > div:first-child { min-width: 0; flex: 1; }
 
 .greeting {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--ink-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: normal;
 }
 
 h1 {
@@ -316,7 +319,7 @@ h1 {
   align-items: center;
   gap: 6px;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--ink);
 }
 
@@ -330,9 +333,9 @@ h1 svg {
   height: 44px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--ink);
 }
 
@@ -340,17 +343,21 @@ h1 svg {
   display: flex;
   align-items: center;
   gap: 8px;
+  max-width: 55%;
+  flex-shrink: 0;
 }
+.bell { flex-shrink: 0; }
 
 .smart-match {
-  min-height: 40px;
+  min-width: 0;
+  min-height: 44px;
   padding: 0 13px;
-  border-radius: 999px;
-  background: var(--teal);
-  color: var(--color-text-on-accent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-accent);
   font-size: 12.5px;
-  font-weight: 800;
-  box-shadow: var(--shadow-card);
+  font-weight: 600;
+  box-shadow: none;
 }
 
 .bell .dot {
@@ -409,22 +416,24 @@ h1 svg {
 }
 
 .detail-filters {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px 8px;
+  margin-bottom: 8px;
 }
 
 .detail-filters label {
   display: flex;
+  flex: 1 1 112px;
   flex-direction: column;
   gap: 5px;
   min-width: 0;
 }
 
 .detail-filters span {
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--ink-muted);
 }
 
@@ -433,12 +442,13 @@ h1 svg {
   width: 100%;
   min-height: 44px;
   padding: 0 11px;
-  border: 1.5px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 400;
   outline: none;
 }
 
@@ -448,8 +458,8 @@ h1 svg {
 }
 
 .count {
-  font-size: 13.5px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ink-muted);
   margin-bottom: 12px;
 }
@@ -664,6 +674,11 @@ h1 svg {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+.toggle,.detail-filters,.count,.map-layer-control,.map-section { margin-left: 16px; margin-right: 16px; }
+.feed { gap: 0; }
+.state.feed-loading { padding: 0; display: block; text-align: left; font-weight: 400; }
+.loading-copy { padding: 8px 16px; font-size: 14px; color: var(--color-text-secondary); }
+@media (prefers-reduced-motion: reduce) { .spinner,.analytics-spinner { animation: none; } }
 
 .retry-btn {
   padding: 10px 22px;

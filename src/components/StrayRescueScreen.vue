@@ -1,5 +1,5 @@
 <template>
-  <div class="rescue-screen">
+  <div class="rescue-screen feed-theme">
     <header class="top">
       <div>
         <p class="eyebrow">{{ t('strays.title') }}</p>
@@ -57,11 +57,11 @@
     </FilterSheet>
 
     <div class="result-head">
-      <strong>{{ t('strays.nearbyReports', { count: strays.length }) }}</strong>
+      <strong>{{ t('strays.nearbyReports', { count: strays.length }, strays.length) }}</strong>
       <span>{{ t('radar.locationRadius', { location: '', radius: radiusKm }).replace(/^\s*[,，]\s*/, '') }}</span>
     </div>
 
-    <div v-if="loading" class="state" role="status"><span class="spinner" />{{ t('strays.loadingReports') }}</div>
+    <div v-if="loading" class="state" :class="{ 'feed-loading': view === 'list' }"><p role="status" class="loading-copy">{{ t('strays.loadingReports') }}</p><template v-if="view === 'list'"><div v-for="index in 2" :key="index" class="feed-skeleton" aria-hidden="true"><div class="feed-skeleton-head"><span class="feed-skeleton-line" /><span class="feed-skeleton-line short" /></div><div class="feed-skeleton-photo" /><div class="feed-skeleton-foot"><span class="feed-skeleton-line" /><span class="feed-skeleton-line short" /></div></div></template><span v-else class="spinner" aria-hidden="true" /></div>
     <div v-else-if="error" class="state error" role="alert">
       <p>{{ error }}</p>
       <button type="button" @click="loadStrays">{{ t('common.retry') }}</button>
@@ -78,25 +78,28 @@
           <span><strong>{{ stray.author.name }}</strong><small>{{ formatRelativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></span>
           <span class="rescue-status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
-        <div class="photo-carousel">
-        <div v-for="(photo, index) in imageUrls(stray)" :key="photo || 'placeholder'" class="photo-wrap">
+        <div class="photo-carousel" :tabindex="imageUrls(stray).length > 1 ? 0 : undefined" :role="imageUrls(stray).length > 1 ? 'region' : undefined" :aria-label="imageUrls(stray).length > 1 ? t('feedDesign.photos', { count: imageUrls(stray).length }) : undefined">
+        <div v-for="(photo, index) in imageUrls(stray)" :key="photo || 'placeholder'" class="photo-slide">
+        <div class="photo-wrap">
           <ManagedImage v-if="photo && !failedImages.has(stray.id + photo)" :src="photo" :alt="t('strays.reportedAlt', { species: animalLabel(stray) })" @error="markImageFailed(stray.id + photo)" />
           <span v-else class="photo-placeholder"><AppIcon name="paw" :size="34" /></span>
-          <span class="condition" :class="stray.condition">{{ conditionLabel(stray.condition) }}</span>
+        </div>
           <span v-if="imageUrls(stray).length > 1" class="photo-position">{{ index + 1 }} / {{ imageUrls(stray).length }}</span>
         </div>
         </div>
         <div class="card-actions">
-          <button type="button" @click.stop="openStray(stray)"><AppIcon name="message" :size="18" />{{ t('strays.comment') }}</button>
-          <button type="button" :class="{ active: stray.isSaved }" @click.stop="toggleSave(stray)"><AppIcon name="bookmark" :size="18" />{{ stray.isSaved ? t('strays.unsave') : t('strays.save') }}</button>
-          <button type="button" @click.stop="openStray(stray, true)"><AppIcon name="send" :size="18" />{{ t('strays.share') }}</button>
+          <button type="button" @click.stop="openStray(stray)"><AppIcon name="message" :size="20" />{{ t('strays.comment') }}</button>
+          <button type="button" :class="{ active: stray.isSaved }" :aria-pressed="stray.isSaved" @click.stop="toggleSave(stray)"><AppIcon name="bookmark" :size="20" />{{ stray.isSaved ? t('strays.unsave') : t('strays.save') }}</button>
+          <button type="button" @click.stop="openStray(stray, true)"><AppIcon name="send" :size="20" />{{ t('strays.share') }}</button>
         </div>
         <div class="card-body">
-          <div class="card-title"><strong>{{ animalLabel(stray) }}</strong><span v-if="stray.distanceKm !== undefined">{{ t('common.kilometres', { count: stray.distanceKm }) }}</span></div>
+          <div class="card-title"><strong>{{ animalLabel(stray) }}</strong><span class="condition" :class="stray.condition">{{ conditionLabel(stray.condition) }}</span></div>
           <p>{{ stray.location }}</p>
+          <p v-if="Number.isFinite(stray.distanceKm)" class="feed-distance">{{ stray.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: stray.distanceKm }) }) : t('common.kilometres', { count: stray.distanceKm }) }}</p>
           <p class="description">{{ stray.description }}</p>
-          <p v-if="stray.commentPreview" class="comment-preview">💬 {{ stray.commentPreview }}</p>
-          <div class="card-foot"><span>{{ t('strays.commentsCount', { count: stray.commentCount }) }}</span><span>{{ conditionLabel(stray.condition) }}</span></div>
+          <button type="button" class="caption-more" @click.stop="openStray(stray)">{{ t('radar.viewDetails') }}</button>
+          <p v-if="stray.commentPreview" class="comment-preview"><AppIcon name="message" :size="15" /> {{ stray.commentPreview }}</p>
+          <div class="card-foot"><span>{{ t('strays.commentsCount', { count: stray.commentCount }, stray.commentCount) }}</span></div>
         </div>
       </article>
     </div>
@@ -361,17 +364,17 @@ onBeforeUnmount(() => { disposed = true; requestSequence += 1; abortController?.
 
 <style scoped>
 .compact-filter-bar { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; }
-.filter-trigger, .reset-filters { min-height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: 14px; background: var(--color-surface-selected); color: var(--color-text-accent); font-weight: 750; }
-.filter-summary { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); font-size: 12px; }
+.filter-trigger, .reset-filters { min-height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; padding: 8px 0; border-radius: 0; background: transparent; color: var(--color-text-accent); font-weight: 600; }
+.filter-summary { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); font-size: 13px; }
 .apply-filters { width: 100%; min-height: 46px; border-radius: 14px; background: var(--teal); color: var(--color-text-on-accent); font-weight: 800; }
 .filter-trigger:focus-visible, .reset-filters:focus-visible, .apply-filters:focus-visible, .card-actions button:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
-.rescue-screen { max-width: 480px; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; margin: 0 auto; padding: calc(var(--safe-top) + 18px) 18px 120px; }
+.rescue-screen { max-width: 480px; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; margin: 0 auto; padding: calc(var(--safe-top) + 12px) 0 calc(var(--safe-bottom) + 80px); }
 .top, .detail-heading, .result-head, .card-title, .card-foot, .detail-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.top { margin-bottom: 16px; }
-.eyebrow { color: var(--color-text-urgent); font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-h1 { font-size: 22px; font-weight: 850; }
+.top { margin-bottom: 16px; padding: 0 16px; }
+.eyebrow { color: var(--color-text-secondary); font-size: 13px; font-weight: 500; }
+h1 { font-size: 20px; font-weight: 650; }
 .report-button, .submit-button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 999px; background: var(--coral); color: var(--color-text-on-coral); font-weight: 800; box-shadow: var(--shadow-card); }
-.report-button { padding: 0 14px; }
+.report-button { padding: 0 8px; border-radius: 0; background: transparent; color: var(--color-text-accent); box-shadow: none; font-weight: 600; }
 .view-toggle { margin-bottom: 14px; }
 .filters, .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .filters { margin-bottom: 14px; }
@@ -381,36 +384,43 @@ select, input, textarea { width: 100%; min-height: 44px; padding: 10px 12px; bor
 select:focus, input:focus, textarea:focus { border-color: var(--color-border-accent); }
 .result-head { margin: 4px 2px 12px; color: var(--ink-muted); font-size: 12.5px; }
 .result-head strong { color: var(--ink); font-size: 13.5px; }
-.report-list { display: flex; flex-direction: column; gap: 14px; }
-.stray-card { width: 100%; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-card); text-align: left; transition: transform .2s cubic-bezier(.4,0,.2,1); }
-.stray-card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
-.stray-card:active { transform: scale(.98); }
-.post-author { grid-column: 1 / -1; display: flex; align-items: center; gap: 9px; padding: 11px 12px; }
+.report-list { display: flex; flex-direction: column; gap: 0; }
+.stray-card { width: 100%; display: flex; flex-direction: column; overflow: hidden; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: var(--surface); box-shadow: none; text-align: left; cursor: pointer; }
+.stray-card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
+.post-author { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 12px var(--feed-space); }
 .post-author > span:nth-child(2) { min-width: 0; flex: 1; }
 .post-author strong, .post-author small { display: block; }
-.post-author small { margin-top: 2px; color: var(--ink-muted); font-size: 10.5px; }
+.post-author strong { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.post-author small { margin-top: 3px; color: var(--ink-muted); font-size: 13px; }
 .author-avatar { width: 34px; height: 34px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: var(--teal-soft); color: var(--color-icon-primary); }
 .author-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.photo-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
-.photo-wrap { flex: 0 0 100%; scroll-snap-align: start; position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--color-surface-subtle); }
-.photo-position { position: absolute; right: 10px; top: 10px; padding: 4px 8px; border-radius: 999px; background: var(--color-surface-elevated); color: var(--color-text-primary); font-size: 11px; }
-.photo-wrap img, .photo-button img { width: 100%; height: 100%; object-fit: cover; }
-.photo-placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--color-icon-primary); background: radial-gradient(circle, color-mix(in srgb, var(--color-icon-primary) 13%, transparent), transparent 45%), var(--color-surface-subtle); }
-.condition { position: absolute; left: 9px; bottom: 9px; padding: 4px 8px; border-radius: 999px; background: var(--teal); color: #fff; font-size: 9.5px; font-weight: 800; }
-.condition.injured, .condition.critical { background: var(--coral); }
-.card-body { min-width: 0; padding: 13px; }
-.card-title strong { font-size: 17px; }
-.card-title span, .card-foot > span:last-child { color: var(--ink-muted); font-size: 11.5px; font-weight: 700; }
-.card-body > p { margin-top: 3px; color: var(--ink-muted); font-size: 12.5px; font-weight: 650; }
-.card-body .description { display: -webkit-box; margin-top: 8px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; }
+.photo-carousel { display: flex; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; }
+.photo-carousel:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
+.photo-slide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
+.photo-wrap { position: relative; overflow: hidden; background: var(--color-surface-subtle); }
+.photo-position { display: block; padding: 5px 16px; background: var(--color-surface); color: var(--color-text-secondary); font-size: 13px; text-align: right; }
+.photo-wrap img { display: block; width: 100%; height: auto; max-height: var(--feed-media-max-height); object-fit: contain; }
+.photo-button img { width: 100%; height: 100%; object-fit: cover; }
+.photo-placeholder { min-height: 128px; display: grid; place-items: center; color: var(--color-icon-primary); background: var(--color-surface-subtle); }
+.condition { padding: 5px 9px; border-radius: 999px; background: var(--color-surface-subtle); color: var(--color-text-secondary); font-size: 13px; font-weight: 600; }
+.condition.injured, .condition.critical { background: var(--status-coral-bg); color: var(--color-text-urgent); }
+.card-body { min-width: 0; padding: var(--feed-space); }
+.card-title { flex-wrap: wrap; }
+.card-title strong { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.card-foot > span { color: var(--color-text-secondary); font-size: 13px; font-weight: 400; }
+.card-body > p { margin-top: 6px; color: var(--ink-muted); font-size: 13px; font-weight: 400; }
+.card-body .description { font-size: 16px; font-weight: 400; color: var(--color-text-primary); line-height: 1.5; }
+.card-body .description { display: -webkit-box; margin-top: 8px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.5; }
+.caption-more { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-text-accent); font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .card-body .comment-preview { display: -webkit-box; margin-top: 7px; overflow: hidden; color: var(--ink); -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
 .card-foot { align-items: flex-end; margin-top: 11px; }
-.card-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
-.card-actions button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--color-text-accent); font-size: 11.5px; font-weight: 800; }
-.card-actions button.active { background: var(--teal-soft); }
-.rescue-status { display: inline-flex; padding: 4px 9px; border-radius: 999px; background: rgba(239,99,81,.12); color: var(--color-text-urgent); font-size: 10.5px; font-weight: 800; }
-.rescue-status.rescue_dispatched { background: rgba(29,99,96,.1); color: var(--color-text-accent); }
-.rescue-status.rescued { background: var(--teal); color: #fff; }
+.card-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 12px; }
+.card-actions button { min-height: 48px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; color: var(--color-text-accent); font-size: 14px; font-weight: 600; transition: transform .15s ease; }
+.card-actions button:active { transform: scale(.98); }
+.card-actions button.active { background: transparent; color: var(--color-text-accent); font-weight: 700; }
+.card-actions button.active svg { fill: currentColor; }
+.rescue-status { display: inline-flex; max-width: 45%; padding: 5px 9px; border-radius: 999px; background: var(--status-coral-bg); color: var(--color-text-urgent); font-size: 13px; font-weight: 600; text-align: center; }
+.rescue-status.rescue_dispatched,.rescue-status.rescued { background: var(--status-teal-bg); color: var(--color-text-accent); }
 .state { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 30px; color: var(--ink-muted); text-align: center; font-size: 13.5px; }
 .state.error { color: var(--color-text-urgent); }
 .state button { min-height: 42px; padding: 0 18px; border-radius: 999px; background: var(--teal); color: #fff; font-weight: 800; }
@@ -446,4 +456,8 @@ select:focus, input:focus, textarea:focus { border-color: var(--color-border-acc
 .fade-enter-active, .fade-leave-active { transition: opacity .2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.view-toggle,.compact-filter-bar,.result-head { margin-left: 16px; margin-right: 16px; }
+.state.feed-loading { padding: 0; display: block; text-align: left; font-weight: 400; }
+.loading-copy { padding: 8px 16px; font-size: 14px; color: var(--color-text-secondary); }
+@media (prefers-reduced-motion: reduce) { .card-actions button { transition: none; } .spinner { animation: none; } }
 </style>

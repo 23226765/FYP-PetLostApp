@@ -28,6 +28,15 @@ it('exposes every tied district through native disclosure, including a tied unkn
   wrapper.unmount()
 })
 
+it('uses singular report wording for tied leaders and a sparse single-report sample', async () => {
+  const wrapper = mount(AreaInsightsCard, { props: { insights: summary({ total: 2, topDistricts: ['Sha Tin', 'Tai Po'], topDistrictCount: 1 }), loading: false } })
+  expect(wrapper.get('summary').text()).toBe('2 groups tied · 1 report each')
+  await wrapper.setProps({ insights: summary({ total: 1, topDistrictCount: 1 }) })
+  expect(wrapper.get('.quality').text()).toBe('Only 1 report recorded: a limited sample.')
+  expect(wrapper.get('.district-stat dd').text()).toBe('Sha Tin · 1 report')
+  wrapper.unmount()
+})
+
 it('does not invent a district winner when unknown values dominate; exposes sparse and date-quality limits', () => {
   const wrapper = mount(AreaInsightsCard, { props: { insights: summary({ total: 3, topDistricts: [], topDistrictCount: 3, unknownDistrictCount: 3, unknownIsTop: true, unknownDateCount: 2, futureDateCount: 1, unclassifiedSpeciesCount: 1 }), loading: false } })
   expect(wrapper.text()).toContain('no reliable district leader')

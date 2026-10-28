@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
   background: var(--page-bg);
 }
 .conversation-search { position: relative; display: flex; align-items: center; margin-bottom: 14px; }
-.conversation-search input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 48px 10px 14px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); color: var(--color-text-primary); }
+.conversation-search input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 48px 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-subtle); color: var(--color-text-primary); }
 .conversation-search button { position: absolute; right: 0; width: 44px; height: 44px; display: grid; place-items: center; color: var(--color-text-accent); }
 .conversation-search :focus-visible { outline: 3px solid var(--color-border-accent); outline-offset: 2px; }
 
@@ -325,16 +325,16 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: calc(var(--safe-top) + 22px) 20px 18px;
-  border-bottom: 1px solid rgba(29, 99, 96, 0.08);
-  background: rgba(252, 249, 242, 0.94);
+  padding: calc(var(--safe-top) + 12px) var(--page-padding) 12px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--page-bg);
   backdrop-filter: blur(18px);
 }
 
 .eyebrow {
   margin-bottom: 2px;
-  color: var(--color-text-urgent);
-  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -342,17 +342,16 @@ onBeforeUnmount(() => {
 
 h1 {
   color: var(--ink);
-  font-size: 28px;
-  font-weight: 850;
-  letter-spacing: -0.035em;
-  line-height: 1.05;
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
+  line-height: 1.3;
 }
 
 .inbox-header p:last-child {
   margin-top: 5px;
   color: var(--ink-muted);
   font-size: 12.5px;
-  font-weight: 650;
+  font-weight: 400;
 }
 
 .refresh-button {
@@ -361,10 +360,10 @@ h1 {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  border-radius: 14px;
-  background: rgba(29, 99, 96, 0.1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-selected);
   color: var(--color-icon-primary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -404,7 +403,7 @@ h1 {
   border-radius: 14px;
   background: var(--color-surface-elevated);
   color: var(--ink-muted);
-  box-shadow: 0 12px 30px rgba(29, 99, 96, 0.07);
+  box-shadow: none;
   text-align: center;
 }
 
@@ -491,9 +490,10 @@ h1 {
   display: flex;
   align-items: center;
   gap: 13px;
-  padding: 12px;
-  border: 1px solid transparent;
-  border-radius: 14px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
   background: transparent;
   color: var(--ink);
   text-align: left;
@@ -504,11 +504,11 @@ h1 {
 .conversation-card:focus-visible {
   border-color: rgba(29, 99, 96, 0.08);
   background: var(--color-surface);
-  box-shadow: 0 8px 24px rgba(29, 99, 96, 0.065);
+  box-shadow: none;
 }
 
 .conversation-card:focus-visible {
-  outline: 2px solid #1d6360;
+  outline: 2px solid var(--color-border-accent);
   outline-offset: 2px;
 }
 
@@ -546,7 +546,7 @@ h1 {
   display: grid;
   place-items: center;
   background: rgba(29, 99, 96, 0.1);
-  color: rgba(29, 99, 96, 0.68);
+  color: var(--color-icon-primary);
 }
 
 .conversation-copy {
@@ -576,8 +576,8 @@ h1 {
 .conversation-title time {
   flex-shrink: 0;
   color: var(--ink-muted);
-  font-size: 10.5px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .conversation-card.unread .conversation-title strong,
@@ -590,8 +590,8 @@ h1 {
   display: block;
   margin-top: 2px;
   color: var(--color-text-accent);
-  font-size: 11px;
-  font-weight: 750;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .message-row {
@@ -635,7 +635,7 @@ h1 {
 .skeleton-avatar,
 .skeleton-copy span {
   display: block;
-  background: linear-gradient(90deg, #eeeae2 25%, #f8f5ee 50%, #eeeae2 75%);
+  background: var(--color-surface-subtle);
   background-size: 200% 100%;
   animation: shimmer 1.3s linear infinite;
 }

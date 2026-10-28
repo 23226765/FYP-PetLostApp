@@ -568,14 +568,14 @@ async function saveProfile() {
 <style scoped>
 .settings-page { position: fixed; inset: 0; z-index: 45; width: 100%; max-width: 480px; margin: 0 auto; overflow-y: auto; background: var(--page-bg); color: var(--ink); -webkit-overflow-scrolling: touch; }
 .settings-header { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 10px; padding: calc(var(--safe-top) + 12px) 16px 12px; border-bottom: 1px solid var(--divider); background: color-mix(in srgb, var(--page-bg) 95%, transparent); backdrop-filter: blur(16px); }
-.settings-header h1 { font-size: 17px; font-weight: 850; text-align: center; }
+.settings-header h1 { font-size: var(--page-title-size); font-weight: var(--page-title-weight); text-align: center; }
 .back-button, .header-spacer { width: 44px; height: 44px; }
-.back-button { display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--color-icon-primary); box-shadow: 0 4px 14px rgba(29,99,96,.1); transition: all .2s cubic-bezier(.4,0,.2,1); }
+.back-button { display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--color-icon-primary); box-shadow: none; transition: all .2s cubic-bezier(.4,0,.2,1); }
 .back-button:active, .avatar-picker:active, .edit-button:active, .save-profile-button:active, .logout-button:active { transform: scale(.97); }
 .settings-content { padding: 10px 16px calc(var(--safe-bottom) + 42px); }
 .settings-group { margin-top: 22px; }
 .settings-group h2 { margin: 0 4px 9px; color: var(--ink-muted); font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-.settings-card { overflow: hidden; border: 1px solid var(--divider); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card); }
+.settings-card { overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-card); }
 .preference-selector-card { display: flex; flex-direction: column; gap: 15px; padding: 16px; overflow: visible; }
 .preference-help, .preference-account-help { margin: 0; color: var(--text-muted); font-size: 12px; font-weight: 650; line-height: 1.5; }
 .preference-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -583,7 +583,7 @@ async function saveProfile() {
 .segmented-control { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 4px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); }
 .segmented-control.language-control { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .option-card { position: relative; border: 1.5px solid var(--option-border); border-radius: 14px; background: var(--option-surface); color: var(--option-text); cursor: pointer; transition: background-color .2s cubic-bezier(.4,0,.2,1), border-color .2s cubic-bezier(.4,0,.2,1), box-shadow .2s cubic-bezier(.4,0,.2,1), transform .2s cubic-bezier(.4,0,.2,1); }
-.option-card.active, .option-card.selected { border-color: var(--option-accent-border); background: var(--option-selected-surface); box-shadow: 0 2px 9px color-mix(in srgb, var(--radio-indicator) 18%, transparent); }
+.option-card.active, .option-card.selected { border-color: var(--option-accent-border); background: var(--option-selected-surface); box-shadow: none; }
 .option-card input[type='radio'] { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); appearance: none; opacity: 0; white-space: nowrap; }
 .option-card input[type='radio']:focus-visible { outline: none; }
 .option-card .radio-indicator { width: 18px; height: 18px; display: grid; place-items: center; flex: 0 0 18px; border: 2px solid var(--radio-border); border-radius: 50%; background: var(--option-surface); transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease; }
@@ -602,7 +602,7 @@ async function saveProfile() {
 .avatar-picker { position: relative; width: 64px; height: 64px; padding: 0; border-radius: 50%; background: var(--color-surface-subtle); box-shadow: 0 5px 15px rgba(29,99,96,.14); transition: transform .2s ease; }
 .avatar-picker img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
 .avatar-picker:disabled { outline: 2px solid var(--color-disabled-border); background: var(--color-disabled-surface); cursor: wait; }
-.camera-badge { position: absolute; right: -3px; bottom: -2px; width: 27px; height: 27px; display: grid; place-items: center; border: 2px solid #fff; border-radius: 50%; background: #1d6360; color: #fff; box-shadow: 0 3px 9px rgba(29,99,96,.24); }
+.camera-badge { position: absolute; right: -3px; bottom: -2px; width: 27px; height: 27px; display: grid; place-items: center; border: 2px solid var(--color-surface); border-radius: 50%; background: #1d6360; color: #fff; box-shadow: 0 3px 9px rgba(29,99,96,.24); }
 .file-input { display: none; }
 .account-copy { min-width: 0; display: flex; flex-direction: column; padding: 0; background: transparent; color: var(--ink); text-align: left; }
 .account-copy strong { font-size: 14px; font-weight: 800; }
@@ -615,9 +615,10 @@ async function saveProfile() {
 .profile-form input { min-height: 46px; padding: 0 13px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--input-bg); color: var(--color-text-primary); outline: none; }
 .profile-form input:focus { border-color: var(--color-border-accent); }
 .profile-form small { color: var(--ink-muted); font-size: 11.5px; font-weight: 600; line-height: 1.45; }
-.save-profile-button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; background: #1d6360; color: #fff; font-weight: 800; box-shadow: 0 5px 15px rgba(29,99,96,.18); transition: transform .2s ease; }
+.profile-form input:focus-visible { outline: 2px solid var(--color-border-accent); outline-offset: 2px; }
+.save-profile-button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; background: #1d6360; color: #fff; font-weight: 800; box-shadow: none; transition: transform .2s ease; }
 .save-profile-button:disabled { border: 1px solid var(--color-disabled-border); background: var(--color-disabled-surface); color: var(--color-disabled-text); cursor: not-allowed; box-shadow: none; }
-.setting-row { width: 100%; min-height: 70px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(29,99,96,.075); background: transparent; color: var(--ink); text-align: left; transition: background .18s ease, transform .18s ease; }
+.setting-row { width: 100%; min-height: 70px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--color-border); background: transparent; color: var(--ink); text-align: left; transition: background .18s ease, transform .18s ease; }
 button.setting-row:active { transform: scale(.99); background: rgba(29,99,96,.055); }
 .setting-icon { width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; border-radius: 12px; background: var(--color-surface-selected); color: var(--color-icon-primary); }
 .setting-icon.coral { background: rgba(239,99,81,.1); color: var(--color-text-urgent); }
@@ -627,7 +628,7 @@ button.setting-row:active { transform: scale(.99); background: rgba(29,99,96,.05
 .setting-value, .chevron { flex-shrink: 0; color: var(--ink-muted); }
 .setting-value { font-size: 12.5px; font-weight: 750; }
 .radius-row { border-bottom: 0; }
-.radius-options { display: grid; grid-template-columns: repeat(5,1fr); gap: 5px; padding: 0 14px 14px; border-bottom: 1px solid rgba(29,99,96,.075); }
+.radius-options { display: grid; grid-template-columns: repeat(5,1fr); gap: 5px; padding: 0 14px 14px; border-bottom: 1px solid var(--color-border); }
 .radius-options button { min-height: 42px; padding: 0 3px; border-radius: 12px; background: var(--color-surface-subtle); color: var(--color-text-muted); font-size: 11.5px; font-weight: 800; }
 .radius-options button.active { background: #1d6360; color: #fff; }
 .switch { position: relative; width: 50px; height: 30px; flex-shrink: 0; border-radius: 999px; background: var(--line); transition: background .2s ease; }
@@ -642,7 +643,7 @@ button.setting-row:active { transform: scale(.99); background: rgba(29,99,96,.05
 .privacy-option > span:last-child { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .privacy-option strong { color: var(--option-text); font-size: 13px; font-weight: 800; }
 .privacy-option small { color: var(--option-secondary-text); font-size: 11.5px; font-weight: 600; line-height: 1.4; }
-.save-privacy-button { min-height: 46px; border-radius: 14px; background: #1d6360; color: #fff; font-size: 13px; font-weight: 800; box-shadow: 0 5px 15px rgba(29,99,96,.18); transition: transform .2s ease, opacity .2s ease; }
+.save-privacy-button { min-height: 46px; border-radius: 14px; background: #1d6360; color: #fff; font-size: 13px; font-weight: 800; box-shadow: none; transition: transform .2s ease, opacity .2s ease; }
 .save-privacy-button:not(:disabled):active { transform: scale(.98); }
 .save-privacy-button:disabled { border: 1px solid var(--color-disabled-border); background: var(--color-disabled-surface); color: var(--color-disabled-text); cursor: not-allowed; box-shadow: none; }
 .privacy-message { margin: 0 2px; color: var(--color-text-accent); font-size: 11.5px; font-weight: 700; line-height: 1.45; }
