@@ -14,6 +14,17 @@ This repository supports an **HKBU Final Year Project** and a provisional **ISA 
 
 Use [PROGRESS's evidence index](docs/PROGRESS.md#evidence-categories) for optional historical reports; they remain available at their existing paths.
 
+## Application screenshots
+
+Development screenshots using fictional demonstration data.
+
+<p>
+  <img src="docs/images/radar.png" alt="Radar feed showing nearby fictional pet reports and animal, district and radius filters" width="220">
+  <img src="docs/images/report.png" alt="Lost-pet report form with photo selection and last-seen location confirmation" width="220">
+  <img src="docs/images/rescue.png" alt="Community rescue feed showing fictional animal reports and post actions" width="220">
+  <img src="docs/images/profile.png" alt="Demonstration user profile showing activity statistics and reported pets" width="220">
+</p>
+
 ## Current capabilities
 
 | State | Capabilities and limits |
