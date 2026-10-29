@@ -93,10 +93,10 @@ export function formatRelativeDate(value: string | Date | undefined | null) {
   return i18n.global.d(new Date(timestamp), 'short')
 }
 
-export function formatDateTime(value: string | Date | undefined | null) {
+export function formatDateTime(value: string | Date | undefined | null, timeZone?: string) {
   if (!value) return i18n.global.t('common.unknown')
   const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? String(value) : i18n.global.d(date, 'dateTime')
+  return Number.isNaN(date.getTime()) ? String(value) : i18n.global.d(date, { key: 'dateTime', ...(timeZone ? { timeZone } : {}) })
 }
 
 export function calendarDayKey(value: string | Date): string {

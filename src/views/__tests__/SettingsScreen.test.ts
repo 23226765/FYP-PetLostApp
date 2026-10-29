@@ -1,9 +1,17 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import type { User } from '../../types/user'
 import SettingsScreen from '../SettingsScreen.vue'
-import { applyAccountPreferences } from '../../composables/usePreferences'
+import { applyAccountPreferences, setPreferences, usePreferences } from '../../composables/usePreferences'
+import { setSessionToken } from '../../services/authSession'
+
+enableAutoUnmount(afterEach)
+function deferred<T>() {
+  let resolve!: (value: T) => void, reject!: (reason: Error) => void
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no })
+  return { promise, resolve, reject }
+}
 
 const apiMocks = vi.hoisted(() => ({
   getContactPrivacy: vi.fn(),
@@ -58,6 +66,141 @@ describe('SettingsScreen contact privacy', () => {
     localStorage.clear()
     applyAccountPreferences({ language: 'en', theme: 'light' })
     apiMocks.getContactPrivacy.mockResolvedValue({ contactVisibility: 'private' })
+  })
+
+  it('preserves current appearance when privacy succeeds with stale user preference props', async () => {
+    localStorage.setItem('token', 'fictional-preferences-test')
+    const wrapper = await mountSettings({ ...user, preferences: { language: 'en', theme: 'light' } })
+    apiMocks.updateUserPreferences.mockResolvedValue({ language: 'zh-HK', theme: 'dark' })
+    await setPreferences({ language: 'zh-HK', theme: 'dark' })
+    apiMocks.updateContactPrivacy.mockResolvedValue({ contactVisibility: 'authenticated' })
+    await wrapper.get('.contact-privacy input[value="authenticated"]').setValue(true)
+    await wrapper.get('.save-privacy-button').trigger('click'); await flushPromises()
+    // Reproduce the existing App's full-user update path when that event is emitted.
+    const fullUser = wrapper.emitted('updated')?.at(-1)?.[0] as User | undefined
+    if (fullUser) applyAccountPreferences(fullUser.preferences)
+    expect(usePreferences().language.value).toBe('zh-HK')
+    expect(usePreferences().theme.value).toBe('dark')
+    expect(wrapper.emitted('privacy-updated')?.at(-1)).toEqual([{ userId: user.id, privacy: { contactVisibility: 'authenticated' } }])
+    expect(wrapper.emitted('updated')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it.each(['success', 'failure'])('privacy completion does not cancel a pending appearance save (%s)', async outcome => {
+    setSessionToken('fictional-settings-owner')
+    const preference = deferred<{ language: 'en'; theme: 'dark' }>()
+    apiMocks.updateUserPreferences.mockReturnValueOnce(preference.promise)
+    apiMocks.updateContactPrivacy.mockResolvedValue({ contactVisibility: 'authenticated' })
+    const wrapper = await mountSettings({ ...user, preferences: { language: 'en', theme: 'light' } })
+    await wrapper.get('input[name="app-theme"][value="dark"]').setValue(true)
+    await wrapper.get('.contact-privacy input[value="authenticated"]').setValue(true)
+    await wrapper.get('.save-privacy-button').trigger('click'); await flushPromises()
+    const fullUser = wrapper.emitted('updated')?.at(-1)?.[0] as User | undefined
+    if (fullUser) applyAccountPreferences(fullUser.preferences)
+    expect(usePreferences().saving.value).toBe(true)
+    if (outcome === 'success') preference.resolve({ language: 'en', theme: 'dark' })
+    else preference.reject(new Error('Synthetic preference failure'))
+    await flushPromises()
+    expect(usePreferences().theme.value).toBe(outcome === 'success' ? 'dark' : 'light')
+    expect(usePreferences().saving.value).toBe(false)
+    expect(wrapper.get('.contact-privacy input[value="authenticated"]').element).toHaveProperty('checked', true)
+  })
+
+  it.each(['success', 'failure'])('retains newer appearance while a privacy save is delayed (%s)', async outcome => {
+    const privacy = deferred<{ contactVisibility: 'authenticated' }>()
+    apiMocks.updateContactPrivacy.mockReturnValueOnce(privacy.promise)
+    const wrapper = await mountSettings({ ...user, preferences: { language: 'en', theme: 'light' } })
+    await wrapper.get('.contact-privacy input[value="authenticated"]').setValue(true)
+    await wrapper.get('.save-privacy-button').trigger('click')
+    await setPreferences({ language: 'zh-CN', theme: 'dark' })
+    if (outcome === 'success') privacy.resolve({ contactVisibility: 'authenticated' })
+    else privacy.reject(new Error('Synthetic privacy failure'))
+    await flushPromises()
+    expect(usePreferences().language.value).toBe('zh-CN')
+    expect(usePreferences().theme.value).toBe('dark')
+    expect(JSON.parse(localStorage.getItem('pawradar_preferences_v1')!)).toEqual({ language: 'zh-CN', theme: 'dark' })
+    expect(wrapper.emitted('updated')).toBeUndefined()
+    if (outcome === 'failure') {
+      expect(wrapper.find('.privacy-message.error').exists()).toBe(true)
+      expect(wrapper.get('.save-privacy-button').attributes('disabled')).toBeUndefined()
+      expect(wrapper.get('.contact-privacy input[value="authenticated"]').element).toHaveProperty('checked', true)
+    }
+  })
+
+  it.each(['success', 'failure'])('ignores an old privacy load without clearing a newer load (%s)', async outcome => {
+    const old = deferred<{ contactVisibility: 'authenticated' }>(), next = deferred<{ contactVisibility: 'private' }>()
+    apiMocks.getContactPrivacy.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise)
+    const wrapper = await mountSettings()
+    await wrapper.setProps({ user: { ...user, id: 'replacement', preferences: { language: 'zh-HK', theme: 'dark' } } })
+    applyAccountPreferences({ language: 'zh-HK', theme: 'dark' })
+    if (outcome === 'success') old.resolve({ contactVisibility: 'authenticated' })
+    else old.reject(new Error('Old account load failed'))
+    await flushPromises()
+    expect(wrapper.get('.contact-privacy').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.privacy-message.error').exists()).toBe(false)
+    expect(wrapper.emitted('privacy-updated')).toBeUndefined()
+    next.resolve({ contactVisibility: 'private' }); await flushPromises()
+    expect(wrapper.get('.contact-privacy').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.contact-privacy input[value="private"]').element).toHaveProperty('checked', true)
+    expect(usePreferences().theme.value).toBe('dark')
+  })
+
+  it.each(['success', 'failure'])('old privacy save cannot finish a replacement account save (%s)', async outcome => {
+    const old = deferred<{ contactVisibility: 'authenticated' }>(), next = deferred<{ contactVisibility: 'authenticated' }>()
+    apiMocks.updateContactPrivacy.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise)
+    const wrapper = await mountSettings()
+    await wrapper.get('.contact-privacy input[value="authenticated"]').setValue(true)
+    await wrapper.get('.save-privacy-button').trigger('click')
+    await wrapper.setProps({ user: { ...user, id: 'replacement' } }); await flushPromises()
+    await wrapper.get('.contact-privacy input[value="authenticated"]').setValue(true)
+    await wrapper.get('.save-privacy-button').trigger('click')
+    if (outcome === 'success') old.resolve({ contactVisibility: 'authenticated' })
+    else old.reject(new Error('Old account save failed'))
+    await flushPromises()
+    expect(wrapper.get('.save-privacy-button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.privacy-message').exists()).toBe(false)
+    expect(wrapper.emitted('privacy-updated')).toBeUndefined()
+    next.resolve({ contactVisibility: 'authenticated' }); await flushPromises()
+    expect(wrapper.emitted('privacy-updated')).toEqual([[{ userId: 'replacement', privacy: { contactVisibility: 'authenticated' } }]])
+  })
+
+  it.each(['round-trip', 'logout', 'same-token', 'unmount'].flatMap(change => ['success', 'failure'].map(outcome => ({ change, outcome }))))('invalidates pending privacy writes on $change ($outcome)', async ({ change, outcome }) => {
+    setSessionToken('fictional-privacy-context')
+    const pending = deferred<{ contactVisibility: 'authenticated' }>()
+    apiMocks.updateContactPrivacy.mockReturnValueOnce(pending.promise)
+    const wrapper = await mountSettings()
+    await wrapper.get('.contact-privacy input[value="authenticated"]').setValue(true)
+    await wrapper.get('.save-privacy-button').trigger('click')
+    if (change === 'round-trip') {
+      await wrapper.setProps({ user: { ...user, id: 'temporary' } })
+      await wrapper.setProps({ user: { ...user } }); await flushPromises()
+    } else if (change === 'logout') {
+      setSessionToken(null); await wrapper.setProps({ user: null })
+    } else if (change === 'same-token') setSessionToken('fictional-privacy-context')
+    else wrapper.unmount()
+    if (outcome === 'success') pending.resolve({ contactVisibility: 'authenticated' })
+    else pending.reject(new Error('Obsolete privacy failure'))
+    await flushPromises()
+    expect(wrapper.emitted('privacy-updated')).toBeUndefined()
+    if (change === 'same-token') expect(wrapper.get('.contact-privacy').attributes('disabled')).toBeDefined()
+    if (change === 'round-trip') expect(wrapper.get('.contact-privacy input[value="private"]').element).toHaveProperty('checked', true)
+  })
+
+  it.each(['success', 'failure'])('does not display stale preference feedback after account switching (%s)', async outcome => {
+    setSessionToken('fictional-preference-context')
+    const pending = deferred<{ language: 'en'; theme: 'dark' }>()
+    apiMocks.updateUserPreferences.mockReturnValueOnce(pending.promise)
+    const wrapper = await mountSettings()
+    await wrapper.get('input[name="app-theme"][value="dark"]').setValue(true)
+    setSessionToken('fictional-replacement-context')
+    await wrapper.setProps({ user: { ...user, id: 'replacement' } })
+    applyAccountPreferences({ language: 'zh-HK', theme: 'light' })
+    if (outcome === 'success') pending.resolve({ language: 'en', theme: 'dark' })
+    else pending.reject(new Error('Old preference failed'))
+    await flushPromises()
+    expect(wrapper.find('.preference-message').exists()).toBe(false)
+    expect(usePreferences().language.value).toBe('zh-HK')
+    expect(usePreferences().theme.value).toBe('light')
   })
 
   it('uploads an avatar as multipart, saves only its ID and updates the session immediately', async () => {
@@ -124,9 +267,8 @@ describe('SettingsScreen contact privacy', () => {
 
     expect(apiMocks.updateContactPrivacy).toHaveBeenCalledWith('authenticated')
     expect(wrapper.text()).toContain('Signed-in users can now access Call and WhatsApp options.')
-    expect(wrapper.emitted('updated')?.[0]?.[0]).toMatchObject({
-      privacy: { contactVisibility: 'authenticated' },
-    })
+    expect(wrapper.emitted('privacy-updated')?.[0]?.[0]).toEqual({ userId: user.id, privacy: { contactVisibility: 'authenticated' } })
+    expect(wrapper.emitted('updated')).toBeUndefined()
   })
 
   it('shows a safe error without changing the current-user state', async () => {

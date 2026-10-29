@@ -95,7 +95,7 @@
         <div class="card-body">
           <div class="card-title"><strong>{{ animalLabel(stray) }}</strong><span class="condition" :class="stray.condition">{{ conditionLabel(stray.condition) }}</span></div>
           <p>{{ stray.location }}</p>
-          <p v-if="Number.isFinite(stray.distanceKm)" class="feed-distance">{{ stray.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: stray.distanceKm }) }) : t('common.kilometres', { count: stray.distanceKm }) }}</p>
+          <p v-if="isValidDistance(stray.distanceKm)" class="feed-distance">{{ stray.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: stray.distanceKm }) }) : t('common.kilometres', { count: stray.distanceKm }) }}</p>
           <p class="description">{{ stray.description }}</p>
           <button type="button" class="caption-more" @click.stop="openStray(stray)">{{ t('radar.viewDetails') }}</button>
           <p v-if="stray.commentPreview" class="comment-preview"><AppIcon name="message" :size="15" /> {{ stray.commentPreview }}</p>
@@ -135,7 +135,7 @@
           <label><span>{{ t('radar.district') }}</span><select v-model="form.district" required><option value="" disabled>{{ t('strays.selectDistrict') }}</option><option v-for="district in HK_DISTRICTS" :key="district" :value="district">{{ districtLabel(district) }}</option></select></label>
           <label><span>{{ t('strays.locationDescription') }}</span><input v-model="form.locationName" required :placeholder="t('strays.locationDescriptionPlaceholder')" /></label>
           <label><span>{{ t('strays.observation') }}</span><textarea v-model="form.description" rows="3" required :placeholder="t('strays.observationPlaceholder')" /></label>
-          <label><span>{{ t('strays.observedAt') }}</span><input v-model="form.observedAt" required type="datetime-local" :max="maxObservedAt" /></label>
+          <label><span>{{ t('strays.observedAt') }}</span><input v-model="form.observedAt" required type="datetime-local" step="0.001" :max="maxObservedAt" /></label>
           <SightingLocationPicker v-model="form.coordinates" :initial-center="initialPickerCenter" :title="t('strays.whereAnimal')" />
           <p v-if="reportError" class="form-error" role="alert">{{ reportError }}</p>
           <button class="submit-button" type="submit" :disabled="submitting">
@@ -148,6 +148,7 @@
 </template>
 
 <script setup lang="ts">
+import { isValidDistance } from '../utils/distance'
 import ManagedImage from "./ManagedImage.vue"
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
@@ -165,6 +166,7 @@ import type { User } from '../types/user'
 import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
 import { translateApiError, useAppI18n } from '../i18n'
 import { districtLabel, formatRelativeDate, rescueStatusLabel, speciesLabel, strayAnimalLabel, strayConditionLabel } from '../i18n/formatters'
+import { fromHongKongDateTimeInput, toHongKongDateTimeInput } from '../utils/hongKongDateTime'
 
 const props = withDefaults(defineProps<{
   user: User | null
@@ -212,10 +214,10 @@ const form = reactive({
   description: '',
   photo: '',
   coordinates: null as [number, number] | null,
-  observedAt: new Date().toISOString().slice(0, 16),
+  observedAt: toHongKongDateTimeInput(new Date()),
   submissionId: '',
 })
-const maxObservedAt = computed(() => new Date().toISOString().slice(0, 16))
+const maxObservedAt = ref(toHongKongDateTimeInput(new Date()))
 const initialPickerCenter = computed<[number, number] | null>(() => props.userLocation ? [props.userLocation.lng, props.userLocation.lat] : null)
 const submitLabel = computed(() => uploadStage.value === 'uploading' ? t('strays.uploadingPhoto') : uploadStage.value === 'posting' ? t('strays.publishing') : t('strays.publish'))
 const uniqueId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -269,6 +271,7 @@ async function loadStrays() {
 
 function openReportForm() {
   if (!props.user) { emit('auth-needed'); return }
+  maxObservedAt.value = toHongKongDateTimeInput(new Date())
   reportError.value = ''
   if (!form.submissionId) form.submissionId = uniqueId()
   showReportForm.value = true
@@ -316,6 +319,8 @@ async function submitReport() {
     if (!form.photo) throw new Error(t('validation.rescuePhotoRequired'))
     if (!form.coordinates) throw new Error(t('validation.rescueLocationRequired'))
     if (form.species === 'Other' && !form.animalType.trim()) throw new Error(t('strayAnimal.typeRequired'))
+    const observedAt = fromHongKongDateTimeInput(form.observedAt)
+    if (!observedAt || Date.parse(observedAt) > Date.now()) throw Object.assign(new Error('Invalid observation time'), { apiCode: 'OBSERVED_TIME_INVALID' })
     uploadStage.value = 'uploading'
     const imageIds = await imageUpload.ensure()
     if (!active()) return
@@ -329,7 +334,7 @@ async function submitReport() {
       description: form.description,
       imageIds,
       coordinates: form.coordinates,
-      observedAt: new Date(form.observedAt).toISOString(),
+      observedAt,
       rescueStatus: 'reported',
       submissionId: form.submissionId,
     })
@@ -342,7 +347,7 @@ async function submitReport() {
     form.photo = ''
     imageUpload.finish()
     form.coordinates = null
-    form.observedAt = new Date().toISOString().slice(0, 16)
+    form.observedAt = toHongKongDateTimeInput(new Date())
     form.submissionId = ''
     await router.push(`/strays/${created.id}`)
   } catch (caught) {

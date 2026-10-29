@@ -41,9 +41,9 @@
           <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
         </svg>
       </button>
-      <span class="distance">
+      <span v-if="isValidDistance(pet.distanceKm)" class="distance">
         <AppIcon name="pin" :size="14" />
-        {{ t('common.kilometres', { count: pet.distanceKm }) }}
+        {{ pet.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: pet.distanceKm }) }) : t('common.kilometres', { count: pet.distanceKm }) }}
       </span>
     </div>
     </template>
@@ -57,7 +57,7 @@
         <div v-else class="photo-placeholder" :aria-label="t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) })" role="img"><AppIcon name="paw" :size="42" /></div>
       </div>
       <div class="feed-card-copy">
-        <p class="feed-location"><AppIcon name="pin" :size="16" />{{ pet.district ? districtLabel(pet.district) : t('feedDesign.districtUnknown') }}<span v-if="Number.isFinite(pet.distanceKm)"> · {{ pet.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: pet.distanceKm }) }) : t('common.kilometres', { count: pet.distanceKm }) }}</span></p>
+        <p class="feed-location"><AppIcon name="pin" :size="16" />{{ pet.district ? districtLabel(pet.district) : t('feedDesign.districtUnknown') }}<span v-if="isValidDistance(pet.distanceKm)"> · {{ pet.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: pet.distanceKm }) }) : t('common.kilometres', { count: pet.distanceKm }) }}</span></p>
         <p class="feed-last-seen">{{ t('pets.lastSeen', { time: pet.lastSeenAt ? formatRelativeDate(pet.lastSeenAt) : pet.lastSeen }) }}</p>
         <p v-if="pet.reward" class="feed-reward">{{ t('pets.reward', { amount: pet.reward }) }}</p>
         <div class="feed-card-actions">
@@ -84,6 +84,7 @@
 </template>
 
 <script setup lang="ts">
+import { isValidDistance } from '../utils/distance'
 import ManagedImage from "./ManagedImage.vue"
 import { computed, ref, watch } from 'vue'
 import type { Pet } from '../types/pet'

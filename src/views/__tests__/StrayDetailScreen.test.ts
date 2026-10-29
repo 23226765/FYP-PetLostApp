@@ -57,6 +57,17 @@ async function renderAsFinder(overrides: Partial<StrayReport> = {}, page = { com
 describe('StrayDetailScreen community actions', () => {
   beforeEach(() => { Object.values(apiMocks).forEach((mock) => mock.mockReset()); applyAccountPreferences({ language: 'en', theme: 'light' }) })
 
+  it.each(['en', 'zh-HK', 'zh-CN'] as const)('renders the stored observation instant in Hong Kong time in %s', async language => {
+    const wrapper = await render()
+    applyAccountPreferences({ language, theme: 'light' }); await flushPromises()
+    const { d, t } = useAppI18n()
+    const expected = d(new Date(post.observedAt), { key: 'dateTime', timeZone: 'Asia/Hong_Kong' })
+    expect(wrapper.get('time').attributes('datetime')).toBe(post.observedAt)
+    expect(wrapper.get('time').text()).toBe(t('strays.observed', { date: expected }))
+    expect(apiMocks.updateStray).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('opens the existing authorized in-app share sheet from the feed action', async () => {
     apiMocks.getChatInbox.mockResolvedValue([])
     const wrapper = await render('?share=1')
@@ -103,6 +114,8 @@ describe('StrayDetailScreen community actions', () => {
     await wrapper.get('.save-edit').trigger('click'); await flushPromises()
     expect(wrapper.text()).toContain('Changes saved.')
     expect(wrapper.text()).not.toContain('Unable to save your changes')
+    expect(apiMocks.updateStray.mock.calls.at(-1)?.[1]).not.toHaveProperty('observedAt')
+    expect(wrapper.get('time').attributes('datetime')).toBe(post.observedAt)
     wrapper.unmount(); vi.restoreAllMocks()
   })
 

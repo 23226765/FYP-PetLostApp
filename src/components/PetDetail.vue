@@ -61,9 +61,9 @@
           <h2>{{ pet.name }}</h2>
           <p class="sub"><template v-if="pet.breed">{{ pet.breed }} · </template>{{ speciesLabel(pet.species) }}</p>
         </div>
-        <span class="distance">
+        <span v-if="isValidDistance(pet.distanceKm)" class="distance">
           <AppIcon name="pin" :size="15" />
-          {{ t('radar.distanceAway', { distance: pet.distanceKm }) }}
+          {{ pet.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: pet.distanceKm }) }) : t('radar.distanceAway', { distance: pet.distanceKm }) }}
         </span>
       </div>
 
@@ -345,6 +345,7 @@
 </template>
 
 <script setup lang="ts">
+import { isValidDistance } from '../utils/distance'
 import ManagedImage from "./ManagedImage.vue"
 import ContentImageEditor from './ContentImageEditor.vue'
 import type { ManagedImage as ManagedImageData } from '../services/api'

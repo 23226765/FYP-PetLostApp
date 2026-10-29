@@ -4,9 +4,11 @@
 
 - Preserve the existing Vue 3/TypeScript, Express/Mongoose architecture and naming.
 - Preserve existing dirty/untracked work. Never reset, discard or overwrite unrelated
-  changes. Existing application work and unfinished verification for audit findings
-  #10 and #11 remain pending; configuration-only tasks must not resume them.
-- New feature development remains paused until the user explicitly resumes it.
+  changes. Consult [the current audit checklist](docs/development/AUDIT_FINDINGS_CHECKLIST.md)
+  for repair and verification status; configuration-only tasks must not resume
+  application development.
+- Follow the latest user-approved task and its scope. The checklist supplies status,
+  not authorization to start work.
 - Keep records, images, uploads, runtime environment files and secrets unchanged
   unless the current task specifically authorizes a change. Never expose credentials,
   tokens or environment contents. Never access `sample_mflix` for application work.

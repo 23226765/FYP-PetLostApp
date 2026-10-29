@@ -9,6 +9,7 @@ import { i18n } from '../../i18n'
 import type { Pet } from '../../types/pet'
 import { useSavedPets } from '../../composables/useSavedPets'
 import { setSessionToken } from '../../services/authSession'
+import { applyAccountPreferences, usePreferences } from '../../composables/usePreferences'
 
 const apiMocks = vi.hoisted(() => ({
   getNearbyPets: vi.fn(),
@@ -101,7 +102,7 @@ async function renderApp(token?: string, realMap = false) {
       { path: '/map', name: 'map', component: { template: '<div />' } },
       { path: '/pets/:id', name: 'pet-detail', component: { template: '<div />' } },
       { path: '/profile', name: 'profile', component: { template: '<div />' } },
-      { path: '/settings', name: 'settings', component: { emits: ['logout'], template: '<button class="stub-logout" @click="$emit(\'logout\')">Logout</button>' } },
+      { path: '/settings', name: 'settings', component: { name: 'SettingsRouteStub', props: ['user'], emits: ['logout', 'privacy-updated'], template: '<div><button class="stub-logout" @click="$emit(\'logout\')">Logout</button><button class="stub-privacy" @click="$emit(\'privacy-updated\', {userId: user.id, privacy: {contactVisibility: \'authenticated\'}})">Privacy</button></div>' } },
     ],
   })
   await router.push('/')
@@ -151,6 +152,25 @@ describe('authenticated creation entry points', () => {
     apiMocks.getNotifications.mockResolvedValue([])
     apiMocks.getChatInbox.mockResolvedValue([])
     apiMocks.updateNotificationPreferences.mockResolvedValue(undefined)
+  })
+
+  it('merges only the matching privacy patch without restoring stale user preferences or reloading feeds', async () => {
+    const original = { id: 'owner-id', name: 'Owner', email: 'owner@example.test', avatar: '/original.svg', phone: 'fictional-phone', alertsEnabled: false, alertRadiusKm: 15, preferences: { language: 'en', theme: 'light' }, privacy: { contactVisibility: 'private' } }
+    apiMocks.getProfile.mockResolvedValue(original)
+    const { wrapper, router } = await renderApp('fictional-privacy-app')
+    await router.push('/settings'); await flushPromises()
+    applyAccountPreferences({ language: 'zh-HK', theme: 'dark' })
+    const calls = apiMocks.getNearbyPets.mock.calls.length
+    await wrapper.get('.stub-privacy').trigger('click'); await flushPromises()
+    const settings = wrapper.getComponent({ name: 'SettingsRouteStub' })
+    expect(settings.props('user')).toEqual({ ...original, privacy: { contactVisibility: 'authenticated' } })
+    expect(usePreferences().language.value).toBe('zh-HK')
+    expect(usePreferences().theme.value).toBe('dark')
+    expect(apiMocks.getNearbyPets).toHaveBeenCalledTimes(calls)
+    settings.vm.$emit('privacy-updated', { userId: 'unrelated', privacy: { contactVisibility: 'private' } })
+    await flushPromises()
+    expect(settings.props('user').privacy.contactVisibility).toBe('authenticated')
+    wrapper.unmount()
   })
 
   it('keeps all six destinations and routes a guest map marker to the authorized detail by unique ID', async () => {

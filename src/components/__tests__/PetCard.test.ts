@@ -57,3 +57,16 @@ it('retains the image component and fallback/retry behavior without inventing mi
   expect(wrapper.get('img').attributes('src')).toBe('https://example.test/replacement.webp')
   wrapper.unmount()
 })
+
+it.each([false, true])('omits invalid distance badges/separators and preserves approximate zero (feed=%s)', async feed => {
+  const wrapper = render(feed)
+  for (const distance of [undefined, null, NaN, Infinity, -1, '0']) {
+    await wrapper.setProps({ pet: { ...pet, distanceKm: distance as number | undefined } })
+    expect(wrapper.find('.distance').exists()).toBe(false)
+    if (feed) expect(wrapper.find('.feed-location span').exists()).toBe(false)
+  }
+  await wrapper.setProps({ pet: { ...pet, distanceKm: 0 } })
+  const label = i18n.global.t('feedDesign.approxDistance', { distance: i18n.global.t('common.kilometres', { count: 0 }) })
+  expect(wrapper.get(feed ? '.feed-location' : '.distance').text()).toContain(label)
+  wrapper.unmount()
+})

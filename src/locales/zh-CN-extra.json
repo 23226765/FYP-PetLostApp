@@ -83,7 +83,7 @@
     "removeBookmark": "移除书签",
     "savePost": "收藏帖子",
     "reportedIn": "在{district}报告的{species}",
-    "observed": "观察时间：{date}",
+    "observed": "观察时间：{date}（香港时间）",
     "mapLocation": "报告的目击位置",
     "managePost": "管理帖子",
     "editCaption": "编辑说明",

@@ -20,6 +20,7 @@
 </template>
 
 <script setup lang="ts">
+import { isValidDistance } from '../utils/distance'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -207,7 +208,7 @@ async function resolveCenter(): Promise<{
 }
 
 // Pet coordinates are stored as GeoJSON [lng, lat]; Leaflet expects [lat, lng].
-type PetPin = Pick<Pet, 'id' | 'name' | 'photo' | 'breed' | 'status' | 'coordinates' | 'distanceKm'>
+type PetPin = Pick<Pet, 'id' | 'name' | 'photo' | 'breed' | 'status' | 'coordinates' | 'distanceKm' | 'locationPrecision'>
 function petLatLng(pet: PetPin): [number, number] | null {
   if (pet.coordinates && pet.coordinates.length === 2) {
     return validLatLng(pet.coordinates[1], pet.coordinates[0])
@@ -227,7 +228,7 @@ function petIcon(pet: PetPin): L.DivIcon {
 
 function popupHtml(pet: PetPin): string {
   const status = petStatusLabel(pet.status)
-  const detail = [pet.breed ? esc(pet.breed) : '', typeof pet.distanceKm === 'number' && Number.isFinite(pet.distanceKm) ? esc(t('radar.distanceAway', { distance: pet.distanceKm })) : ''].filter(Boolean).join(' · ')
+  const detail = [pet.breed ? esc(pet.breed) : '', isValidDistance(pet.distanceKm) ? esc(pet.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: pet.distanceKm }) }) : t('radar.distanceAway', { distance: pet.distanceKm })) : ''].filter(Boolean).join(' · ')
   return `<div class="pawradar-popup">
       ${imageMarkup(pet.photo, t('pets.photoAlt', { name: pet.name }), 'pawradar-popup-media')}
       <div class="pawradar-popup-body">

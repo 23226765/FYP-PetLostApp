@@ -5,7 +5,7 @@
       <button v-if="toastPet" class="toast" aria-live="polite" @click="openFromToast">
         <ManagedImage :src="toastPet.photo" alt="" />
         <span class="toast-text">
-          <strong>{{ toastPet.name }} · {{ t('common.kilometres', { count: toastPet.distanceKm }) }}</strong>
+          <strong>{{ toastPet.name }}<template v-if="isValidDistance(toastPet.distanceKm)"> · {{ toastPet.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: toastPet.distanceKm }) }) : t('common.kilometres', { count: toastPet.distanceKm }) }}</template></strong>
           <span>{{ t('pets.lastSeenAt', { location: toastPet.location }) }}</span>
         </span>
         <AppIcon name="chevron" :size="18" />
@@ -76,6 +76,7 @@
           @auth-needed="openLogin"
           @logout="logout"
           @updated="handleUserUpdated"
+          @privacy-updated="handlePrivacyUpdated"
           @open-boost="openBoost"
           @toggle-alerts="handleAlertsToggle"
           @radius-change="onRadiusChange"
@@ -389,6 +390,7 @@
 </template>
 
 <script setup lang="ts">
+import { isValidDistance } from './utils/distance'
 import ManagedImage from "./components/ManagedImage.vue"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
@@ -935,6 +937,11 @@ function openBoost() {
     return
   }
   showBoost.value = true
+}
+
+function handlePrivacyUpdated(update: { userId: string; privacy: NonNullable<User['privacy']> }) {
+  if (currentUser.value?.id !== update.userId) return
+  currentUser.value = { ...currentUser.value, privacy: { ...currentUser.value.privacy, ...update.privacy } }
 }
 
 function handleUserUpdated(user: User) {

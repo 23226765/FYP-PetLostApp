@@ -1,5 +1,7 @@
 # PawRadar Backend Overview
 
+Documentation snapshot: 29 October 2026. This reference describes the current working tree, including approved uncommitted workflow repairs. It is not a new runtime verification. See [progress and evidence](../PROGRESS.md) for dated results and [feature status](../development/FYP_FEATURE_GAP.md) for limitations.
+
 ## Runtime and database
 
 - Runtime: Node.js with ES modules.
@@ -19,6 +21,8 @@ production requires an explicit `CORS_ORIGINS` value. `TRUST_PROXY` defaults to
 `false`; use only the deployed reverse proxy's explicit address/CIDR or a
 controlled hop count. Blanket proxy trust is rejected at startup.
 
+The server manifest declares Express `^4.22.3`; exact installed versions belong to the lockfile. Normal startup initializes known collections/indexes and is not a strictly read-only database operation. The guarded [read-only harness](../../server/scripts/verifyManagedImagesReadOnly.js) disables that initialization. Successful read-only Atlas checks were recorded on 28 October; availability was not rechecked for this documentation update.
+
 ## Collections and schemas
 
 Every model uses Mongoose timestamps. Development fixtures can carry the hidden, immutable `seedBatch` marker.
@@ -36,6 +40,7 @@ Every model uses Mongoose timestamps. Development fixtures can carry the hidden,
 | `ContentReport` / `contentreports` | reporter, generic target type/ID, private target owner, reason/details, moderation status, private moderator note, reviewer and review timestamp | One report per reporter/target; status/date and target lookup indexes; only `shelter_admin` receives the safe moderation projection |
 | `UserBlock` / `userblocks` | blocker, blocked | Unique directed user pair plus reverse relationship index; block lists expose only public user summaries |
 | `MediaAsset` / `mediaassets` (opt-in) | provider, private public ID/asset ID/secure URL, width, height, format, bytes, uploader, purpose, checksum, idempotency key, expiry, attachment and recovery states | Unique provider/public ID and uploader/idempotency key; owner/date, state/expiry and attachment indexes. No TTL deletion. Initialization requires `IMAGE_UPLOADS_ENABLED=true`; content `imageIds` references attach transactionally |
+| `MediaUploadBudget` / `mediauploadbudgets` (opt-in) | user reference and revision, timestamps | Unique user; private per-user transaction serialization lock. Authoritative daily/active/stored counts remain in MediaAsset, not a second quota ledger |
 
 ### GeoJSON invariant
 
@@ -78,6 +83,7 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | Method | Path | Auth | Main input | Result |
 |---|---|---:|---|---|
 | GET | `/api/pets` | Optional | species, status, breed, district, page, limit | Paginated listings; authenticated users' own posts excluded |
+| GET | `/api/pets/map` | Optional | west/south/east/north bounds, page/limit; guarded legacy radius mode | Approximate lost/sighted markers, full eligible totals and viewport-wide Area Insights; independent of Radar radius |
 | GET | `/api/pets/mine` | Required | page, limit | Current user's pet reports |
 | GET | `/api/pets/nearby` | Optional | `lat`, `lng`, radiusKm; optional filters/page/limit | Distance-sorted, paginated nearby listings with the same ownership exclusion |
 | POST | `/api/pets/smart-match` | Optional | species, breed, coordinates `[lng,lat]`, limit | Ranked candidates and explainable score breakdown |
@@ -116,6 +122,7 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 | GET | `/api/chat/inbox` | Required | — | Conversations visible to the current user |
 | GET | `/api/chat/:petId` | Required participant | optional participant query for owners | Authorized message thread |
 | POST | `/api/chat/:petId` | Required participant | text/imageIds/sharedStrayId/clientRequestId; participant where required | Idempotently created message and notification |
+| PATCH | `/api/chat/:petId/read` | Required participant | participant where required; `messageIds` for incoming messages | Idempotent read acknowledgment of authorized incoming messages and related notification state |
 | GET | `/api/notifications` | Required | — | Current user's notifications |
 | PUT | `/api/notifications/preferences` | Required | enabled, radiusKm, coordinates `[lng,lat]` | Updated alert settings |
 | PATCH | `/api/notifications/read-all` | Required | — | Marks all current-user notifications read |
@@ -133,16 +140,13 @@ Coordinates are always `[longitude, latitude]`. Longitude is validated from -180
 
 Managed uploads use Cloudinary authenticated delivery and keep credentials, provider IDs
 and signed URLs server-side. Configuration is validated before enabled startup; no
-credentials are printed. Limits and configuration are documented in the README.
-Migration and cleanup are disabled; no automated object deletion or content migration
-runs. Compensating deletion is limited to the server-generated object belonging to
-the failed upload reservation. Recovery state is retained when deletion cannot safely
-complete. Attachment and replacement now commit atomically using MongoDB transactions.
-Failed attachment keeps pending uploads retryable. Replacement deletion occurs only
-after commit, against exact detached IDs. Expired/uncertain reservations await Phase 3
-reconciliation. Optional hidden `imageIds` references do not require rewriting old
-records. Pet submissions declare a partial owner/submission uniqueness index; the
-read-only verification harness never creates indexes.
+credentials are printed. [Current storage configuration/limits](../PROGRESS.md#managed-and-historical-images) distinguish integrated managed writes from readable legacy records. Input is authenticated multipart; new arbitrary URL/Base64 write fields are rejected.
+
+Database attachment/replacement uses MongoDB transactions; provider operations are outside that transaction and use exact-object compensation/recovery state. Failed attachment keeps retryable pending uploads; old references survive failed replacement. Post-commit retirement deletes only exact detached server-owned objects. This is not a distributed MongoDB/Cloudinary transaction.
+
+Transactional quota reservation and heartbeat leases are implemented. Bounded [exact-ID reconciliation](../../server/scripts/reconcileManagedImages.js) exists with dry-run default, an apply environment guard and a separate deletion option. Dry-run can involve database/provider reads and is not permission to run it against existing assets. No background/bulk cleanup or completed historical migration exists. Process-local concurrency and HTTP rate limiters remain separate deployment limitations.
+
+Optional hidden `imageIds` references preserve old records. Pet submissions declare a partial owner/submission uniqueness index; existing redundant legacy indexes are deferred maintenance, not removed by this documentation task. The guarded read-only harness never creates indexes.
 
 Legacy delivery preserves files and database URLs, rejects traversal and filesystem aliases, and requires the intersection of every owning reference's permissions. It does not give administrators access to private conversations. Previously cached/downloaded copies cannot be recalled. See `LEGACY_IMAGE_DELIVERY.md` for compatibility limits and verification details.
 
@@ -155,6 +159,7 @@ Legacy delivery preserves files and database URLs, rejects traversal and filesys
 | PUT | `/api/safety/blocks/:userId` | Required | target user ID | Idempotently blocks the target account |
 | DELETE | `/api/safety/blocks/:userId` | Required | target user ID | Removes only the current user's block |
 | GET | `/api/moderation/reports` | Shelter admin | status, targetType, page, limit | Paginated private queue with safe account summaries and coordinate-free target previews |
+| GET | `/api/moderation/reports/:id/images/:index` | Shelter admin; report-scoped | Existing report ID and image index | Revalidated reported-content evidence, including eligible hidden targets; private/no-store, never general conversation access |
 | PATCH | `/api/moderation/reports/:id` | Shelter admin | status and optional private note | Audited review decision; does not delete or alter target content |
 | PATCH | `/api/moderation/content/:targetType/:targetId/visibility` | Shelter admin | `moderationStatus`, internal reason | Independently hides or restores a supported target with moderator audit data |
 
@@ -164,7 +169,15 @@ suppressed. Emergency pet/rescue posts and safety-critical sighting submission r
 available. Shelter administrators can record reviewed, dismissed, or actioned report
 outcomes independently from an explicit hide/restore action. Hidden records remain stored
 for audit, while ordinary routes return them as unavailable. Moderation endpoints never
-expose contact details or precise coordinates.
+expose contact details or precise coordinates in ordinary queue/decision projections. The separate image-evidence route checks role, report, target and association on every request. Only the reported message is eligible; no general administrator conversation privilege is added. [Evidence policy implementation](../../server/services/moderationEvidence.js).
+
+### Analytics and matching semantics
+
+`/api/analytics/hotspots` aggregates **sightings and rescue reports**, not Pet documents. Hidden parents/content and inactive rescues are excluded; public-cell membership determines eligible cells/counts with explicit output truncation metadata. [Controller](../../server/controllers/analyticsController.js), [aggregation](../../server/services/hotspotAnalytics.js).
+
+Map Area Insights instead counts distinct currently eligible Pet documents across the committed viewport before pagination. Its district/animal/seven-day metrics and historical-data limits are defined in the [Area Insights report](../../verification/AREA_INSIGHTS_2026-10-28.md).
+
+Both match endpoints use the same [rules-based engine](../../server/services/matchEngine.js): species, breed text, spatial decay and recency, not photo analysis. Privacy projection applies to derived scores/rankings as well as coordinates. [Exact rules and evaluation gap](../PROGRESS.md#smart-match-behavior-and-evaluation-gap).
 
 ## Local startup
 
@@ -179,9 +192,9 @@ npm.cmd --prefix server start
 npm.cmd run dev
 ```
 
-Default API: `http://localhost:5000`. Vite commonly uses `http://localhost:5173` and proxies `/api` to the backend.
+Default API: `http://localhost:5000`. The current [Vite configuration](../../vite.config.ts) binds `http://localhost:3000` with `strictPort: true` and proxies `/api` and protected `/uploads`. It does not silently choose 5173.
 
-## Safe checks
+## Read-only HTTP checks
 
 ```powershell
 curl.exe http://localhost:5000/api/health
@@ -191,7 +204,9 @@ npm.cmd run smoke:api
 
 `/api/health` should report `status: "ok"`, `db: "connected"`, and both database fields as `petlostapp`.
 
-## Seed and verification commands
+For strictly read-only Atlas verification use `node server/scripts/verifyManagedImagesReadOnly.js`, which avoids normal collection/index initialization. No connectivity/provider checks were executed while drafting this reference.
+
+## Explicitly authorized seed and mutating verification
 
 The `fyp-demo-v1` seed is guarded and idempotent. It never targets `sample_mflix`. Set `ALLOW_TEST_SEED=true` and `SEED_USER_PASSWORD` only in local `server/.env` before using it.
 
@@ -202,3 +217,5 @@ npm.cmd --prefix server run seed:clean
 ```
 
 Cleanup removes only documents carrying the approved seed-batch marker and requires the same explicit safety flag. Do not run seed or cleanup commands against genuine data without reviewing the configured target first.
+
+`verify:privacy`, `verify:sightings`, `verify:strays`, `verify:preferences` and other workflow-verification scripts may mutate data or create/remove fixtures. They are not interchangeable with smoke/read-only checks. Real local transaction suites write disposable databases; real-provider suites upload/delete scoped provider objects. See the [command safety matrix](../PROGRESS.md#verification-and-command-safety) before invoking any command. This documentation approval authorizes none of those operations.

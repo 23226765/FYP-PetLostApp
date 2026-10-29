@@ -7,7 +7,10 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 
 # Environment variables
-.env*.local
+.env
+.env.*
+!.env.example
+!server/.env.example
 
 # Common ignores
 node_modules
@@ -26,3 +29,18 @@ dist/
 
 # Logs
 *.log
+
+# Generated verification/tool caches (keep intentional reports and fixtures)
+coverage/
+.vite/
+.vitest/
+*.tsbuildinfo
+android/.gradle-user/
+
+# Private signing material; no existing tracked evidence is removed
+*.jks
+*.keystore
+*.p12
+*.pfx
+
+# Ignore rules prevent future accidental additions; they do not redact Git history.

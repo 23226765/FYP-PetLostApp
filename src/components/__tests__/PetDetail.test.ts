@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Pet, Sighting } from '../../types/pet'
 import PetDetail from '../PetDetail.vue'
+import { i18n } from '../../i18n'
 
 const apiMocks = vi.hoisted(() => ({
   getPetSightings: vi.fn(),
@@ -46,7 +47,30 @@ const sighting: Sighting = {
 }
 
 describe('PetDetail sighting history', () => {
-  beforeEach(() => apiMocks.getPetSightings.mockReset())
+  beforeEach(() => { apiMocks.getPetSightings.mockReset(); i18n.global.locale.value = 'en' })
+
+  it.each([undefined, null, NaN, Infinity, -1, '2'])('omits an unavailable/invalid distance (%s), including its icon', async distance => {
+    apiMocks.getPetSightings.mockResolvedValue([])
+    const wrapper = mount(PetDetail, {
+      props: { pet: { ...maple, distanceKm: distance as number | undefined }, user: null },
+      global: { stubs: { MapView: true, AppIcon: true, ContentImageEditor: true } },
+    })
+    await flushPromises()
+    expect(wrapper.find('.title-row .distance').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it.each(['en', 'zh-HK', 'zh-CN'] as const)('keeps zero and approximate-distance wording in %s without deriving coordinates', async language => {
+    i18n.global.locale.value = language
+    apiMocks.getPetSightings.mockResolvedValue([])
+    const value = { ...maple, distanceKm: 0, locationPrecision: 'approximate' as const }
+    const wrapper = mount(PetDetail, { props: { pet: value, user: null }, global: { stubs: { MapView: true, AppIcon: true, ContentImageEditor: true } } })
+    expect(wrapper.get('.title-row .distance').text()).toBe(i18n.global.t('feedDesign.approxDistance', { distance: i18n.global.t('common.kilometres', { count: 0 }) }))
+    await wrapper.setProps({ pet: { ...value, distanceKm: 2, locationPrecision: 'exact' } })
+    expect(wrapper.get('.title-row .distance').text()).toBe(i18n.global.t('radar.distanceAway', { distance: 2 }))
+    expect(value.coordinates).toEqual(maple.coordinates)
+    wrapper.unmount()
+  })
 
   it.each(['lost', 'sighted'] as const)('owner can reunite a %s pet and further sightings are disabled', async (status) => {
     apiMocks.getPetSightings.mockResolvedValue([])

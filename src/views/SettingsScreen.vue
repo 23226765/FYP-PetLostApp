@@ -15,7 +15,7 @@
         <h2 id="language-appearance-heading">{{ t('settings.languageAppearance') }}</h2>
         <div class="settings-card preference-selector-card" :aria-busy="preferenceSaving">
           <p class="preference-help">{{ t('settings.languageAppearanceHelp') }}</p>
-          <fieldset class="preference-fieldset" :disabled="preferenceSaving">
+          <fieldset class="preference-fieldset" :disabled="preferenceSaving || !privacyContextReady">
             <legend>{{ t('settings.language') }}</legend>
             <div class="segmented-control language-control">
               <label
@@ -36,7 +36,7 @@
               </label>
             </div>
           </fieldset>
-          <fieldset class="preference-fieldset" :disabled="preferenceSaving">
+          <fieldset class="preference-fieldset" :disabled="preferenceSaving || !privacyContextReady">
             <legend>{{ t('settings.appearance') }}</legend>
             <div class="segmented-control">
               <label class="option-card" :class="{ active: theme === 'light' }">
@@ -221,7 +221,7 @@
                 <span />
               </button>
             </div>
-            <fieldset class="contact-privacy" :disabled="privacyLoading || privacySaving">
+            <fieldset class="contact-privacy" :disabled="privacyLoading || privacySaving || !privacyContextReady">
               <legend>{{ t('settings.contactPrivacy') }}</legend>
               <p class="privacy-intro">
                 {{ t('settings.contactPrivacyIntro') }}
@@ -251,7 +251,7 @@
               <button
                 class="save-privacy-button"
                 type="button"
-                :disabled="privacyLoading || privacySaving || !privacyDirty"
+                :disabled="privacyLoading || privacySaving || !privacyContextReady || !privacyDirty"
                 @click="saveContactPrivacy"
               >
                 {{ privacySaving ? t('settings.savingPrivacy') : t('settings.savePrivacy') }}
@@ -287,7 +287,7 @@
 
 <script setup lang="ts">
 import ManagedImage from "../components/ManagedImage.vue"
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { Capacitor } from '@capacitor/core'
 import { useImageUpload } from '../composables/useImageUpload'
@@ -301,7 +301,8 @@ import {
   updateContactPrivacy,
   updateProfile,
 } from '../services/api'
-import type { ContactVisibility } from '../services/api'
+import type { ContactPrivacy, ContactVisibility } from '../services/api'
+import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import type { AppLanguage, AppTheme, User } from '../types/user'
 
 const props = defineProps<{ user: User | null; alertsEnabled: boolean; radiusKm: number }>()
@@ -309,6 +310,7 @@ const emit = defineEmits<{
   logout: []
   'auth-needed': []
   updated: [user: User]
+  'privacy-updated': [update: { userId: string; privacy: ContactPrivacy }]
   'open-boost': []
   'toggle-alerts': [enabled: boolean]
   'radius-change': [radiusKm: number]
@@ -348,16 +350,39 @@ const avatarInput = ref<HTMLInputElement | null>(null)
 const avatarUpload = useImageUpload('avatar')
 const form = reactive({ name: '', realName: '', email: '', phone: '', avatar: '' })
 const MAX_SOURCE_FILE_BYTES = 8 * 1024 * 1024
+const privacyContextReady = ref(true)
+let disposed = false, accountEpoch = 0, privacySequence = 0, preferenceSequence = 0
+let settingsContext = captureAuthContext()
+let settingsUserId: string | undefined
+
+function operationCurrent(kind: 'privacy' | 'preference', sequence: number) {
+  const context = captureAuthContext(), epoch = accountEpoch, userId = props.user?.id
+  return () => !disposed && privacyContextReady.value && epoch === accountEpoch && userId === props.user?.id &&
+    sequence === (kind === 'privacy' ? privacySequence : preferenceSequence) && isAuthContextCurrent(context)
+}
+
+function invalidateSettings() {
+  accountEpoch++; privacySequence++; preferenceSequence++
+  privacyContextReady.value = false
+  privacyLoading.value = false; privacySaving.value = false
+  privacyError.value = ''; privacyMessage.value = ''
+  preferenceError.value = ''; preferenceMessage.value = ''
+  contactVisibility.value = 'private'; savedContactVisibility.value = 'private'
+}
+window.addEventListener('auth:changed', invalidateSettings)
+onBeforeUnmount(() => { disposed = true; invalidateSettings(); window.removeEventListener('auth:changed', invalidateSettings) })
 
 async function updatePreference(update: { language?: AppLanguage; theme?: AppTheme }) {
+  if (!privacyContextReady.value) return
+  const active = operationCurrent('preference', ++preferenceSequence)
   preferenceError.value = ''
   preferenceMessage.value = ''
   clearPreferenceStatus()
   try {
     await setPreferences(update)
-    preferenceMessage.value = t('settings.preferencesSaved')
+    if (active()) preferenceMessage.value = t('settings.preferencesSaved')
   } catch (caught) {
-    preferenceError.value = `${t('settings.preferencesSaveFailed')} ${translateApiError(caught, 'errors.savePreferences')}`
+    if (active()) preferenceError.value = `${t('settings.preferencesSaveFailed')} ${translateApiError(caught, 'errors.savePreferences')}`
   }
 }
 
@@ -378,8 +403,11 @@ function resetForm(user: User | null) {
 }
 
 watch(
-  () => props.user?.id,
+  () => props.user,
   () => {
+    if (privacyContextReady.value && settingsUserId === props.user?.id && isAuthContextCurrent(settingsContext)) return
+    invalidateSettings()
+    settingsUserId = props.user?.id; settingsContext = captureAuthContext(); privacyContextReady.value = true
     avatarUpload.reset(false)
     resetForm(props.user)
     editingProfile.value = false
@@ -387,10 +415,11 @@ watch(
     profileMessage.value = ''
     void loadContactPrivacy()
   },
-  { immediate: true },
+  { immediate: true, flush: 'sync' },
 )
 
 async function loadContactPrivacy() {
+  const active = operationCurrent('privacy', ++privacySequence)
   const user = props.user
   const initial = user?.privacy?.contactVisibility || 'private'
   contactVisibility.value = initial
@@ -402,33 +431,37 @@ async function loadContactPrivacy() {
   privacyLoading.value = true
   try {
     const privacy = await getContactPrivacy()
+    if (!active()) return
     contactVisibility.value = privacy.contactVisibility
     savedContactVisibility.value = privacy.contactVisibility
   } catch (caught) {
-    privacyError.value = translateApiError(caught, 'errors.loadPrivacy')
+    if (active()) privacyError.value = translateApiError(caught, 'errors.loadPrivacy')
   } finally {
-    privacyLoading.value = false
+    if (active()) privacyLoading.value = false
   }
 }
 
 async function saveContactPrivacy() {
-  if (!props.user || privacySaving.value || !privacyDirty.value) return
+  if (!props.user || !privacyContextReady.value || privacyLoading.value || privacySaving.value || !privacyDirty.value) return
+  const userId = props.user.id
+  const active = operationCurrent('privacy', ++privacySequence)
   privacySaving.value = true
   privacyError.value = ''
   privacyMessage.value = ''
   try {
     const privacy = await updateContactPrivacy(contactVisibility.value)
+    if (!active()) return
     contactVisibility.value = privacy.contactVisibility
     savedContactVisibility.value = privacy.contactVisibility
-    emit('updated', { ...props.user, privacy })
+    emit('privacy-updated', { userId, privacy })
     privacyMessage.value =
       privacy.contactVisibility === 'private'
         ? t('settings.privacyPrivateSaved')
         : t('settings.privacyAuthenticatedSaved')
   } catch (caught) {
-    privacyError.value = translateApiError(caught, 'errors.savePrivacy')
+    if (active()) privacyError.value = translateApiError(caught, 'errors.savePrivacy')
   } finally {
-    privacySaving.value = false
+    if (active()) privacySaving.value = false
   }
 }
 

@@ -29,7 +29,7 @@
           <p class="species">{{ animalLabel }} · {{ conditionLabel(stray.condition) }}</p>
           <p>{{ stray.description }}</p>
           <p class="location"><AppIcon name="pin" :size="15" />{{ stray.location }}, {{ districtLabel(stray.district) }}</p>
-          <time :datetime="stray.observedAt">{{ t('strays.observed', { date: formatDateTime(stray.observedAt) }) }}</time>
+          <time :datetime="stray.observedAt">{{ t('strays.observed', { date: formatDateTime(stray.observedAt, REPORT_TIME_ZONE) }) }}</time>
         </div>
         <div class="post-actions">
           <button type="button" @click="focusComment"><AppIcon name="message" :size="20" />{{ t('strays.comment') }}</button>
@@ -114,6 +114,7 @@
 </template>
 
 <script setup lang="ts">
+import { REPORT_TIME_ZONE } from '../utils/hongKongDateTime'
 import ManagedImage from "../components/ManagedImage.vue"
 import ContentImageEditor from '../components/ContentImageEditor.vue'
 import type { ManagedImage as ManagedImageData } from '../services/api'

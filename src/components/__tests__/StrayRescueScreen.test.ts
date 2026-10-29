@@ -54,6 +54,19 @@ describe('Stray community feed and report flow', () => {
     HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
   })
 
+  it('initializes the observation input in Hong Kong time across the UTC date boundary', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-29T20:30:00.000Z'))
+    try {
+      const { wrapper } = await render([])
+      await wrapper.get('.report-button').trigger('click')
+      const input = wrapper.get('input[type="datetime-local"]')
+      expect((input.element as HTMLInputElement).value).toMatch(/^2026-10-30T04:30/)
+      expect(input.attributes('max')).toMatch(/^2026-10-30T04:30/)
+      wrapper.unmount()
+    } finally { vi.useRealTimers() }
+  })
+
   it.each(['en', 'zh-HK', 'zh-CN'] as const)('renders counts and the specific animal name in %s', async locale => {
     i18n.global.locale.value = locale
     const { wrapper } = await render([{ ...stray, species: 'Other', animalType: 'Tiger', commentCount: 1 }])
@@ -67,6 +80,13 @@ describe('Stray community feed and report flow', () => {
     }
     wrapper.unmount()
     i18n.global.locale.value = 'en'
+  })
+
+  it.each([undefined, NaN, -1, 0])('omits invalid rescue distances and keeps approximate zero (%s)', async distanceKm => {
+    const { wrapper } = await render([{ ...stray, distanceKm, locationPrecision: 'approximate' }])
+    expect(wrapper.find('.feed-distance').exists()).toBe(distanceKm === 0)
+    if (distanceKm === 0) expect(wrapper.get('.feed-distance').text()).toBe(i18n.global.t('feedDesign.approxDistance', { distance: i18n.global.t('common.kilometres', { count: 0 }) }))
+    wrapper.unmount()
   })
 
   it('removes noninteractive skeletons once the existing rescue request completes', async () => {
@@ -169,11 +189,30 @@ describe('Stray community feed and report flow', () => {
     const textInput = wrapper.find('.report-sheet input[placeholder="Street, landmark, or park"]')
     await textInput.setValue('Market entrance')
     await wrapper.get('.report-sheet textarea').setValue('Calm ginger cat near the entrance')
+    await wrapper.get('input[type="datetime-local"]').setValue('2026-01-01T00:01:02.345')
     await wrapper.get('.report-sheet').trigger('submit'); await flushPromises()
     expect(apiMocks.uploadManagedImage).toHaveBeenCalledWith(expect.objectContaining({ size: 3, type: 'image/png' }), 'stray', expect.any(String), expect.objectContaining({ signal: expect.objectContaining({ aborted: false }) }))
     expect(apiMocks.reportStray).toHaveBeenCalledWith(expect.objectContaining({
       coordinates: [114.18, 22.29], imageIds: ['123456789012345678901234'],
+      observedAt: '2025-12-31T16:01:02.345Z',
     }))
+  })
+
+  it.each(['', '2099-01-01T00:00'])('keeps the rescue draft and does not upload/submit an invalid or future time (%s)', async value => {
+    localStorage.setItem('token', 'fictional-time-validation')
+    const { wrapper } = await render([])
+    await wrapper.get('.report-button').trigger('click')
+    await wrapper.get('.photo-button').trigger('click'); await flushPromises()
+    await wrapper.get('.location-stub').trigger('click')
+    await wrapper.get('.report-sheet textarea').setValue('Preserved rescue draft')
+    await wrapper.get('input[type="datetime-local"]').setValue(value)
+    await wrapper.get('.report-sheet').trigger('submit'); await flushPromises()
+    expect(wrapper.get('.form-error').text()).toBe(i18n.global.t('messageRepair.observedTime'))
+    expect(wrapper.get('.report-sheet textarea').element).toHaveProperty('value', 'Preserved rescue draft')
+    expect(wrapper.find('.photo-button img').exists()).toBe(true)
+    expect(apiMocks.uploadManagedImage).not.toHaveBeenCalled()
+    expect(apiMocks.reportStray).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('requires and displays a specific animal type for the Other category', async () => {

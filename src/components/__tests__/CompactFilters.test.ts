@@ -21,7 +21,7 @@ it.each(['en', 'zh-HK', 'zh-CN'] as const)('%s exposes only animal/district filt
   expect(wrapper.emitted('species-change')?.at(-1)).toEqual(['Cats'])
   expect(wrapper.emitted('district-change')?.at(-1)).toEqual(['Sha Tin'])
   expect(wrapper.get('.radius-trigger').text()).toContain('19')
-  expect(wrapper.get('.detail-filters .radius-trigger').exists()).toBe(true)
+  expect(wrapper.find('.detail-filters .radius-trigger').exists()).toBe(true)
   await wrapper.get('.radius-trigger').trigger('click'); await flushPromises()
   expect(wrapper.get('dialog').attributes()).toHaveProperty('open')
   expect(wrapper.findAll('input[type="radio"]').map(input => input.element.getAttribute('value'))).toEqual(['1', '5', '10', '15', '20'])
