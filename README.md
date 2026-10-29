@@ -9,10 +9,10 @@ This repository supports an **HKBU Final Year Project** and a provisional **ISA 
 ## For supervisor review
 
 1. Start with [PROGRESS: achievements, current work and next steps](docs/PROGRESS.md#progress-at-a-glance).
-2. Review the [requirement-to-evidence matrix](docs/PROGRESS.md#requirements-and-implementation-evidence), then the [verification categories and limitations](docs/PROGRESS.md#verification-and-command-safety). Technical tests are distinct from user evaluation.
+2. Review the [requirement-to-evidence matrix](docs/PROGRESS.md#requirements-and-implementation-evidence), then the [four representative reports and their limitations](docs/PROGRESS.md#evidence-categories). Technical tests are distinct from user evaluation.
 3. Discuss the [risks and evaluation needs](docs/PROGRESS.md#risks-planned-work-and-evaluation-needs) and [provisional ISA evidence gaps](docs/PROGRESS.md#provisional-isa-second-progress-report-evidence-gaps). Detailed backend and historical reports are linked from PROGRESS for optional reference.
 
-Optional follow-up: [technical reference](docs/technical/BACKEND_OVERVIEW.md), [developer handover](docs/development/HANDOVER.md), and the dated evidence linked from PROGRESS. The existing `verification/` tree remains in place; no archived browser reports or runtime artifacts were relocated.
+Use [PROGRESS's evidence index](docs/PROGRESS.md#evidence-categories) for optional historical reports; they remain available at their existing paths.
 
 ## Current capabilities
 
@@ -106,13 +106,6 @@ These commands are listed for future use, **not rerun during this documentation 
 | `npm --prefix server run test:transactions` | Writes only disposable local replica-set fixtures; provider mocked. May download the MongoDB test binary. |
 | Seed, live workflow scripts, reconciliation apply and real-provider verification | **Not routine read-only checks.** Require separate scoped authorization and review; see the [command classification](docs/PROGRESS.md#verification-and-command-safety). |
 
-Recorded results include actual MongoDB, separate real-provider and browser evidence; none establishes user effectiveness by test count alone. [Dated evidence and limits](docs/PROGRESS.md#verification-and-command-safety).
-
-## Project references
-
-- [Progress report and evidence index](docs/PROGRESS.md): provisional ISA structure; official brief/supervisor mapping pending.
-- [Audit checklist](docs/development/AUDIT_FINDINGS_CHECKLIST.md): original 22 findings plus separate integration/workflow findings.
-- [Backend reference](docs/technical/BACKEND_OVERVIEW.md), [legacy-image permissions](docs/technical/LEGACY_IMAGE_DELIVERY.md), and [dated dependency review](docs/verification/DEPENDENCY_SECURITY_REVIEW.md).
-- [Original image-integration report](docs/verification/IMAGE_STORAGE_PHASE2_REPORT.md): historical report; later repair evidence supersedes its pending quota/recovery/verification notes.
+Recorded results include actual MongoDB, separate real-provider and browser evidence; none establishes user effectiveness by test count alone. The [PROGRESS evidence index](docs/PROGRESS.md#evidence-categories) is the entry point for representative reports and optional historical detail.
 
 Historical identifying configuration remains in Git history despite current generic examples. Do not assume `.gitignore` removes history or that every evidence artifact is approved for public sharing. No paid-service commitment or unrestricted public-deployment approval is implied.

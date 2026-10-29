@@ -138,6 +138,20 @@ Existing URL/Base64 records remain readable, but new public write endpoints reje
 
 These are **recorded historical results**, not tests rerun for this documentation update. Counts from overlapping targeted runs must not be summed as independent effectiveness evidence.
 
+Start with these four representative reports. Each supports a different kind of technical claim; none substitutes for a user study or physical-device evaluation.
+
+| Representative report | What it demonstrates | Verification limitations |
+| --- | --- | --- |
+| [Application regression and real MongoDB verification — 27 October](../verification/APP_UI_BATCHES_2026-10-27.md) | Records frontend/backend regressions and separately run disposable MongoDB suites covering geospatial queries, transactions and rollback. | Ordinary tests use mocks; real database suites ran separately with the provider mocked. No fresh Atlas/provider check or complete browser review in that batch. |
+| [Recovery, messaging and moderation through the actual browser — 23 October](../verification/browser-integration-2026-10-23/fda05496cacf470aad07dd8fca089c24/BROWSER_RESULTS.md) | Records actual UI interactions for reporting, sightings, reunion, messaging, rescue management, privacy and moderation, including observed defects. | Real Vue/Express and disposable MongoDB; storage mocked. Selected desktop/mobile-width and language/theme samples, not physical devices or exhaustive coverage. Some defects were repaired in later batches. |
+| [Independent Map viewport and read-only API/privacy verification — 28 October](../verification/MAP_VIEWPORT_INDEPENDENCE_2026-10-28.md) | Records Radar/Map independence, public-cell query invariance and pagination using real local MongoDB, plus guarded read-only Atlas/API checks. | Atlas availability is historical; browser appearance and concurrent-write snapshot consistency are not established. The report records the stale backend/restart requirement and shutdown-diagnostic limitation. |
+| [Preference, Hong Kong timestamp and distance repairs — 29 October](../verification/WORKFLOW_REPAIRS_2026-10-29.md) | Records pre-fix reproductions and targeted regressions for stale privacy/preference updates, timestamp round-trips and missing/zero distances; timezone checks use actual Node subprocesses. | Component requests are mocked. No fresh full suite, browser, database or provider run; incorrectly stored historical timestamps are not rewritten. |
+
+<details>
+<summary>Optional supporting evidence: detailed historical coverage and limitations</summary>
+
+The reports below retain additional image/provider, browser-continuation, analytics and visual evidence. Earlier pending statements must be read alongside the later repair entries in the audit checklist. All historical files and operational paths remain unchanged.
+
 | Evidence type | Recorded result | What it does not establish |
 | --- | --- | --- |
 | Mocked/component and ordinary backend suites | [27 October integration report](../verification/APP_UI_BATCHES_2026-10-27.md): 438 frontend passes; 299 backend passes with seven opt-in suites skipped. | Not proof that the skipped real database suites ran in that command, nor native/browser/user usability. |
@@ -148,6 +162,8 @@ These are **recorded historical results**, not tests rerun for this documentatio
 | Latest workflow repairs | [29 October repair report](../verification/WORKFLOW_REPAIRS_2026-10-29.md): pre-fix reproduction, 290 distinct relevant tests across selected runs/corrective reruns, actual Node processes in three timezones; type/lint/build checks. APIs are mocked in component tests. | Not a fresh full suite, browser, MongoDB or provider run. These repair files are still uncommitted. |
 | Latest visual work | [28 October consistency report](../verification/VISUAL_CONSISTENCY_2026-10-28.md) and current theme source distinguish component/style-contract checks from subjective appearance. Later compact buttons and warm palette have focused checks recorded in the work discussion, not a separate comprehensive browser report. | Not physical-device touch, rendered focus/contrast at every screen, or demonstrated user benefit. |
 | Documentation-only checks | This draft checks relative links/anchors, code references, examples/ignore behavior, diff integrity and sensitive-value patterns. | No application suite, connectivity, provider or browser verification was rerun. |
+
+</details>
 
 The [audit checklist](development/AUDIT_FINDINGS_CHECKLIST.md) retains the original 22 findings, separate integration issues and stable BROW-PREF-01/BROW-TIME-01/BROW-DIST-01 repairs. Original status counts are scoped to their evidence; they do not close every later observation. The historical unidentified intermittent backend failure remains documented, even though later standard runs passed without recurrence.
 
