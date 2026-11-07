@@ -23,7 +23,7 @@ export type HongKongDistrict = (typeof HK_DISTRICTS)[number]
 export type LocationPrecision = 'exact' | 'approximate'
 
 export interface MapBounds { west: number; south: number; east: number; north: number }
-export interface MapViewChange { lat: number; lng: number; zoom: number; bounds: MapBounds; initial?: boolean }
+export interface MapViewChange { lat: number; lng: number; zoom: number; bounds: MapBounds; initial?: boolean; reason?: 'resize' }
 
 export interface AreaInsights {
   total: number

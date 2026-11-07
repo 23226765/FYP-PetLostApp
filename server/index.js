@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import express from 'express'
 import { errorHandler } from './middleware/errorHandler.js'
+import assistantRouter from './routes/assistant.js'
 import {
   connectDatabase,
   databaseErrorMessage,
@@ -61,6 +62,7 @@ try {
 } catch (error) {
   httpSecurityError = error
 }
+app.use('/api/assistant', assistantRouter)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use('/uploads', legacyImagesRouter)

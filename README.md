@@ -98,6 +98,40 @@ npm run dev
 
 Vite is configured for **http://localhost:3000** with strict port binding; the API defaults to **http://localhost:5000**. Vite proxies `/api` and protected `/uploads` requests. Normal backend startup may initialize collections/indexes. For production, exact CORS origins and deployment-specific proxy trust are required; see [runtime configuration](docs/technical/BACKEND_OVERVIEW.md#runtime-and-database). No production hosting is verified here.
 
+## PawRadar Assistant
+
+Radar's floating chat button opens an in-page panel above the navigation. Reviewed, localized app help is **scripted guidance, not AI** and works without provider configuration. Optional Cloudflare Workers AI responses are genuine AI, labelled separately, and cannot access records, locate pets, upload images or perform application actions. Conversation is bounded in memory and cleared on session changes; submitted AI text is processed externally only after explicit consent.
+
+<details>
+<summary>Optional Cloudflare Workers AI Free configuration and verification limits</summary>
+
+Hosted AI is disabled by default. Keep the Cloudflare account on **Workers Free**, without activating billing, upgrading or buying AI Gateway credits. Under Workers AI → Use REST API, use the Workers AI API token template restricted to the intended account and copy its Account ID. A custom token needs Workers AI Read and Edit permissions, as described in the [REST setup guide](https://developers.cloudflare.com/workers-ai/get-started/rest-api/). No deployed Worker or new application is needed: the existing Express backend calls the REST API.
+
+Configure these exact names locally in `server/.env`, preserving all other settings. Keep both switches false initially:
+
+```dotenv
+ASSISTANT_AI_ENABLED=false
+ASSISTANT_PROVIDER=cloudflare
+CLOUDFLARE_AI_MODEL=@cf/qwen/qwen3.8-27b
+CLOUDFLARE_ACCOUNT_ID=your_32_character_account_id
+CLOUDFLARE_API_TOKEN=your_workers_ai_api_token
+CLOUDFLARE_FREE_PLAN_CONFIRMED=false
+```
+
+Account IDs must contain exactly 32 hexadecimal characters. Once you have confirmed Workers Free and deliberately want to enable hosted AI, set `CLOUDFLARE_FREE_PLAN_CONFIRMED=true` and `ASSISTANT_AI_ENABLED=true`, then restart the backend. The confirmation is an operator attestation, not an automated billing check or spending cap. Leave AI disabled if the plan is uncertain. Never put the token in frontend variables, Git or chat. Legacy Groq settings are ignored; there is no fallback to them. No billing, paid fallback, provider switching or automatic retry is implemented.
+
+Official documentation reviewed on 7 November 2026 lists [Qwen 3.8 27B](https://developers.cloudflare.com/workers-ai/models/qwen3.8-27b/) and a shared [Free allocation of 10,000 neurons/day](https://developers.cloudflare.com/workers-ai/platform/pricing/), resetting at 00:00 UTC (08:00 Hong Kong time). Free requests fail after the allocation; some other models require paid access. This is not a guaranteed number of messages or uninterrupted availability. The only allowlisted model is `@cf/qwen/qwen3.8-27b`; a paid-only, arbitrary or retired model is not selected automatically.
+
+Application limits: 1,000 UTF-16 code units per question, six prior messages/4,000 code units of context, 24 displayed messages, 32KiB request/provider-response bodies, 768 completion tokens including reasoning, 4,000 code units in the final answer, 20-second provider timeout, two concurrent requests, six requests/minute/IP and 100 AI admissions/24 hours/process. Completed provider content is not cached. Throttles are in memory and reset on process restart; provider Free limits remain the final external boundary. Stop aborts the request but cannot guarantee that already-started provider work consumes no quota. Explicit retry may consume another request; it does not create duplicate displayed user turns.
+
+The public assistant endpoint has no authentication/model/database dependency; its small parser is mounted before ordinary application parsers. Existing application startup still uses the normal database connection. The assistant sends no account token, cookies, profile, coordinates or report data. Its public reviewed-help catalogue is the only application knowledge supplied to the provider. Users must not type private information; this warning is not automatic anonymization. Provider errors are sanitized and cannot sign users out.
+
+[Cloudflare's data policy](https://developers.cloudflare.com/workers-ai/platform/data-usage/) states no model training on Customer Content and limited retention for standard stateless inference, subject to its documented exceptions; operational metadata may be retained. This is distinct from PawRadar's memory-only conversation storage and is not a promise of Hong Kong-only processing. There is no Groq-style ZDR setting or flag in this integration. Requests use the [direct compatible API](https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/) with `store:false`, no AI Gateway, no tools and no stateful features. Only final answer text is returned; reasoning and provider metadata are discarded. The existing consent declaration remains, and reviewed help does not require external processing. This is general reporting guidance, not veterinary or emergency expertise.
+
+Verification uses mocked provider responses, mounted components and isolated local HTTP routes, with database imports forbidden in a module-loading check. No live provider request, Atlas change or browser/device check was performed for this batch. Dashboard accessibility does not verify token permissions, model entitlement, actual inference from Hong Kong or latency. Those, actual account Free settings, output quality in each language and physical mobile-keyboard usability remain unverified. Free-tier exhaustion and errors leave reviewed help available, without silently labelling it AI.
+
+</details>
+
 ## Verification and safety
 
 ```sh

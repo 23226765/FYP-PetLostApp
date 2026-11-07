@@ -146,3 +146,97 @@ it('makes failed or unavailable statistics explicit and clears them on account c
   expect(wrapper.getComponent({ name: 'AreaInsightsCard' }).props('insights')).toBeNull()
   wrapper.unmount()
 })
+
+it('retries a failed next page without losing loaded markers, totals or the committed bounds', async () => {
+  api.getMapPets.mockResolvedValueOnce(response(['first'], 1, true)).mockRejectedValueOnce(new Error('Temporary page failure')).mockResolvedValueOnce(response(['second'], 2))
+  const wrapper = render(); await flushPromises()
+  try {
+    await wrapper.get('.map-feedback button').trigger('click'); await flushPromises()
+    expect(wrapper.getComponent({ name: 'MapView' }).props('discoveryPets').map((item: { id: string }) => item.id)).toEqual(['first'])
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await wrapper.get('[role="alert"] button').trigger('click'); await flushPromises()
+    expect(api.getMapPets.mock.calls.at(-1)?.[0]).toEqual({ ...SUPPORTED_MAP_BOUNDS, page: 2, limit: 100 })
+    expect(wrapper.getComponent({ name: 'MapView' }).props('discoveryPets').map((item: { id: string }) => item.id)).toEqual(['first', 'second'])
+    expect(wrapper.text()).toContain('2 of 201')
+  } finally { wrapper.unmount() }
+})
+
+it('a previous-area failure/finally cannot clear the loading state or replace a newer result', async () => {
+  vi.useFakeTimers()
+  let rejectOld!: (reason: unknown) => void, finishNew!: (value: unknown) => void
+  api.getMapPets.mockReturnValueOnce(new Promise((_resolve, reject) => { rejectOld = reject }))
+  api.getMapPets.mockReturnValueOnce(new Promise(resolve => { finishNew = resolve }))
+  const wrapper = render()
+  try {
+    const bounds = { west: 114.1, east: 114.3, south: 22.3, north: 22.5 }
+    wrapper.getComponent({ name: 'MapView' }).vm.$emit('view-change', { lat: 22.4, lng: 114.2, zoom: 15, bounds })
+    await vi.advanceTimersByTimeAsync(300); await flushPromises()
+    rejectOld(new Error('Obsolete query failed')); await flushPromises()
+    expect(wrapper.get('.map-canvas').attributes('aria-busy')).toBe('true')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    finishNew(response(['new-area'])); await flushPromises()
+    expect(wrapper.get('.map-canvas').attributes('aria-busy')).toBe('false')
+    expect(wrapper.getComponent({ name: 'MapView' }).props('discoveryPets').map((item: { id: string }) => item.id)).toEqual(['new-area'])
+  } finally { wrapper.unmount(); vi.useRealTimers() }
+})
+
+it('keeps the current request and committed results across layout resize, searching resized bounds only explicitly', async () => {
+  vi.useFakeTimers()
+  let complete!: (value: unknown) => void
+  api.getMapPets.mockResolvedValueOnce({ ...response(['initial']), insights: insights(201) })
+  api.getMapPets.mockReturnValueOnce(new Promise(resolve => { complete = resolve }))
+  const wrapper = render()
+  try {
+    await flushPromises()
+    const map = wrapper.getComponent({ name: 'MapView' })
+    const searched = { west: 114.1, east: 114.3, south: 22.3, north: 22.5 }
+    const resized = { ...searched, north: 22.45 }
+    map.vm.$emit('view-change', { lat: 22.4, lng: 114.2, zoom: 14, bounds: searched })
+    await vi.advanceTimersByTimeAsync(300)
+    const signal = api.getMapPets.mock.calls[1][1] as AbortSignal
+    map.vm.$emit('view-change', { lat: 22.4, lng: 114.2, zoom: 14, bounds: resized, reason: 'resize' })
+    await vi.advanceTimersByTimeAsync(350)
+    expect(api.getMapPets).toHaveBeenCalledTimes(2)
+    expect(signal.aborted).toBe(false)
+    complete({ ...response(['searched']), insights: insights(9) }); await flushPromises()
+    expect(map.props('discoveryPets').map((item: { id: string }) => item.id)).toEqual(['searched'])
+    expect(wrapper.getComponent({ name: 'AreaInsightsCard' }).props('insights').total).toBe(9)
+    expect(wrapper.get('.search-area').attributes('disabled')).toBeUndefined()
+    await wrapper.get('.search-area').trigger('click'); await flushPromises()
+    expect(api.getMapPets.mock.calls.at(-1)?.[0]).toEqual({ ...resized, page: 1, limit: 100 })
+  } finally { wrapper.unmount(); vi.useRealTimers() }
+})
+
+it('cancels superseded pans, settles a latest-area failure and retries markers and insights together', async () => {
+  vi.useFakeTimers()
+  let completeOld!: (value: unknown) => void, failLatest!: (reason: unknown) => void
+  api.getMapPets.mockResolvedValueOnce(response(['initial']))
+  api.getMapPets.mockReturnValueOnce(new Promise(resolve => { completeOld = resolve }))
+  api.getMapPets.mockReturnValueOnce(new Promise((_resolve, reject) => { failLatest = reject }))
+  const wrapper = render()
+  try {
+    await flushPromises()
+    const map = wrapper.getComponent({ name: 'MapView' })
+    const first = { west: 114.1, east: 114.3, south: 22.3, north: 22.5 }
+    const latest = { ...first, east: 114.2 }
+    map.vm.$emit('view-change', { lat: 22.4, lng: 114.2, zoom: 14, bounds: first })
+    await vi.advanceTimersByTimeAsync(300)
+    const oldSignal = api.getMapPets.mock.calls[1][1] as AbortSignal
+    map.vm.$emit('view-change', { lat: 22.4, lng: 114.15, zoom: 15, bounds: latest })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(oldSignal.aborted).toBe(true)
+    completeOld({ ...response(['obsolete']), insights: insights(999) }); await flushPromises()
+    expect(wrapper.get('.map-canvas').attributes('aria-busy')).toBe('true')
+    failLatest(new Error('Latest area unavailable')); await flushPromises()
+    expect(wrapper.get('.map-canvas').attributes('aria-busy')).toBe('false')
+    expect(wrapper.get('.search-area').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.map-heading button').attributes('disabled')).toBeUndefined()
+    expect(map.props('discoveryPets')).toEqual([])
+    expect(wrapper.getComponent({ name: 'AreaInsightsCard' }).props('insights')).toBeNull()
+    api.getMapPets.mockResolvedValueOnce({ ...response(['retry']), insights: insights(3) })
+    await wrapper.get('[role="alert"] button').trigger('click'); await flushPromises()
+    expect(api.getMapPets.mock.calls.at(-1)?.[0]).toEqual({ ...latest, page: 1, limit: 100 })
+    expect(map.props('discoveryPets').map((item: { id: string }) => item.id)).toEqual(['retry'])
+    expect(wrapper.getComponent({ name: 'AreaInsightsCard' }).props('insights').total).toBe(3)
+  } finally { wrapper.unmount(); vi.useRealTimers() }
+})

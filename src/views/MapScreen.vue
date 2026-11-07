@@ -77,8 +77,9 @@ async function load(reset = true) {
 function searchHere() { clear(); queryBounds.value = supportedViewport(view.value.bounds); if (queryBounds.value) void load() }
 function changeView(next: MapViewChange) {
   view.value = next; hasView.value = true
-  // Initial fit/restore reports camera state; it must not reset retained pages.
-  if (next.initial) return
+  // Layout changes update the camera for explicit Search, but keep markers and
+  // insights on their committed query. Otherwise panel resizing can query itself.
+  if (next.initial || next.reason === 'resize') return
   const bounds = supportedViewport(next.bounds)
   if (sameMapBounds(bounds, queryBounds.value)) return
   clear(); queryBounds.value = bounds

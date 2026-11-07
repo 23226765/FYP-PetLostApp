@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import L from 'leaflet'
 import type { Sighting } from '../../types/pet'
 import type { HotspotCell } from '../../types/analytics'
 import MapView from '../MapView.vue'
@@ -118,6 +119,81 @@ vi.mock('leaflet', () => {
       latLngBounds: vi.fn(() => ({ pad: vi.fn(() => ({})) })),
     },
   }
+})
+
+describe('dedicated Map Leaflet lifecycle', () => {
+  beforeEach(() => { vi.clearAllMocks(); leafletState.pins = [] })
+  afterEach(() => vi.unstubAllGlobals())
+  const props = { pets: [], discoveryPets: [], center: { lat: 22.36, lng: 114.16 }, initialZoom: 10, clusterPets: true, fillHeight: true, showUserLocation: false, showRadius: false }
+  const instance = () => vi.mocked(L.map).mock.results.at(-1)!.value
+
+  it('fits the supported overview, emits its initial camera and uses discovery clusters without GPS or radius', async () => {
+    const { getCurrentLocation } = await import('../../services/geolocation')
+    const bounds = { west: 113.82, south: 22.15, east: 114.5, north: 22.57 }
+    const wrapper = mount(MapView, { props: { ...props, initialBounds: bounds } })
+    try {
+      await flushPromises()
+      expect(L.map).toHaveBeenCalledTimes(1)
+      expect(L.map).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ center: [22.36, 114.16], zoom: 10 }))
+      expect(instance().fitBounds).toHaveBeenCalledWith([[22.15, 113.82], [22.57, 114.5]], { padding: [12, 12], animate: false })
+      expect(vi.mocked(L.markerClusterGroup).mock.calls[0][0]).toEqual(expect.objectContaining({ maxClusterRadius: 42, showCoverageOnHover: false }))
+      expect(L.circle).not.toHaveBeenCalled()
+      expect(getCurrentLocation).not.toHaveBeenCalled()
+      expect(wrapper.emitted('view-change')?.[0][0]).toEqual(expect.objectContaining({ initial: true, zoom: 13 }))
+      expect(wrapper.get('.map-wrap').classes()).toContain('full-height')
+    } finally { wrapper.unmount() }
+  })
+
+  it('coalesces container resize invalidation and removes map, tile handlers, observer and queued frame', async () => {
+    const frames = new Map<number, FrameRequestCallback>()
+    let frameId = 0, observerCallback!: ResizeObserverCallback
+    const disconnect = vi.fn(), observe = vi.fn()
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => { frames.set(++frameId, callback); return frameId }))
+    vi.stubGlobal('cancelAnimationFrame', vi.fn((id: number) => frames.delete(id)))
+    vi.stubGlobal('ResizeObserver', class { constructor(callback: ResizeObserverCallback) { observerCallback = callback } observe = observe; disconnect = disconnect })
+    const wrapper = mount(MapView, { props })
+    await flushPromises()
+    const map = instance()
+    expect(observe).toHaveBeenCalledWith(wrapper.get('.leaflet-map').element)
+    observerCallback([], {} as ResizeObserver); observerCallback([], {} as ResizeObserver)
+    expect(frames.size).toBe(1)
+    const [id, callback] = [...frames][0]; frames.delete(id); callback(0)
+    expect(map.invalidateSize).toHaveBeenCalledTimes(1)
+    observerCallback([], {} as ResizeObserver)
+    const afterResize = [...frames.values()][0]
+    wrapper.unmount()
+    expect(map.remove).toHaveBeenCalledTimes(1)
+    expect(leafletState.tileOff).toHaveBeenCalledTimes(1)
+    expect(disconnect).toHaveBeenCalledTimes(1)
+    expect(frames.size).toBe(0)
+    afterResize(0)
+    expect(map.invalidateSize).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not create an orphan map when navigation unmounts before async initialization settles', async () => {
+    const wrapper = mount(MapView, { props })
+    wrapper.unmount(); await flushPromises()
+    expect(L.map).not.toHaveBeenCalled()
+  })
+
+  it('emits committed pan/zoom bounds and recreates only once after a detail round trip', async () => {
+    const onViewChange = vi.fn()
+    const wrapper = mount(MapView, { props: { ...props, onViewChange } })
+    await flushPromises()
+    const map = instance()
+    const move = vi.mocked(map.on).mock.calls.find((call: unknown[]) => call[0] === 'moveend')?.[1] as () => void
+    expect(move).toBeTypeOf('function')
+    move()
+    expect(wrapper.emitted('view-change')?.at(-1)?.[0]).toEqual(expect.objectContaining({ initial: false, lat: 22.3, lng: 114.1 }))
+    wrapper.unmount()
+    const restored = mount(MapView, { props: { ...props, center: { lat: 22.4, lng: 114.2 }, initialZoom: 15 } })
+    await flushPromises()
+    expect(L.map).toHaveBeenCalledTimes(2)
+    expect(L.map).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ center: [22.4, 114.2], zoom: 15 }))
+    restored.unmount()
+    move()
+    expect(onViewChange).toHaveBeenCalledTimes(2)
+  })
 })
 
 function report(id: string, coordinates: [number, number], sightedAt: string): Sighting {

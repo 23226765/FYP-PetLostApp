@@ -124,7 +124,7 @@ async function renderApp(token?: string, realMap = false) {
         SmartMatchScreen: { template: '<div />' },
         PosterModal: { template: '<div />' },
         Chatscreen: { props: ['pet'], template: '<p class="stub-chat-target">{{ pet.id }}:{{ pet.participantId }}</p>' },
-        NotificationsPanel: { props: ['notifications', 'targetError'], emits: ['open-chat', 'close'], template: '<div class="stub-notification-panel"><p class="stub-target-error">{{ targetError }}</p><button class="stub-message-notification" @click="$emit(\'open-chat\', notifications[0])">Open conversation</button></div>' },
+        NotificationsPanel: { name: 'NotificationsPanel', props: ['notifications', 'targetError'], emits: ['open-chat', 'close'], template: '<div class="stub-notification-panel"><p class="stub-target-error">{{ targetError }}</p><button class="stub-message-notification" @click="$emit(\'open-chat\', notifications[0])">Open conversation</button></div>' },
         BoostScreen: { template: '<div />' },
         SightingLocationPicker: { emits: ['update:modelValue'], template: '<button class="sighting-location-stub" @click="$emit(\'update:modelValue\', [114.18, 22.3])">Choose location</button>' },
       },
@@ -152,6 +152,33 @@ describe('authenticated creation entry points', () => {
     apiMocks.getNotifications.mockResolvedValue([])
     apiMocks.getChatInbox.mockResolvedValue([])
     apiMocks.updateNotificationPreferences.mockResolvedValue(undefined)
+  })
+
+  it('assistant keeps six destinations and Radar state, hides on overlays/routes and uses the existing guest Report gate', async () => {
+    const { wrapper, router } = await renderApp()
+    await wrapper.get('.stub-guest').trigger('click'); await flushPromises()
+    expect(wrapper.findAll('.tabbar > button')).toHaveLength(6)
+    await wrapper.get('.stub-radar-radius').trigger('click'); await flushPromises()
+    await wrapper.get('.assistant-launcher').trigger('click'); await flushPromises()
+    expect(wrapper.find('.assistant-panel').exists()).toBe(true)
+    const assistant = wrapper.getComponent({ name: 'PawRadarAssistant' })
+    assistant.vm.$emit('navigate', '/moderation'); await flushPromises()
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(wrapper.get('.stub-radar-radius').text()).toBe('20')
+    await wrapper.get('.stub-notifications').trigger('click'); await flushPromises()
+    expect(wrapper.find('.assistant-root').exists()).toBe(false)
+    wrapper.getComponent({ name: 'NotificationsPanel' }).vm.$emit('close'); await flushPromises()
+    await wrapper.get('.tabbar > button').trigger('click'); await flushPromises()
+    await router.push('/settings'); await flushPromises()
+    expect(wrapper.find('.assistant-root').exists()).toBe(false)
+    await router.push('/'); await flushPromises()
+    assistant.vm.$emit('navigate', 'report'); await flushPromises()
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(wrapper.find('[data-testid="auth-screen"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="post-pet"]').exists()).toBe(false)
+    expect(apiMocks.reportSighting).not.toHaveBeenCalled()
+    expect(wrapper.findAll('.tabbar > button')).toHaveLength(6)
+    wrapper.unmount()
   })
 
   it('merges only the matching privacy patch without restoring stale user preferences or reloading feeds', async () => {

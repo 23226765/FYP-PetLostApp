@@ -91,6 +91,7 @@ let userMarker: L.Marker | null = null
 let heatLayer: L.HeatLayer | null = null
 let resizeObserver: ResizeObserver | null = null
 let invalidateFrame: number | null = null
+let invalidatingSize = false
 let disposed = false
 let centerRequest = 0
 let heatRenderRequest = 0
@@ -524,7 +525,12 @@ function scheduleInvalidateSize() {
   if (!map || invalidateFrame !== null) return
   invalidateFrame = window.requestAnimationFrame(() => {
     invalidateFrame = null
-    if (!disposed) map?.invalidateSize()
+    if (disposed || !map) return
+    // Leaflet emits moveend for container resizing too. Keep that distinct from
+    // user movement so loading-panel layout cannot trigger another area query.
+    invalidatingSize = true
+    try { map.invalidateSize({ animate: false, debounceMoveend: false }) }
+    finally { invalidatingSize = false }
   })
 }
 
@@ -540,7 +546,12 @@ async function initialiseMap() {
   const showUserMarker = Boolean(latestSuppliedCenter) || resolved.showUserMarker
   if (latestSuppliedCenter) locationMessage.value = null
 
-  map = L.map(mapEl.value, { center, zoom: props.initialZoom || 13 })
+  map = L.map(mapEl.value, {
+    center, zoom: props.initialZoom || 13,
+    // The dedicated overview needs a close fit at mobile widths. Route all its
+    // container/window resizing through the classified invalidation above.
+    ...(props.fillHeight ? { zoomSnap: 0.25, trackResize: false } : {}),
+  })
   if (props.initialBounds) {
     const { west, south, east, north } = props.initialBounds
     const lower = validLatLng(south, west), upper = validLatLng(north, east)
@@ -549,7 +560,7 @@ async function initialiseMap() {
   const emitView = (initial = false) => {
     if (!map || disposed) return
     const current = map.getCenter(), bounds = map.getBounds()
-    emit('view-change', { lat: current.lat, lng: current.lng, zoom: map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }, initial })
+    emit('view-change', { lat: current.lat, lng: current.lng, zoom: map.getZoom(), bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }, initial, ...(invalidatingSize ? { reason: 'resize' as const } : {}) })
   }
   if (props.fillHeight) map.on('moveend', () => emitView())
 
@@ -609,6 +620,7 @@ async function initialiseMap() {
     resizeObserver = new ResizeObserver(scheduleInvalidateSize)
     resizeObserver.observe(mapEl.value)
   }
+  if (props.fillHeight) window.addEventListener('resize', scheduleInvalidateSize)
   scheduleInvalidateSize()
   if (props.fillHeight) emitView(true)
 }
@@ -656,6 +668,7 @@ onBeforeUnmount(() => {
   heatRenderRequest += 1
   resizeObserver?.disconnect()
   resizeObserver = null
+  window.removeEventListener('resize', scheduleInvalidateSize)
   if (invalidateFrame !== null) {
     window.cancelAnimationFrame(invalidateFrame)
     invalidateFrame = null

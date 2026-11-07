@@ -298,8 +298,10 @@
       />
     </Transition>
 
+    <PawRadarAssistant :active="assistantAvailable" :navigation-element="bottomNavigation" @navigate="navigateAssistant" />
+
     <!-- Bottom tab bar -->
-    <nav class="tabbar feed-theme" :aria-label="t('navigation.main')">
+    <nav ref="bottomNavigation" class="tabbar feed-theme" :aria-label="t('navigation.main')">
       <button
         type="button"
         class="nav-item"
@@ -418,6 +420,8 @@ import { activateSavedPetsAccount } from './composables/useSavedPets'
 import { buildSightingPayload } from './utils/sightingSubmission'
 import AppIcon from './components/AppIcon.vue'
 import RadarScreen from './components/RadarScreen.vue'
+import PawRadarAssistant from './components/PawRadarAssistant.vue'
+import type { AssistantAction } from '../shared/assistantGuidance.js'
 import PostPetScreen from './components/PostPetScreen.vue'
 import ProfileScreen from './components/ProfileScreen.vue'
 import PetDetail from './components/PetDetail.vue'
@@ -493,6 +497,10 @@ const sightingError = ref('')
 const sightingSubmitting = ref(false)
 const sightingSubmissionId = ref('')
 const toastPet = ref<Pet | null>(null)
+const bottomNavigation = ref<HTMLElement | null>(null)
+const assistantAvailable = computed(() => tab.value === 'radar' && route.name === 'home'
+  && !selectedPet.value && !showSmartMatch.value && !posterPet.value && !chatPet.value
+  && !showNotifications.value && !sightingPet.value && !authOpen.value && !showBoost.value)
 const unreadCount = computed(
   () => notifications.value.filter((notification) => !notification.read).length,
 )
@@ -796,6 +804,15 @@ function goTab(t: Tab) {
     void router.push('/')
   }
   if (t === 'messages' && !currentUser.value) openLogin()
+}
+
+function navigateAssistant(action: AssistantAction) {
+  // Only reviewed, static action IDs reach existing handlers; never model URLs.
+  if (action === 'report') goTab('post')
+  else if (action === 'rescue') goTab('strays')
+  else if (action === 'radar' || action === 'map' || action === 'messages' || action === 'profile') goTab(action)
+  else if (action === 'settings') void router.push('/settings')
+  else if (action === 'matching') showSmartMatch.value = true
 }
 
 function openRescueReport() {
