@@ -1,0 +1,434 @@
+{
+  "version": "smart-match-synthetic-v1",
+  "frozenNow": "2026-11-01T04:00:00.000Z",
+  "description": "Fictional local-only fixtures for a small synthetic ranking pilot; no human judgments or measured effectiveness.",
+  "reports": [
+    {
+      "id": "P01",
+      "name": "Cedar",
+      "species": "Dog",
+      "breed": "Golden Retriever",
+      "district": "Sha Tin",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.195,
+          22.385
+        ]
+      },
+      "createdAt": "2026-10-31T20:00:00Z",
+      "lastSeen": "2026-10-31T20:00:00Z",
+      "status": "lost",
+      "description": "Golden coat, red collar; last seen near a park entrance.",
+      "moderationStatus": "visible"
+    },
+    {
+      "id": "P02",
+      "name": "Amber",
+      "species": "Dog",
+      "breed": "Shiba Inu",
+      "district": "Sha Tin",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.196,
+          22.386
+        ]
+      },
+      "createdAt": "2026-11-01T02:00:00Z",
+      "lastSeen": "2026-11-01T02:00:00Z",
+      "status": "sighted",
+      "description": "Tan coat, curled tail and blue collar."
+    },
+    {
+      "id": "P03",
+      "name": "Pip",
+      "species": "Dog",
+      "breed": "Beagle",
+      "district": "Yau Tsim Mong",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.169,
+          22.312
+        ]
+      },
+      "createdAt": "2026-10-29T04:00:00Z",
+      "lastSeen": "2026-10-29T04:00:00Z",
+      "status": "lost",
+      "description": "Small tricolour dog, floppy ears and green harness."
+    },
+    {
+      "id": "P04",
+      "name": "Scout",
+      "species": "Dog",
+      "breed": "Beagle",
+      "district": "Kowloon City",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.19,
+          22.33
+        ]
+      },
+      "createdAt": "2026-10-31T15:00:00Z",
+      "lastSeen": "2026-10-31T15:00:00Z",
+      "status": "sighted",
+      "description": "Tricolour dog with floppy ears; collar not recorded."
+    },
+    {
+      "id": "P05",
+      "name": "Fern",
+      "species": "Dog",
+      "breed": "Border Collie",
+      "district": "Yuen Long",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.022,
+          22.4456
+        ]
+      },
+      "createdAt": "2026-10-12T04:00:00Z",
+      "lastSeen": "2026-10-08T04:00:00Z",
+      "status": "lost",
+      "description": "Black-and-white coat and one white front paw; report created long after the last sighting."
+    },
+    {
+      "id": "P06",
+      "name": "Ash",
+      "species": "Dog",
+      "breed": "Border Collie",
+      "district": "Tuen Mun",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          113.978,
+          22.391
+        ]
+      },
+      "createdAt": "2026-10-31T23:00:00Z",
+      "lastSeen": "2026-10-31T23:00:00Z",
+      "status": "lost",
+      "description": "Black-and-white coat; paws and collar not described."
+    },
+    {
+      "id": "P07",
+      "name": "Snowdrop",
+      "species": "Dog",
+      "breed": "Samoyed",
+      "district": "Sha Tin",
+      "createdAt": "2026-10-30T04:00:00Z",
+      "lastSeen": "2026-10-30T04:00:00Z",
+      "status": "lost",
+      "description": "Fluffy white dog with a purple collar. Legacy record has no usable location."
+    },
+    {
+      "id": "P08",
+      "name": "Wren",
+      "species": "Dog",
+      "breed": "",
+      "district": "Yau Tsim Mong",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.172,
+          22.312
+        ]
+      },
+      "lastSeen": "2026-10-30T04:00:00Z",
+      "status": "sighted",
+      "description": "Medium cream dog, breed uncertain. Legacy report creation date not recorded."
+    },
+    {
+      "id": "P09",
+      "name": "Saffron",
+      "species": "Dog",
+      "breed": "Shiba Inu",
+      "district": "Sha Tin",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.198,
+          22.387
+        ]
+      },
+      "createdAt": "2026-10-30T04:00:00Z",
+      "lastSeen": "2026-10-30T04:00:00Z",
+      "status": "lost",
+      "description": "Tan coat and curled tail; collar details not recorded."
+    },
+    {
+      "id": "P10",
+      "name": "Cloud",
+      "species": "Dog",
+      "breed": "贵宾犬",
+      "district": "Tsuen Wan",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.1134,
+          22.3717
+        ]
+      },
+      "createdAt": "2026-10-31T22:00:00Z",
+      "lastSeen": "2026-10-31T22:00:00Z",
+      "status": "lost",
+      "description": "Small white poodle with an orange harness; breed entered in Simplified Chinese."
+    },
+    {
+      "id": "P11",
+      "name": "Clover",
+      "species": "Dog",
+      "breed": "Shiba Inu",
+      "district": "Sha Tin",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.196,
+          22.386
+        ]
+      },
+      "createdAt": "2026-10-31T20:00:00Z",
+      "lastSeen": "2026-10-31T20:00:00Z",
+      "status": "reunited",
+      "description": "Tan dog with a blue collar; safely reunited. Eligibility control."
+    },
+    {
+      "id": "P12",
+      "name": "Bramble",
+      "species": "Dog",
+      "breed": "Golden Retriever",
+      "district": "Sha Tin",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.195,
+          22.385
+        ]
+      },
+      "createdAt": "2026-10-31T21:00:00Z",
+      "lastSeen": "2026-10-31T21:00:00Z",
+      "status": "lost",
+      "description": "Golden dog with red collar. Hidden moderation control.",
+      "moderationStatus": "hidden"
+    },
+    {
+      "id": "P13",
+      "name": "Pebble",
+      "species": "Cat",
+      "breed": "Domestic Shorthair",
+      "district": "Yau Tsim Mong",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.17,
+          22.319
+        ]
+      },
+      "createdAt": "2026-10-31T23:00:00Z",
+      "lastSeen": "2026-10-31T23:00:00Z",
+      "status": "lost",
+      "description": "Grey short-haired cat, white chest and no collar."
+    },
+    {
+      "id": "P14",
+      "name": "Slate",
+      "species": "Cat",
+      "breed": "British Shorthair",
+      "district": "Sha Tin",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.196,
+          22.385
+        ]
+      },
+      "createdAt": "2026-10-30T04:00:00Z",
+      "lastSeen": "2026-10-30T04:00:00Z",
+      "status": "lost",
+      "description": "Round-faced grey cat, yellow eyes; no collar recorded."
+    },
+    {
+      "id": "P15",
+      "name": "Juniper",
+      "species": "Cat",
+      "breed": "Siamese",
+      "district": "Wan Chai",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.1738,
+          22.2774
+        ]
+      },
+      "createdAt": "2026-10-31T05:00:00Z",
+      "lastSeen": "2026-10-31T05:00:00Z",
+      "status": "sighted",
+      "description": "Cream coat, dark face and tail, blue eyes and a pink collar."
+    },
+    {
+      "id": "P16",
+      "name": "Mist",
+      "species": "Cat",
+      "breed": "British Shorthair",
+      "district": "Sha Tin",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.198,
+          22.386
+        ]
+      },
+      "createdAt": "2026-10-31T18:00:00Z",
+      "lastSeen": "2026-10-31T18:00:00Z",
+      "status": "lost",
+      "description": "Round-faced grey cat, yellow eyes; collar unknown."
+    },
+    {
+      "id": "P17",
+      "name": "Stone",
+      "species": "Cat",
+      "breed": "Domestic Shorthair",
+      "district": "Yau Tsim Mong",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.175,
+          22.322
+        ]
+      },
+      "createdAt": "2026-10-31T16:00:00Z",
+      "lastSeen": "2026-10-31T16:00:00Z",
+      "status": "sighted",
+      "description": "Grey short-haired cat; chest pattern and collar not described."
+    },
+    {
+      "id": "P18",
+      "name": "Reed",
+      "species": "Cat",
+      "breed": "",
+      "district": "Tai Po",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.1642,
+          22.4509
+        ]
+      },
+      "createdAt": "2026-10-20T04:00:00Z",
+      "lastSeen": "2026-10-20T04:00:00Z",
+      "status": "lost",
+      "description": "Long-haired pale cat; owner did not specify a breed."
+    },
+    {
+      "id": "P19",
+      "name": "Pearl",
+      "species": "Cat",
+      "breed": "波斯貓",
+      "district": "Tai Po",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.168,
+          22.45
+        ]
+      },
+      "createdAt": "2026-10-31T20:00:00Z",
+      "lastSeen": "2026-10-31T20:00:00Z",
+      "status": "lost",
+      "description": "Long white fur, flat face and a purple collar; breed entered in Traditional Chinese."
+    },
+    {
+      "id": "P20",
+      "name": "Moss",
+      "species": "Cat",
+      "breed": "Siamese",
+      "district": "Wan Chai",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.1738,
+          22.2774
+        ]
+      },
+      "createdAt": "2026-10-31T06:00:00Z",
+      "lastSeen": "2026-10-31T06:00:00Z",
+      "status": "reunited",
+      "description": "Cream cat with a pink collar; reunited. Eligibility control."
+    },
+    {
+      "id": "P21",
+      "name": "Kiwi",
+      "species": "Other",
+      "breed": "Green Parakeet",
+      "district": "Tai Po",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.164,
+          22.451
+        ]
+      },
+      "createdAt": "2026-10-31T22:00:00Z",
+      "lastSeen": "2026-10-31T22:00:00Z",
+      "status": "lost",
+      "description": "Small green parakeet with a yellow head and blue leg band."
+    },
+    {
+      "id": "P22",
+      "name": "Ripple",
+      "species": "Other",
+      "breed": "Red Eared Slider",
+      "district": "Tai Po",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.165,
+          22.45
+        ]
+      },
+      "createdAt": "2026-10-30T04:00:00Z",
+      "lastSeen": "2026-10-30T04:00:00Z",
+      "status": "sighted",
+      "description": "Small turtle with red markings beside its eyes."
+    },
+    {
+      "id": "P23",
+      "name": "Silver",
+      "species": "Other",
+      "breed": "African Grey Parrot",
+      "district": "Yuen Long",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.0222,
+          22.4456
+        ]
+      },
+      "createdAt": "2026-10-22T04:00:00Z",
+      "lastSeen": "2026-10-22T04:00:00Z",
+      "status": "lost",
+      "description": "Grey parrot with red tail feathers; no leg band recorded."
+    },
+    {
+      "id": "P24",
+      "name": "Leaf",
+      "species": "Other",
+      "breed": "Green Parakeet",
+      "district": "Tai Po",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          114.164,
+          22.451
+        ]
+      },
+      "createdAt": "2026-10-31T22:00:00Z",
+      "lastSeen": "2026-10-31T22:00:00Z",
+      "status": "lost",
+      "description": "Green bird with a blue leg band. Hidden moderation control.",
+      "moderationStatus": "hidden"
+    }
+  ]
+}

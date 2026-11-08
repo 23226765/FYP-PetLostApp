@@ -1,0 +1,187 @@
+{
+  "version": "smart-match-synthetic-v1",
+  "frozenNow": "2026-11-01T04:00:00.000Z",
+  "description": "Fictional local-only fixtures for a small synthetic ranking pilot; no human judgments or measured effectiveness.",
+  "scenarios": [
+    {
+      "id": "Q01",
+      "split": "development",
+      "family": "clear-golden",
+      "category": "clear",
+      "species": "Dog",
+      "breed": "Golden",
+      "coordinates": [
+        114.1953,
+        22.3872
+      ],
+      "inputMode": "gps",
+      "district": "Sha Tin",
+      "narrative": "Golden-coloured dog wearing a red collar near a Sha Tin park entrance. Breed estimated as Golden."
+    },
+    {
+      "id": "Q02",
+      "split": "development",
+      "family": "beagle-conflict",
+      "category": "competing-clues",
+      "species": "Dog",
+      "breed": "Beagle",
+      "coordinates": [
+        114.1693,
+        22.3117
+      ],
+      "inputMode": "district-centre",
+      "district": "Yau Tsim Mong",
+      "narrative": "Small tricolour dog with floppy ears and a green harness in Yau Tsim Mong. Compare nearby and more recent reports."
+    },
+    {
+      "id": "Q03",
+      "split": "development",
+      "family": "grey-cat-missing-breed",
+      "category": "missing-data",
+      "species": "Cat",
+      "breed": "",
+      "coordinates": [
+        114.171,
+        22.32
+      ],
+      "inputMode": "gps",
+      "district": "Yau Tsim Mong",
+      "narrative": "Grey short-haired cat with a white chest, no collar; observer cannot identify its breed."
+    },
+    {
+      "id": "Q04",
+      "split": "development",
+      "family": "grey-british-ambiguity",
+      "category": "ambiguous",
+      "species": "Cat",
+      "breed": "British Shorthair",
+      "coordinates": [
+        114.1953,
+        22.3872
+      ],
+      "inputMode": "district-centre",
+      "district": "Sha Tin",
+      "narrative": "Round-faced grey cat with yellow eyes. Collar could not be seen; more than one report may warrant checking."
+    },
+    {
+      "id": "Q05",
+      "split": "held-out",
+      "family": "siamese-clear",
+      "category": "clear",
+      "species": "Cat",
+      "breed": "Siamese",
+      "coordinates": [
+        114.1738,
+        22.278
+      ],
+      "inputMode": "gps",
+      "district": "Wan Chai",
+      "narrative": "Cream cat with a dark face and tail, blue eyes and a pink collar in Wan Chai."
+    },
+    {
+      "id": "Q06",
+      "split": "held-out",
+      "family": "parakeet-clear",
+      "category": "clear",
+      "species": "Other",
+      "breed": "Green Parakeet",
+      "coordinates": [
+        114.1645,
+        22.4515
+      ],
+      "inputMode": "gps",
+      "district": "Tai Po",
+      "narrative": "Small green bird with yellow head and blue leg band in Tai Po; observer describes it as a green parakeet."
+    },
+    {
+      "id": "Q07",
+      "split": "held-out",
+      "family": "collie-conflict",
+      "category": "competing-clues",
+      "species": "Dog",
+      "breed": "Border Collie",
+      "coordinates": [
+        113.9771,
+        22.391
+      ],
+      "inputMode": "district-centre",
+      "district": "Tuen Mun",
+      "narrative": "Black-and-white dog with one white front paw in Tuen Mun. Some matching-looking reports are older or farther away."
+    },
+    {
+      "id": "Q08",
+      "split": "held-out",
+      "family": "tan-shiba-ambiguity",
+      "category": "ambiguous",
+      "species": "Dog",
+      "breed": "Shiba",
+      "coordinates": [
+        114.197,
+        22.386
+      ],
+      "inputMode": "gps",
+      "district": "Sha Tin",
+      "narrative": "Tan dog with curled tail; could be a Shiba. Collar obscured, so identity is uncertain."
+    },
+    {
+      "id": "Q09",
+      "split": "held-out",
+      "family": "samoyed-legacy-fallback",
+      "category": "missing-data",
+      "species": "Dog",
+      "breed": "Samoyed",
+      "coordinates": [
+        114.1694,
+        22.3193
+      ],
+      "inputMode": "gps-fallback",
+      "district": "Sha Tin",
+      "narrative": "Fluffy white dog with a purple collar observed in Sha Tin. GPS failed: the current app supplies its Hong Kong-centre fallback, not the actual observation point."
+    },
+    {
+      "id": "Q10",
+      "split": "held-out",
+      "family": "traditional-persian",
+      "category": "language-variation",
+      "species": "Cat",
+      "breed": "波斯貓",
+      "coordinates": [
+        114.1642,
+        22.4509
+      ],
+      "inputMode": "district-centre",
+      "district": "Tai Po",
+      "narrative": "在大埔看見白色長毛、扁面、戴紫色頸圈的貓，估計是波斯貓。"
+    },
+    {
+      "id": "Q11",
+      "split": "held-out",
+      "family": "simplified-poodle",
+      "category": "language-variation",
+      "species": "Dog",
+      "breed": "贵宾犬",
+      "coordinates": [
+        114.1134,
+        22.3717
+      ],
+      "inputMode": "district-centre",
+      "district": "Tsuen Wan",
+      "narrative": "在荃湾看到白色小型贵宾犬，戴橙色胸背带。"
+    },
+    {
+      "id": "Q12",
+      "split": "held-out",
+      "family": "rabbit-no-counterpart",
+      "category": "no-counterpart-design",
+      "species": "Other",
+      "breed": "Rabbit",
+      "coordinates": [
+        114.1738,
+        22.2774
+      ],
+      "inputMode": "district-centre",
+      "district": "Wan Chai",
+      "narrative": "Brown rabbit with long ears near Wan Chai. Review the available reports without assuming a suitable counterpart exists."
+    }
+  ]
+}
