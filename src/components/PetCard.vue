@@ -3,7 +3,7 @@
     <template v-if="!feed">
     <div class="photo-wrap">
       <ManagedImage
-        v-if="photoUrl && !imageFailed"
+        v-if="photoUrl"
         :src="photoUrl"
         alt=""
         aria-hidden="true"
@@ -13,6 +13,7 @@
       />
       <div v-else class="photo-placeholder" aria-hidden="true">
         <AppIcon name="paw" :size="42" />
+        <small>{{ t(photoFallbackKey(pet.photo, pet.photos)) }}</small>
       </div>
       <span class="sr-only">{{ t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) }) }}</span>
       <span class="badge" :class="pet.status">
@@ -53,15 +54,16 @@
         <span class="feed-status" :class="pet.status">{{ petStatusLabel(pet.status) }}</span>
       </header>
       <div class="photo-wrap feed-photo">
-        <ManagedImage v-if="photoUrl && !imageFailed" :src="photoUrl" :alt="t('pets.photoAlt', { name: pet.name })" loading="lazy" referrerpolicy="no-referrer" @error="handleImageError" />
-        <div v-else class="photo-placeholder" :aria-label="t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) })" role="img"><AppIcon name="paw" :size="42" /></div>
+        <ManagedImage v-if="photoUrl" :src="photoUrl" :alt="t('pets.photoAlt', { name: pet.name })" loading="lazy" referrerpolicy="no-referrer" @error="handleImageError" />
+        <div v-else class="photo-placeholder" :aria-label="t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) })" role="img"><AppIcon name="paw" :size="42" /><small>{{ t(photoFallbackKey(pet.photo, pet.photos)) }}</small></div>
       </div>
       <div class="feed-card-copy">
         <p class="feed-location"><AppIcon name="pin" :size="16" />{{ pet.district ? districtLabel(pet.district) : t('feedDesign.districtUnknown') }}<span v-if="isValidDistance(pet.distanceKm)"> · {{ pet.locationPrecision === 'approximate' ? t('feedDesign.approxDistance', { distance: t('common.kilometres', { count: pet.distanceKm }) }) : t('common.kilometres', { count: pet.distanceKm }) }}</span></p>
         <p class="feed-last-seen">{{ t('pets.lastSeen', { time: pet.lastSeenAt ? formatRelativeDate(pet.lastSeenAt) : pet.lastSeen }) }}</p>
         <p v-if="pet.reward" class="feed-reward">{{ t('pets.reward', { amount: pet.reward }) }}</p>
         <div class="feed-card-actions">
-          <button class="found-btn" type="button" :aria-label="t('feedDesign.sightingFor', { name: pet.name })" @click.stop="emit('found')"><AppIcon name="eye" :size="19" />{{ t('feedDesign.sighting') }}</button>
+          <button class="view-sightings" type="button" :aria-label="t('feedUsability.viewSightingsFor', { name: pet.name })" @click.stop="emit('view-sightings')"><AppIcon name="list" :size="19" />{{ t('feedUsability.viewSightings') }}</button>
+          <button v-if="pet.status !== 'reunited'" class="found-btn" type="button" :aria-label="t('feedUsability.reportSightingFor', { name: pet.name })" @click.stop="emit('found')"><AppIcon name="eye" :size="19" />{{ t('feedUsability.reportSighting') }}</button>
           <button class="feed-save" :class="{ saved: isSaved(pet.id) }" type="button" :aria-label="isSaved(pet.id) ? t('pets.removeSaved', { name: pet.name }) : t('pets.savePost', { name: pet.name })" :aria-pressed="isSaved(pet.id)" @click.stop="toggleSave(pet.id)"><AppIcon name="bookmark" :size="20" />{{ isSaved(pet.id) ? t('feedDesign.saved') : t('feedDesign.save') }}</button>
         </div>
       </div>
@@ -73,9 +75,13 @@
       </div>
       <p class="meta"><template v-if="pet.breed">{{ pet.breed }} &middot; </template>{{ t('pets.lastSeen', { time: pet.lastSeenAt ? formatRelativeDate(pet.lastSeenAt) : pet.lastSeen }) }}</p>
       <div class="actions">
-        <button class="found-btn" @click.stop="emit('found')">
+        <button class="view-sightings" type="button" :aria-label="t('feedUsability.viewSightingsFor', { name: pet.name })" @click.stop="emit('view-sightings')">
+          <AppIcon name="list" :size="17" />
+          {{ t('feedUsability.viewSightings') }}
+        </button>
+        <button v-if="pet.status !== 'reunited'" class="found-btn" type="button" :aria-label="t('feedUsability.reportSightingFor', { name: pet.name })" @click.stop="emit('found')">
           <AppIcon name="eye" :size="17" />
-          {{ t('pets.foundIt') }}
+          {{ t('feedUsability.reportSighting') }}
         </button>
         <span v-if="pet.reward" class="reward">{{ t('pets.reward', { amount: pet.reward }) }}</span>
       </div>
@@ -85,6 +91,7 @@
 
 <script setup lang="ts">
 import { isValidDistance } from '../utils/distance'
+import { attachedPhotoSources, photoFallbackKey } from '../utils/imagePresentation'
 import ManagedImage from "./ManagedImage.vue"
 import { computed, ref, watch } from 'vue'
 import type { Pet } from '../types/pet'
@@ -94,44 +101,25 @@ import { useAppI18n } from '../i18n'
 import { districtLabel, formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
 
 const props = withDefaults(defineProps<{ pet: Pet; feed?: boolean }>(), { feed: false })
-const emit = defineEmits<{ open: []; found: [] }>()
+const emit = defineEmits<{ open: []; found: []; 'view-sightings': [] }>()
 const { isSaved, toggleSave } = useSavedPets()
 const { t } = useAppI18n()
 
-const imageFailed = ref(false)
-const petImage = computed(
-  () => props.pet.photo || (props.pet.photos && props.pet.photos[0]) || null,
-)
-const photoUrl = computed(() => normalizeImageUrl(petImage.value))
-
-watch(photoUrl, () => {
-  imageFailed.value = false
-})
-
-function normalizeImageUrl(value: string | null | undefined): string {
-  const photo = value?.trim()
-  if (!photo) return ''
-
-  try {
-    const appOrigin = window.location.origin
-    const apiUrl = new URL(import.meta.env.VITE_API_BASE_URL || '/api', appOrigin)
-    const resolved = new URL(photo, `${apiUrl.origin}/`)
-    return ['http:', 'https:', 'data:', 'blob:'].includes(resolved.protocol) ? resolved.href : ''
-  } catch {
-    return ''
-  }
-}
-
-function handleImageError(event: Event) {
-  const image = event.currentTarget as HTMLImageElement | null
-  if (image && (image.currentSrc === photoUrl.value || image.src === photoUrl.value)) {
-    imageFailed.value = true
-  }
+const failedPhotos = ref(new Set<string>())
+const sources = computed(() => attachedPhotoSources(props.pet.photo, props.pet.photos))
+const photoUrl = computed(() => sources.value.find(source => !failedPhotos.value.has(source)) || '')
+watch(sources, () => { failedPhotos.value = new Set() })
+function handleImageError() {
+  // ManagedImage renders authenticated blob URLs. Comparing that DOM URL with
+  // the original API path incorrectly prevented the fallback on real failures.
+  if (photoUrl.value) failedPhotos.value = new Set([...failedPhotos.value, photoUrl.value])
 }
 
 </script>
 
 <style scoped>
+.photo-placeholder { align-content: center; justify-items: center; gap: 8px; }
+.photo-placeholder small { font-size: 12px; color: var(--color-text-secondary); padding: 0 12px; text-align: center; }
 .card.feed-card { border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; box-shadow: none; cursor: pointer; }
 .feed-card-header { padding: 12px var(--feed-space); display: flex; align-items: flex-start; gap: 12px; }
 .feed-card-header > div { min-width: 0; flex: 1; }
@@ -139,14 +127,17 @@ function handleImageError(event: Event) {
 .feed-card-header p { margin-top: 4px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 .feed-status { flex-shrink: 0; max-width: 45%; padding: 5px 9px; border-radius: 999px; background: var(--status-teal-bg); color: var(--color-text-accent); font-size: 13px; font-weight: 600; text-align: center; }
 .feed-status.lost { background: var(--status-coral-bg); color: var(--color-text-urgent); }
-.feed-card .feed-photo { aspect-ratio: auto; }
-.feed-card .feed-photo img { display: block; width: 100%; height: auto; max-height: var(--feed-media-max-height); object-fit: contain; }
-.feed-card .feed-photo .photo-placeholder { position: relative; min-height: 128px; background: var(--color-surface-subtle); }
+.feed-card .feed-photo { aspect-ratio: 4 / 3; }
+.feed-card .feed-photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.feed-card .feed-photo .photo-placeholder { position: absolute; inset: 0; background: var(--color-surface-subtle); }
 .feed-card-copy { padding: var(--feed-space); }
 .feed-location { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 13px; color: var(--color-text-secondary); }
 .feed-last-seen { margin-top: 6px; font-size: 14px; line-height: 1.5; }
 .feed-reward { margin-top: 6px; color: var(--color-text-accent); font-size: 14px; font-weight: 600; }
 .feed-card-actions { display: flex; align-items: stretch; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.feed-card .view-sightings { flex: 1 1 180px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-accent); font-size: 14px; font-weight: 600; line-height: 1.4; text-align: center; overflow-wrap: anywhere; }
+.view-sightings svg { flex-shrink: 0; }
+.feed-card-actions button:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 .feed-card .found-btn { flex: 1 1 180px; min-width: 0; min-height: 44px; justify-content: center; border-radius: var(--radius-sm); padding: 10px 14px; background: var(--button-primary); color: var(--button-primary-text); font-size: 14px; font-weight: 600; line-height: 1.4; text-align: center; white-space: normal; overflow-wrap: anywhere; }
 .feed-card .found-btn svg { flex-shrink: 0; }
 .feed-card .found-btn:active { background: color-mix(in srgb, var(--button-primary) 88%, black); }
@@ -286,10 +277,15 @@ h3 {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin-top: 12px;
 }
+.actions .view-sightings { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-text-accent); font-size: 14px; font-weight: 700; text-align: left; }
+.actions .found-btn { min-height: 44px; white-space: normal; text-align: left; }
+.actions button:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 
 .found-btn {
   display: inline-flex;

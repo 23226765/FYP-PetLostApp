@@ -120,6 +120,7 @@
           :pet="pet"
           :feed="true"
           @open="emit('open', pet)"
+          @view-sightings="emit('view-sightings', pet)"
           @found="emit('found', pet)"
         />
       </div>
@@ -188,6 +189,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: [pet: Pet]
+  'view-sightings': [pet: Pet]
   found: [pet: Pet]
   retry: []
   'smart-match': []

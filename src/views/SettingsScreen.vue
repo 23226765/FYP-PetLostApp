@@ -72,10 +72,11 @@
                 :aria-label="pickingAvatar ? t('settings.openingPicker') : t('settings.changePhoto')"
                 @click="pickAvatar"
               >
-                <ManagedImage
-                  :src="form.avatar || user.avatar || '/avatar.svg'"
+                <UserAvatar
+                  class="account-avatar"
+                  :src="form.avatar || user.avatar"
+                  :name="user.name"
                   :alt="t('settings.profilePhotoAlt', { name: user.name })"
-                  @error="handleAvatarError"
                 />
                 <span class="camera-badge" aria-hidden="true"><AppIcon name="camera" :size="14" /></span>
               </button>
@@ -286,7 +287,7 @@
 </template>
 
 <script setup lang="ts">
-import ManagedImage from "../components/ManagedImage.vue"
+import UserAvatar from '../components/UserAvatar.vue'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { Capacitor } from '@capacitor/core'
@@ -567,10 +568,6 @@ async function removeAvatar() {
 }
 
 
-function handleAvatarError(event: Event) {
-  const image = event.target as HTMLImageElement
-  if (!image.src.endsWith('/avatar.svg')) image.src = '/avatar.svg'
-}
 
 async function saveProfile() {
   if (!props.user || savingProfile.value) return
@@ -634,6 +631,7 @@ async function saveProfile() {
 .profile-summary { display: grid; grid-template-columns: 64px minmax(0,1fr) auto; align-items: center; gap: 13px; padding: 15px; }
 .avatar-picker { position: relative; width: 64px; height: 64px; padding: 0; border-radius: 50%; background: var(--color-surface-subtle); box-shadow: 0 5px 15px rgba(29,99,96,.14); transition: transform .2s ease; }
 .avatar-picker img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+.account-avatar { width: 64px; height: 64px; }
 .avatar-picker:disabled { outline: 2px solid var(--color-disabled-border); background: var(--color-disabled-surface); cursor: wait; }
 .camera-badge { position: absolute; right: -3px; bottom: -2px; width: 27px; height: 27px; display: grid; place-items: center; border: 2px solid var(--color-surface); border-radius: 50%; background: #1d6360; color: #fff; box-shadow: 0 3px 9px rgba(29,99,96,.24); }
 .file-input { display: none; }

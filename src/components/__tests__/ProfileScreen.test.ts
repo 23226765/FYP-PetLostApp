@@ -94,6 +94,37 @@ describe('ProfileScreen My pets navigation', () => {
     apiMocks.setStraySaved.mockReset()
   })
 
+  it('puts the display name and handle beside avatar initials and keeps Settings accessible', async () => {
+    const user = { ...owner, name: 'Fictional Profile Owner', phone: '+852 5000 0101', avatar: 'https://placehold.co/200?text=Demo' }
+    const { wrapper, router } = await mountProfile([], user)
+    try {
+      expect(wrapper.get('.head h1').text()).toBe(user.name)
+      expect(wrapper.get('.head .handle').text()).toBe('@fyp.owner')
+      expect(wrapper.get('.head h1').element.nextElementSibling).toBe(wrapper.get('.handle').element)
+      expect(wrapper.get('.head .avatar').text()).toBe('FO')
+      expect(wrapper.get('.head .area').text()).toBe(user.email)
+      expect(wrapper.get('.head .phone').text()).toBe(user.phone)
+      expect(wrapper.findAll('.stats .stat')).toHaveLength(3)
+      expect(wrapper.get('.menu-button').attributes('aria-label')).toBeTruthy()
+      await wrapper.get('.menu-button').trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.path).toBe('/settings')
+    } finally { wrapper.unmount() }
+  })
+
+  it('does not invent missing contact information and preserves profile tab keyboard selection', async () => {
+    const { wrapper, router } = await mountProfile([], owner)
+    try {
+      expect(wrapper.find('.phone').exists()).toBe(false)
+      await wrapper.get('#profile-tab-pets').trigger('keydown', { key: 'ArrowRight' })
+      await flushPromises()
+      expect(router.currentRoute.value.query.tab).toBe('rescue')
+      expect(wrapper.get('#profile-tab-rescue').attributes('aria-selected')).toBe('true')
+      expect(wrapper.get('#profile-tab-rescue').attributes('tabindex')).toBe('0')
+      expect(wrapper.get('#profile-tab-pets').attributes('aria-selected')).toBe('false')
+    } finally { wrapper.unmount() }
+  })
+
   it.each([
     ['maple-id', 'Maple'],
     ['pixel-id', 'Pixel'],

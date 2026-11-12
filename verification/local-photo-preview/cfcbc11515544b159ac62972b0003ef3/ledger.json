@@ -1,0 +1,72 @@
+{
+  "run": "cfcbc11515544b159ac62972b0003ef3",
+  "database": "fyp_transactions_preview_cfcbc11515544b159ac62972b0003ef3",
+  "isolated": true,
+  "storageAttempts": 0,
+  "blockedProviderImports": 0,
+  "externalFetchAttempts": 0,
+  "records": {
+    "mediauploadbudgets": [],
+    "userblocks": [],
+    "users": [
+      "6af5aab82584293de408cbe1",
+      "6af5aab82584293de408cbe3"
+    ],
+    "strays": [
+      "6af5aab82584293de408cbea",
+      "6af5aab82584293de408cbe9"
+    ],
+    "pets": [
+      "6af5aab82584293de408cbe5",
+      "6af5aab82584293de408cbe6"
+    ],
+    "notifications": [],
+    "straycomments": [
+      "6af5aab82584293de408cbf2"
+    ],
+    "contentreports": [],
+    "mediaassets": [],
+    "savedstrays": [],
+    "sightings": [
+      "6af5aab82584293de408cbef",
+      "6af5aab82584293de408cbee"
+    ],
+    "messages": []
+  },
+  "cleanupComplete": true,
+  "verified": {
+    "health": true,
+    "viewerRadar": 2,
+    "viewerRescue": 2,
+    "mapReports": 2,
+    "detailPhotos": 4,
+    "localJpegs": 2,
+    "privateSightingProjection": true,
+    "uploadsDisabled": true,
+    "providerCalls": 0
+  },
+  "fixtures": {
+    "pets": [
+      {
+        "id": "6af5aab82584293de408cbe5",
+        "name": "FICTIONAL Preview Dog"
+      },
+      {
+        "id": "6af5aab82584293de408cbe6",
+        "name": "FICTIONAL Preview Cat"
+      }
+    ],
+    "strays": [
+      {
+        "id": "6af5aab82584293de408cbe9",
+        "species": "Dog"
+      },
+      {
+        "id": "6af5aab82584293de408cbea",
+        "species": "Cat"
+      }
+    ]
+  },
+  "serversStopped": true,
+  "replicaStopped": true
+}

@@ -1,7 +1,25 @@
 <template>
   <div class="profile">
     <header class="profile-topbar">
-      <strong>{{ userHandle }}</strong>
+      <section class="head">
+        <UserAvatar
+          class="avatar"
+          :src="user?.avatar"
+          :name="user?.name"
+          :alt="user ? t('settings.profilePhotoAlt', { name: user.name }) : t('profile.guest')"
+        />
+        <h1>{{ user ? user.name : t('profile.guest') }}</h1>
+        <p class="handle">{{ userHandle }}</p>
+        <p class="area">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="m3 7 9 6 9-6" />
+          </svg>
+          {{ user ? user.email : t('profile.guestHelp') }}
+        </p>
+        <p v-if="user?.phone" class="area phone">{{ user.phone }}</p>
+        <button v-if="!user" class="auth-btn primary" @click="emit('login')">{{ t('profile.signInCreate') }}</button>
+      </section>
       <button
         class="menu-button"
         type="button"
@@ -26,37 +44,6 @@
         </svg>
       </button>
     </header>
-
-    <section class="head">
-      <ManagedImage
-        class="avatar"
-        :src="user?.avatar || '/avatar.svg'"
-        :alt="user ? t('settings.profilePhotoAlt', { name: user.name }) : t('profile.guest')"
-      />
-      <h1>{{ user ? user.name : t('profile.guest') }}</h1>
-      <p class="area">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="3" y="5" width="18" height="14" rx="2" />
-          <path d="m3 7 9 6 9-6" />
-        </svg>
-        {{ user ? user.email : t('profile.guestHelp') }}
-      </p>
-      <p v-if="user?.phone" class="area phone">{{ user.phone }}</p>
-      <button v-if="!user" class="auth-btn primary" @click="emit('login')">
-        {{ t('profile.signInCreate') }}
-      </button>
-    </section>
 
     <div class="stats">
       <div class="stat">
@@ -114,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import ManagedImage from "./ManagedImage.vue"
+import UserAvatar from './UserAvatar.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
@@ -179,14 +166,15 @@ watch(() => route.name, (name, previous) => { if (name === 'profile' && previous
 
 <style scoped>
 .profile { padding: 0 var(--page-padding) calc(92px + var(--safe-bottom)); max-width: 480px; margin: 0 auto; }
-.profile-topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(var(--safe-top) + 8px) 0 8px; background: var(--page-bg); }
-.profile-topbar strong { min-width: 0; overflow: hidden; color: var(--ink); font-size: 17px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.profile-topbar { display: flex; align-items: flex-start; gap: 12px; padding: calc(var(--safe-top) + 16px) 0 20px; background: var(--page-bg); }
 .menu-button { width: 44px; height: 44px; display: grid; place-items: center; flex-shrink: 0; border-radius: 8px; color: var(--color-icon-primary); }
 .menu-button:active { background: var(--color-surface-selected); }
-.head { display: grid; grid-template-columns: 72px minmax(0, 1fr); column-gap: 16px; align-items: center; margin: 12px 0 20px; }
-.avatar { grid-column: 1; grid-row: 1 / span 4; width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border); }
+.menu-button:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.head { flex: 1; min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 12px; row-gap: 3px; align-items: center; }
+.avatar { grid-column: 1; grid-row: 1 / span 5; width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border); }
 h1 { grid-column: 2; font-size: var(--page-title-size); font-weight: var(--page-title-weight); line-height: 1.3; overflow-wrap: anywhere; }
-.area { grid-column: 2; display: flex; align-items: center; gap: 5px; color: var(--ink-muted); font-size: 13px; overflow-wrap: anywhere; }
+.handle { grid-column: 2; min-width: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.area { grid-column: 2; min-width: 0; display: flex; align-items: center; gap: 5px; color: var(--ink-muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .area svg { color: var(--color-text-accent); flex-shrink: 0; }
 .auth-btn { grid-column: 2; margin-top: 10px; min-height: 44px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; }
 .auth-btn.primary { background: var(--teal); color: var(--color-text-on-accent); }

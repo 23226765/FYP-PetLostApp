@@ -17,13 +17,13 @@
     <main v-else class="post">
       <section class="post-card">
         <div class="author-row">
-          <span class="avatar"><ManagedImage v-if="stray.author.avatar" :src="imageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="21" /></span>
+          <UserAvatar class="avatar" :src="stray.author.avatar" :name="stray.author.name" />
           <div><strong>{{ stray.author.name }}</strong><small>{{ relativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></div>
           <span class="status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
         <div class="hero">
-          <ManagedImage v-if="stray.photo && !imageFailed" :src="imageUrl(stray.photo)" :alt="t('strays.reportedIn', { species: animalLabel, district: districtLabel(stray.district) })" @error="imageFailed = true" />
-          <span v-else><AppIcon name="paw" :size="42" /></span>
+          <ManagedImage v-if="detailPhoto && !imageFailed" :src="detailPhoto" :alt="t('strays.reportedIn', { species: animalLabel, district: districtLabel(stray.district) })" @error="imageFailed = true" />
+          <span v-else class="photo-state"><AppIcon name="paw" :size="42" /><small>{{ t(photoFallbackKey(stray.photo, stray.photos)) }}</small></span>
         </div>
         <div class="post-copy">
           <p class="species">{{ animalLabel }} · {{ conditionLabel(stray.condition) }}</p>
@@ -32,7 +32,7 @@
           <time :datetime="stray.observedAt">{{ t('strays.observed', { date: formatDateTime(stray.observedAt, REPORT_TIME_ZONE) }) }}</time>
         </div>
         <div class="post-actions">
-          <button type="button" @click="focusComment"><AppIcon name="message" :size="20" />{{ t('strays.comment') }}</button>
+          <button type="button" @click="focusComments"><AppIcon name="message" :size="20" />{{ t('feedUsability.viewComments') }}</button>
           <button type="button" @click="toggleSaved"><span aria-hidden="true">🔖</span>{{ stray.isSaved ? t('strays.unsave') : t('strays.save') }}</button>
           <button type="button" @click="openShare"><AppIcon name="send" :size="20" />{{ t('strays.share') }}</button>
         </div>
@@ -70,8 +70,11 @@
         @blocked="handleBlockedAuthor"
       />
 
-      <section class="comments" aria-labelledby="comments-title">
-        <h2 id="comments-title">{{ t('strays.comments') }} <span>{{ stray.commentCount }}</span></h2>
+      <section id="comments" class="comments" aria-labelledby="comments-title">
+        <div class="comments-heading">
+          <h2 id="comments-title" ref="commentsHeading" tabindex="-1">{{ t('strays.comments') }} <span>{{ stray.commentCount }}</span></h2>
+          <button v-if="!blockedAuthor" class="write-comment" type="button" @click="focusComment">{{ t('feedUsability.writeComment') }}</button>
+        </div>
         <form v-if="!blockedAuthor" class="comment-form" @submit.prevent="submitComment">
           <input ref="commentInput" v-model="draft" :disabled="commenting" maxlength="500" :placeholder="t('strays.commentPlaceholder')" :aria-label="t('strays.commentText')" />
           <button type="submit" :disabled="commenting || !draft.trim()">{{ t('strays.postComment') }}</button>
@@ -79,9 +82,9 @@
         <p v-if="blockedAuthor" class="comment-state">{{ t('safety.blockedInteraction') }}</p>
         <p v-if="commentError" class="inline-error" role="alert">{{ commentError }}</p>
         <p v-if="commentsLoading" class="comment-state">{{ t('strays.loadingComments') }}</p>
-        <p v-else-if="!comments.length" class="comment-state">{{ t('strays.noComments') }}</p>
+        <p v-else-if="!comments.length && !commentError && !blockedAuthor" class="comment-state">{{ t('feedUsability.noCommentsInvitation') }}</p>
         <article v-for="comment in comments" :key="comment.id" class="comment">
-          <span class="avatar small"><ManagedImage v-if="comment.author.avatar" :src="imageUrl(comment.author.avatar)" alt="" /><AppIcon v-else name="user" :size="16" /></span>
+          <UserAvatar class="avatar small" :src="comment.author.avatar" :name="comment.author.name" />
           <div><p><strong>{{ comment.author.name }}</strong> {{ comment.text }}</p><small>{{ relativeDate(comment.createdAt) }}</small></div>
           <button v-if="comment.author.id === user?.id" type="button" :disabled="Boolean(removingComment)" :aria-label="t('strays.deleteComment')" @click="removeComment(comment.id)"><AppIcon name="close" :size="15" /></button>
           <SafetyActions
@@ -116,9 +119,11 @@
 <script setup lang="ts">
 import { REPORT_TIME_ZONE } from '../utils/hongKongDateTime'
 import ManagedImage from "../components/ManagedImage.vue"
+import UserAvatar from '../components/UserAvatar.vue'
+import { attachedPhotoSources, photoFallbackKey } from '../utils/imagePresentation'
 import ContentImageEditor from '../components/ContentImageEditor.vue'
 import type { ManagedImage as ManagedImageData } from '../services/api'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import MapView from '../components/MapView.vue'
@@ -141,6 +146,7 @@ const { t } = useAppI18n()
 const stray = ref<StrayReport | null>(null); const comments = ref<StrayComment[]>([])
 const loading = ref(true); const commentsLoading = ref(false); const error = ref(''); const commentError = ref('')
 const draft = ref(''); const commenting = ref(false); const commentInput = ref<HTMLInputElement | null>(null); const imageFailed = ref(false)
+const commentsHeading = ref<HTMLElement | null>(null)
 const editCaption = ref(''); const editAnimalType = ref(''); const savingStatus = ref(false)
 const savingEdit = ref(false); const deleting = ref(false)
 const statusError = ref(''); const editError = ref(''); const deleteError = ref(''); const manageSuccess = ref('')
@@ -167,6 +173,8 @@ function imageUrl(value: string) { try { const api = new URL(import.meta.env.VIT
 function statusLabel(value: RescueStatus) { return rescueStatusLabel(value) }
 function conditionLabel(value: StrayReport['condition']) { return strayConditionLabel(value) }
 const animalLabel = computed(() => stray.value ? strayAnimalLabel(stray.value.species, stray.value.animalType) : '')
+const detailPhoto = computed(() => stray.value ? attachedPhotoSources(stray.value.photo, stray.value.photos)[0] || '' : '')
+watch(detailPhoto, () => { imageFailed.value = false })
 const relativeDate = formatRelativeDate
 function requireUser() { if (props.user) return true; emit('auth-needed'); return false }
 
@@ -210,7 +218,16 @@ function requestGuard(sequence = loadSequence) {
   const context = captureAuthContext(), userId = props.user?.id
   return () => sequence === loadSequence && props.user?.id === userId && isAuthContextCurrent(context)
 }
-function focusComment() { commentInput.value?.focus() }
+async function focusComments() {
+  await nextTick()
+  commentsHeading.value?.scrollIntoView({ block: 'start' })
+  commentsHeading.value?.focus({ preventScroll: true })
+}
+function focusComment() {
+  if (blockedAuthor.value || !requireUser()) return
+  commentInput.value?.scrollIntoView({ block: 'center' })
+  commentInput.value?.focus({ preventScroll: true })
+}
 async function handleBlockedAuthor() {
   blockedAuthor.value = true
   draft.value = ''; commentSubmission = null
@@ -287,13 +304,24 @@ async function openShare() {
 }
 async function shareTo(conversation: ChatConversation) { if (!stray.value || sharing.value) return; sharing.value = true; shareError.value = ''; try { await sendMessage(conversation.pet.id, { text: t('messages.sharedRescueText', { species: strayAnimalLabel(stray.value.species, stray.value.animalType) }), participantId: conversation.pet.participantId, sharedStrayId: stray.value.id, clientRequestId: uniqueId() }); shareOpen.value = false } catch (cause) { shareError.value = translateApiError(cause, 'errors.sharePost') } finally { sharing.value = false } }
 watch([id, () => props.user?.id, () => props.user?.role], () => void load(), { immediate: true })
+watch([() => route.hash, loading], ([hash, isLoading]) => {
+  if (isLoading || !stray.value) return
+  if (hash === '#comments') void focusComments()
+  else if (hash === '#write-comment') focusComment()
+}, { immediate: true, flush: 'post' })
 const onAuthChange = () => void load()
 window.addEventListener('auth:changed', onAuthChange)
 onBeforeUnmount(() => { loadSequence += 1; window.removeEventListener('auth:changed', onAuthChange) })
 </script>
 
 <style scoped>
+.photo-state { display: grid; justify-items: center; gap: 8px; padding: 24px 16px; }
+.photo-state small { color: var(--color-text-secondary); font-size: 12px; }
 .detail-page { font-family: var(--font-feed); }
+.comments-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.comments-heading h2 { scroll-margin-top: calc(var(--safe-top) + 84px); }
+.write-comment { min-height: 44px; padding: 8px 12px; border-radius: 12px; background: var(--color-surface-selected); color: var(--color-text-accent); font-size: 13px; font-weight: 700; }
+.write-comment:focus-visible, .comments-heading h2:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 .detail-page{position:fixed;inset:0;z-index:48;max-width:480px;margin:auto;overflow-y:auto;background:var(--page-bg);color:var(--color-text-primary)}.detail-header{position:sticky;top:0;z-index:8;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;padding:calc(var(--safe-top) + 10px) 16px 10px;background:color-mix(in srgb,var(--page-bg) 94%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--color-border);text-align:center}.detail-header button{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;color:var(--color-icon-primary)}.detail-header svg{width:22px;stroke:currentColor;stroke-width:2}.post{padding:0 16px calc(var(--safe-bottom) + 45px)}.post-card,.map-card,.manage-card,.comments{margin-bottom:14px;overflow:hidden;border:1px solid var(--color-border);border-radius:18px;background:var(--color-surface);box-shadow:var(--shadow-card)}.author-row{display:flex;align-items:center;gap:10px;padding:13px}.avatar{width:42px;height:42px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:var(--color-surface-selected);color:var(--color-icon-primary);flex:none}.avatar img,.conversation img{width:100%;height:100%;object-fit:cover}.avatar.small{width:34px;height:34px}.author-row div{min-width:0;flex:1}.author-row strong,.author-row small{display:block}.author-row small{margin-top:2px;color:var(--color-text-muted);font-size:11px}.status{padding:5px 9px;border-radius:999px;background:var(--status-coral-bg);color:var(--color-text-urgent);font-size:10px;font-weight:800}.status.rescued{background:var(--teal);color:var(--color-text-on-accent)}.status.rescue_dispatched{background:var(--color-surface-selected);color:var(--color-text-accent)}.hero{aspect-ratio:4/3;display:grid;place-items:center;background:var(--color-surface-selected);color:var(--color-icon-primary)}.hero img{width:100%;height:100%;object-fit:cover}.post-copy{padding:15px}.post-copy>p{margin-bottom:9px;line-height:1.5}.post-copy .species{color:var(--color-text-accent);font-weight:850}.location{display:flex;align-items:center;gap:5px;color:var(--color-text-muted);font-size:12px}.post-copy time{color:var(--color-text-muted);font-size:11px}.post-actions{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--color-border)}.post-actions button{min-height:48px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--color-text-accent);font-weight:800}.post-actions button:active{transform:scale(.98)}.map-card{height:260px;padding:8px}.map-card :deep(.map-wrap){height:244px;border-radius:14px}.manage-card,.comments{padding:16px}.manage-card h2,.comments h2{font-size:17px}.comments h2 span{color:var(--color-text-muted);font-size:13px}.status-buttons{display:flex;gap:6px;margin:12px 0}.status-buttons button{min-height:40px;padding:0 10px;border:1px solid var(--color-border);border-radius:999px;font-size:11px;font-weight:750}.status-buttons button.active{background:var(--teal);color:var(--color-text-on-accent)}.manage-card label{display:grid;gap:6px;font-size:12px;font-weight:800}.manage-card textarea{padding:11px;border:1px solid var(--color-border);border-radius:12px;resize:vertical}.manage-actions{display:flex;gap:8px;margin-top:10px}.manage-actions button,.comment-form button,.page-state button{min-height:44px;padding:0 15px;border-radius:12px;background:var(--teal);color:var(--color-text-on-accent);font-weight:800}.manage-actions .danger{background:var(--coral);color:var(--color-text-on-coral)}.comment-form{display:flex;gap:8px;margin-top:13px}.comment-form input{min-width:0;flex:1;min-height:44px;padding:0 12px;border:1px solid var(--color-border);border-radius:12px}.comment{display:grid;grid-template-columns:34px 1fr 32px;gap:9px;padding:13px 0;border-top:1px solid var(--color-border);font-size:12.5px;line-height:1.45}.comment small,.comment>button,.comment-state{color:var(--color-text-muted)}.comment-state,.inline-error{padding:16px 0;font-size:12px}.inline-error{color:var(--color-text-urgent)}.page-state{min-height:80dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:30px;text-align:center;color:var(--color-text-muted)}.spinner{width:30px;height:30px;border:3px solid var(--color-surface-selected);border-top-color:var(--color-icon-primary);border-radius:50%;animation:spin .7s linear infinite}.share-scrim{position:fixed;inset:0;z-index:90;display:flex;align-items:flex-end;justify-content:center;background:var(--overlay)}.share-sheet{width:100%;max-width:480px;max-height:70dvh;overflow-y:auto;padding:20px 16px calc(var(--safe-bottom) + 22px);border-radius:24px 24px 0 0;background:var(--color-surface-elevated)}.share-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.share-head button{width:40px;height:40px}.conversation{width:100%;display:grid;grid-template-columns:46px 1fr 30px;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--color-border);text-align:left}.conversation img{width:46px;height:46px;border-radius:50%}.conversation small{display:block;color:var(--color-text-muted)}@keyframes spin{to{transform:rotate(360deg)}}
 .manage-card input{min-height:44px;padding:11px;border:1px solid var(--color-border);border-radius:12px;background:var(--input-bg);color:var(--color-text-primary)}
 .comment-safety{grid-column:2/-1}

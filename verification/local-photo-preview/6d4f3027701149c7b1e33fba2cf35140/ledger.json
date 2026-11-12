@@ -1,0 +1,41 @@
+{
+  "run": "6d4f3027701149c7b1e33fba2cf35140",
+  "database": "fyp_transactions_preview_6d4f3027701149c7b1e33fba2cf35140",
+  "isolated": true,
+  "storageAttempts": 0,
+  "blockedProviderImports": 0,
+  "externalFetchAttempts": 0,
+  "records": {
+    "userblocks": [],
+    "users": [
+      "6af5a87d7c6ef535e684be07",
+      "6af5a87d7c6ef535e684be09"
+    ],
+    "strays": [
+      "6af5a87d7c6ef535e684be0f",
+      "6af5a87d7c6ef535e684be10"
+    ],
+    "messages": [],
+    "notifications": [],
+    "mediaassets": [],
+    "savedstrays": [],
+    "pets": [
+      "6af5a87d7c6ef535e684be0b",
+      "6af5a87d7c6ef535e684be0c"
+    ],
+    "sightings": [
+      "6af5a87d7c6ef535e684be15",
+      "6af5a87d7c6ef535e684be14"
+    ],
+    "contentreports": [],
+    "mediauploadbudgets": [],
+    "straycomments": [
+      "6af5a87d7c6ef535e684be18"
+    ]
+  },
+  "cleanupComplete": true,
+  "failed": true,
+  "failureName": "AssertionError",
+  "serversStopped": true,
+  "replicaStopped": true
+}

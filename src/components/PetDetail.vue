@@ -10,6 +10,7 @@
       />
       <div v-else class="photo-placeholder hero-placeholder" aria-hidden="true">
         <AppIcon name="paw" :size="58" />
+        <small>{{ t(photoFallbackKey(pet.photo, pet.photos)) }}</small>
       </div>
       <span class="sr-only">{{ t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) }) }}</span>
       <button class="back" :aria-label="t('common.back')" @click="emit('close')">
@@ -87,7 +88,10 @@
       </div>
 
       <section class="sighting-history" aria-labelledby="sighting-history-title">
-        <h3 id="sighting-history-title">{{ t('sightings.history') }}</h3>
+        <div class="sighting-history-heading">
+          <h3 id="sighting-history-title" ref="sightingHistoryHeading" tabindex="-1">{{ t('sightings.history') }}</h3>
+          <button v-if="currentStatus !== 'reunited'" class="history-report" type="button" @click="emit('found')">{{ t('feedUsability.reportSighting') }}</button>
+        </div>
         <p v-if="sightingsLoading" class="timeline-state" role="status">
           {{ t('sightings.loadingHistory') }}
         </p>
@@ -123,22 +127,38 @@
             :class="{ focused: activeSightingId === sighting.id }"
             tabindex="0"
             @click="focusMapSighting(sighting.id)"
-            @keydown.enter.prevent="focusMapSighting(sighting.id)"
-            @keydown.space.prevent="focusMapSighting(sighting.id)"
+            @keydown.enter.self.prevent="focusMapSighting(sighting.id)"
+            @keydown.space.self.prevent="focusMapSighting(sighting.id)"
           >
             <span class="timeline-dot" aria-hidden="true" />
             <div class="timeline-content">
-              <div class="timeline-head">
-                <strong>{{ sighting.locationName || t('sightings.locationNotProvided') }}</strong>
+              <div class="sighting-summary">
+                <div class="sighting-area-row">
+                  <strong class="sighting-area">{{ sighting.locationName || t('sightings.locationNotProvided') }}</strong>
+                  <span v-if="sighting.locationPrecision === 'approximate'" class="sighting-precision">{{ t('feedUsability.approximate') }}</span>
+                </div>
                 <time
                   v-if="sighting.sightedAt || sighting.createdAt"
+                  class="sighting-time"
                   :datetime="String(sighting.sightedAt || sighting.createdAt)"
                 >
-                  {{ relativeTime(sighting.sightedAt || sighting.createdAt || '') }}
+                  {{ formatDateTime(sighting.sightedAt || sighting.createdAt, REPORT_TIME_ZONE) }}
                 </time>
+                <span v-else class="sighting-time">{{ t('common.unknown') }}</span>
               </div>
-              <p v-if="sighting.note">{{ sighting.note }}</p>
-              <ContentImageEditor v-if="user && sighting.reportedBy === user.id" type="sighting" :id="sighting.id" @updated="images => updateSightingImage(sighting.id, images)" />
+              <div v-if="sighting.note?.trim() || sightingPhotoUrl(sighting)" class="sighting-evidence">
+                <p v-if="sighting.note?.trim()" class="sighting-note">{{ sighting.note }}</p>
+                <div v-if="sightingPhotoUrl(sighting)" class="sighting-thumbnail" role="img" :aria-label="t('sightings.photoOf', { name: pet.name })">
+                  <ManagedImage
+                    :src="sightingPhotoUrl(sighting)"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    @error="markSightingPhotoFailed(sightingImageKey(sighting))"
+                  />
+                </div>
+              </div>
+              <ContentImageEditor v-if="user && sighting.reportedBy === user.id" class="sighting-photo-editor" type="sighting" :id="sighting.id" @updated="images => updateSightingImage(sighting.id, images)" />
               <div
                 v-if="sighting.reporterName || sighting.reporterPhone"
                 class="reporter-details"
@@ -159,19 +179,6 @@
                   >
                     {{ t('sightings.callReporter') }}
                   </a>
-                </div>
-              </div>
-              <div class="sighting-thumbnail" role="img" :aria-label="t('sightings.photoOf', { name: pet.name })">
-                <ManagedImage
-                  v-if="normalizedImageUrl(sighting.photo) && !failedSightingPhotos.has(sightingImageKey(sighting))"
-                  :src="normalizedImageUrl(sighting.photo)"
-                  alt=""
-                  aria-hidden="true"
-                  loading="lazy"
-                  @error="markSightingPhotoFailed(sightingImageKey(sighting))"
-                />
-                <div v-else class="photo-placeholder" aria-hidden="true">
-                  <AppIcon name="paw" :size="25" />
                 </div>
               </div>
               <div v-if="sighting.id" class="verification-row">
@@ -208,6 +215,7 @@
                 compact
                 report-only
                 target-type="sighting"
+                :report-label="t('feedUsability.reportThisSighting')"
                 :target-id="sighting.id"
                 :user="user"
                 @auth-needed="emit('auth-needed')"
@@ -346,6 +354,8 @@
 
 <script setup lang="ts">
 import { isValidDistance } from '../utils/distance'
+import { attachedPhotoSources, displayImageUrl, photoFallbackKey } from '../utils/imagePresentation'
+import { REPORT_TIME_ZONE } from '../utils/hongKongDateTime'
 import ManagedImage from "./ManagedImage.vue"
 import ContentImageEditor from './ContentImageEditor.vue'
 import type { ManagedImage as ManagedImageData } from '../services/api'
@@ -360,12 +370,13 @@ import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
 import SafetyActions from './SafetyActions.vue'
 import { translateApiError, useAppI18n } from '../i18n'
-import { districtLabel, formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
+import { districtLabel, formatDateTime, formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
 
 const props = defineProps<{
   pet: Pet
   user?: User | null
   focusSightingId?: string
+  focusSightings?: boolean
 }>()
 const emit = defineEmits<{
   close: []
@@ -381,6 +392,7 @@ const { isSaved, toggleSave } = useSavedPets()
 const { t } = useAppI18n()
 
 const sightings = ref<Sighting[]>([])
+const sightingHistoryHeading = ref<HTMLElement | null>(null)
 const sightingsLoading = ref(true)
 const sightingsError = ref('')
 const heroPhotoFailed = ref(false)
@@ -394,7 +406,7 @@ const reunionError = ref('')
 const showCelebration = ref(false)
 const blockedOwner = ref(Boolean(props.pet.interactionBlocked))
 const activeSightingId = ref<string | undefined>(props.focusSightingId)
-const heroPhotoUrl = computed(() => normalizedImageUrl(props.pet.photo))
+const heroPhotoUrl = computed(() => attachedPhotoSources(props.pet.photo, props.pet.photos)[0] || '')
 function updatePetImages(images: ManagedImageData[]) {
   heroPhotoFailed.value = false
   emit('status-updated', { ...props.pet, photo: images[0]?.url || '', photos: images.map((image) => image.url) })
@@ -473,20 +485,8 @@ async function confirmReunion() {
   }
 }
 
-function normalizedImageUrl(value: string | null | undefined): string {
-  const photo = value?.trim()
-  if (!photo) return ''
-
-  try {
-    const apiUrl = new URL(
-      import.meta.env.VITE_API_BASE_URL || '/api',
-      window.location.origin,
-    )
-    const resolved = new URL(photo, `${apiUrl.origin}/`)
-    return ['http:', 'https:', 'data:', 'blob:'].includes(resolved.protocol) ? resolved.href : ''
-  } catch {
-    return ''
-  }
+function sightingPhotoUrl(sighting: Sighting): string {
+  return failedSightingPhotos.value.has(sightingImageKey(sighting)) ? '' : displayImageUrl(sighting.photo)
 }
 
 function markSightingPhotoFailed(id: string) {
@@ -586,7 +586,14 @@ async function focusTimelineSighting(sightingId: string) {
   })
 }
 
-const relativeTime = formatRelativeDate
+async function focusSightingHistory() {
+  if (!props.focusSightings) return
+  await nextTick()
+  sightingHistoryHeading.value?.scrollIntoView({ block: 'start' })
+  sightingHistoryHeading.value?.focus({ preventScroll: true })
+}
+
+watch(() => props.focusSightings, () => void focusSightingHistory(), { immediate: true })
 
 watch(
   [() => props.pet.id, () => props.user?.id],
@@ -605,6 +612,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.hero-placeholder small { color: var(--color-text-secondary); font-size: 13px; text-align: center; }
 .detail {
   font-family: var(--font-feed);
   max-width: 480px;
@@ -935,23 +943,19 @@ h2 {
   box-shadow: var(--shadow-card);
 }
 
-.timeline-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.timeline-head strong {
-  font-size: 14px;
-}
-
-.timeline-head time {
-  flex-shrink: 0;
-  color: var(--ink-muted);
-  font-size: 11.5px;
-  font-weight: 700;
-}
+.sighting-history-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.sighting-history-heading h3 { scroll-margin-top: 20px; }
+.history-report { min-height: 44px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--teal-soft); color: var(--color-text-accent); font-size: 13px; font-weight: 700; }
+.history-report:focus-visible, .sighting-history-heading h3:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.sighting-summary { display: grid; gap: 3px; }
+.sighting-area-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; }
+.sighting-area { color: var(--color-text-primary); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.sighting-precision { flex-shrink: 0; padding: 2px 7px; border-radius: 999px; background: var(--color-surface-selected); color: var(--color-text-muted); font-size: 10.5px; font-weight: 600; }
+.sighting-time { color: var(--color-text-muted); font-size: 11.5px; line-height: 1.4; }
+.sighting-evidence { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; }
+.sighting-evidence .sighting-note { flex: 1; min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sighting-photo-editor { margin-top: 8px; padding: 0 8px; }
+.sighting-photo-editor :deep(summary) { min-height: 36px; font-size: 12px; }
 
 .timeline-content p {
   margin-top: 5px;
@@ -1002,9 +1006,9 @@ h2 {
 
 .sighting-thumbnail {
   position: relative;
-  width: 72px;
-  height: 72px;
-  margin-top: 10px;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--color-surface-subtle);

@@ -24,6 +24,22 @@ describe('SafetyActions', () => {
     expect(document.body.querySelector('[role="dialog"]')).toBeNull()
   })
 
+  it.each(['en', 'zh-HK', 'zh-CN'] as const)('accepts a localized sighting report label without changing its report target in %s', async locale => {
+    i18n.global.locale.value = locale
+    apiMocks.reportContent.mockResolvedValue({ duplicate: false })
+    const wrapper = mount(SafetyActions, { props: { targetType: 'sighting', targetId: 'sighting-id', reportOnly: true, reportLabel: i18n.global.t('feedUsability.reportThisSighting'), user } })
+    try {
+      expect(wrapper.get('.safety-link').text()).toBe(i18n.global.t('feedUsability.reportThisSighting'))
+      await wrapper.get('.safety-link').trigger('click')
+      document.body.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      await flushPromises()
+      expect(apiMocks.reportContent).toHaveBeenCalledExactlyOnceWith({ targetType: 'sighting', targetId: 'sighting-id', reason: 'spam', details: '' })
+      expect(apiMocks.blockUser).not.toHaveBeenCalled()
+      await wrapper.setProps({ reportLabel: undefined })
+      expect(wrapper.get('.safety-link').text()).toBe(i18n.global.t('safety.report'))
+    } finally { wrapper.unmount() }
+  })
+
   it('submits one explicit report and renders idempotent success feedback', async () => {
     apiMocks.reportContent.mockResolvedValue({ id: 'report-id', targetType: 'pet', targetId: 'pet-id', reason: 'scam', status: 'pending', createdAt: new Date().toISOString(), duplicate: false })
     const wrapper = mount(SafetyActions, { props: { targetType: 'pet', targetId: 'pet-id', user } })

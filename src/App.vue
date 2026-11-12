@@ -25,6 +25,7 @@
         :unread-count="unreadCount"
         :user-location="userLocation"
         @open="openPet"
+        @view-sightings="openSightingHistory"
         @found="openSighting"
         @retry="loadPets"
         @radius-change="onRadarRadiusChange"
@@ -98,6 +99,7 @@
           v-else-if="currentRoute.name === 'saved'"
           :user="currentUser"
           @open-pet="openPet"
+          @view-sightings="openSightingHistory"
           @found="openSighting"
           @open-stray="openStrayById"
         />
@@ -144,6 +146,7 @@
         :pet="selectedPet"
         :user="currentUser"
         :focus-sighting-id="selectedSightingId"
+        :focus-sightings="selectedSightingsHistory"
         @close="closePetDetail"
         @found="openSighting(selectedPet)"
         @poster="posterPet = selectedPet"
@@ -479,6 +482,7 @@ const notifications = ref<AppNotification[]>([])
 const notificationTargetError = ref('')
 const selectedPet = ref<Pet | null>(null)
 const selectedSightingId = ref<string | undefined>()
+const selectedSightingsHistory = ref(false)
 const deepLinkLoading = ref(false)
 const deepLinkError = ref('')
 const posterPet = ref<Pet | null>(null)
@@ -742,6 +746,7 @@ function clearAuthorizationScopedState() {
   pets.value = []
   selectedPet.value = null
   selectedSightingId.value = undefined
+  selectedSightingsHistory.value = false
   posterPet.value = null
   toastPet.value = null
   chatPet.value = null
@@ -871,9 +876,15 @@ function openPet(petOrId: Pet | string | number) {
       : pets.value.find((item) => String(item.id) === String(petOrId))
   if (!pet) return
   selectedSightingId.value = undefined
+  selectedSightingsHistory.value = false
   selectedPet.value = pet
   showSmartMatch.value = false
   showNotifications.value = false
+}
+
+function openSightingHistory(pet: Pet) {
+  openPet(pet)
+  selectedSightingsHistory.value = true
 }
 
 async function openDeepLinkedPet(petId: string) {
@@ -881,6 +892,7 @@ async function openDeepLinkedPet(petId: string) {
   const normalizedId = petId.trim()
   selectedPet.value = null
   selectedSightingId.value = undefined
+  selectedSightingsHistory.value = false
   deepLinkLoading.value = true
   deepLinkError.value = ''
 
@@ -905,6 +917,7 @@ function closePetDetail() {
   deepLinkRequestSequence += 1
   selectedPet.value = null
   selectedSightingId.value = undefined
+  selectedSightingsHistory.value = false
   deepLinkLoading.value = false
   deepLinkError.value = ''
   if (route.name === 'pet-detail') {
@@ -1039,6 +1052,7 @@ function postFromSmartMatch() {
 }
 
 async function openPetById(petId: string, sightingId?: string) {
+  selectedSightingsHistory.value = false
   selectedSightingId.value = sightingId
   const cachedPet = pets.value.find((pet) => pet.id === petId)
   if (cachedPet) {

@@ -1,0 +1,2397 @@
+{
+  "run": "bfd1406ee2c04285a5fc8e57d97d593f",
+  "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+  "namespace": "petlostapp/test/bfd1406ee2c04285a5fc8e57d97d593f",
+  "provider": "real Cloudinary",
+  "providerUploadAttempts": 1,
+  "objects": [
+    {
+      "assetId": "6af5a12e8852c71e63bcc462",
+      "provider": "cloudinary",
+      "publicId": "petlostapp/test/bfd1406ee2c04285a5fc8e57d97d593f/pets/d0bc5379-1ef1-4b39-9937-04fdaaa2dbd4",
+      "purpose": "pet",
+      "ownerId": "6af59f558852c71e63bcc423",
+      "imageKey": "image_9c1965d0fc9ce7d094314614b50d1bb5",
+      "checksum": "7599537bda7025b5e461ae1f0cfa0dba880583fc42a622be3c3d388ef06fac96",
+      "reservedAt": "2026-11-12T11:21:18.054Z",
+      "uploadStarted": true,
+      "preflightAbsent": true,
+      "providerAssetId": "ae598bf6c5cecb07299cae06de0fb2b2",
+      "bytes": 17834,
+      "uploadedAt": "2026-11-12T11:21:19.848Z",
+      "deleteSource": "application",
+      "deletedAt": "2026-11-12T11:23:26.993Z",
+      "absentConfirmed": true
+    }
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "startedAt": "2026-11-12T11:13:25.737Z",
+      "finishedAt": "2026-11-12T11:13:25.843Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-11-12T11:14:40.591Z",
+      "finishedAt": "2026-11-12T11:14:40.591Z"
+    },
+    {
+      "method": "GET",
+      "path": "/__verification/status",
+      "status": 200,
+      "startedAt": "2026-11-12T11:14:40.606Z",
+      "finishedAt": "2026-11-12T11:14:40.613Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-11-12T11:17:05.510Z",
+      "finishedAt": "2026-11-12T11:17:05.510Z"
+    },
+    {
+      "method": "GET",
+      "path": "/__verification/status",
+      "status": 200,
+      "startedAt": "2026-11-12T11:17:05.530Z",
+      "finishedAt": "2026-11-12T11:17:05.535Z"
+    },
+    {
+      "method": "GET",
+      "path": "/__verification/status",
+      "status": 200,
+      "startedAt": "2026-11-12T11:17:17.539Z",
+      "finishedAt": "2026-11-12T11:17:17.545Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-11-12T11:17:41.229Z",
+      "finishedAt": "2026-11-12T11:17:41.239Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-11-12T11:18:16.693Z",
+      "finishedAt": "2026-11-12T11:18:16.791Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:18:16.813Z",
+      "finishedAt": "2026-11-12T11:18:16.824Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-11-12T11:18:21.824Z",
+      "finishedAt": "2026-11-12T11:18:21.830Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-11-12T11:18:21.839Z",
+      "finishedAt": "2026-11-12T11:18:21.846Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:18:21.851Z",
+      "finishedAt": "2026-11-12T11:18:21.856Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:18:46.810Z",
+      "finishedAt": "2026-11-12T11:18:46.815Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:18:51.875Z",
+      "finishedAt": "2026-11-12T11:18:51.879Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:19:16.813Z",
+      "finishedAt": "2026-11-12T11:19:16.817Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:19:21.874Z",
+      "finishedAt": "2026-11-12T11:19:21.878Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:19:46.817Z",
+      "finishedAt": "2026-11-12T11:19:46.822Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:19:51.865Z",
+      "finishedAt": "2026-11-12T11:19:51.868Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:20:16.814Z",
+      "finishedAt": "2026-11-12T11:20:16.820Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:20:21.871Z",
+      "finishedAt": "2026-11-12T11:20:21.874Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:20:46.816Z",
+      "finishedAt": "2026-11-12T11:20:46.822Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:20:51.865Z",
+      "finishedAt": "2026-11-12T11:20:51.870Z"
+    },
+    {
+      "method": "GET",
+      "path": "/__verification/status",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:13.626Z",
+      "finishedAt": "2026-11-12T11:21:13.631Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:16.815Z",
+      "finishedAt": "2026-11-12T11:21:16.819Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/managed",
+      "status": 201,
+      "startedAt": "2026-11-12T11:21:17.973Z",
+      "finishedAt": "2026-11-12T11:21:19.857Z",
+      "imageKey": "image_9c1965d0fc9ce7d094314614b50d1bb5"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pets/report",
+      "status": 201,
+      "startedAt": "2026-11-12T11:21:19.862Z",
+      "finishedAt": "2026-11-12T11:21:19.883Z",
+      "submissionId": "image_10263601da8a17ee481c7ba8c1297e15"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:21.864Z",
+      "finishedAt": "2026-11-12T11:21:21.868Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:33.501Z",
+      "finishedAt": "2026-11-12T11:21:33.504Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:33.562Z",
+      "finishedAt": "2026-11-12T11:21:33.569Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/sightings/mine",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:33.603Z",
+      "finishedAt": "2026-11-12T11:21:33.615Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/mine",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:33.627Z",
+      "finishedAt": "2026-11-12T11:21:33.641Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:33.651Z",
+      "finishedAt": "2026-11-12T11:21:34.472Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/nearby",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:38.564Z",
+      "finishedAt": "2026-11-12T11:21:38.569Z"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/preferences",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:38.576Z",
+      "finishedAt": "2026-11-12T11:21:38.580Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:38.585Z",
+      "finishedAt": "2026-11-12T11:21:38.590Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/6af5a12f8852c71e63bcc46d",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:43.226Z",
+      "finishedAt": "2026-11-12T11:21:43.236Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pets/6af5a12f8852c71e63bcc46d/sightings",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:43.257Z",
+      "finishedAt": "2026-11-12T11:21:43.272Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+      "status": 200,
+      "startedAt": "2026-11-12T11:21:43.261Z",
+      "finishedAt": "2026-11-12T11:21:43.434Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:22:03.502Z",
+      "finishedAt": "2026-11-12T11:22:03.508Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:22:08.609Z",
+      "finishedAt": "2026-11-12T11:22:08.613Z"
+    },
+    {
+      "method": "GET",
+      "path": "/__verification/status",
+      "status": 200,
+      "startedAt": "2026-11-12T11:22:20.608Z",
+      "finishedAt": "2026-11-12T11:22:20.613Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:22:33.501Z",
+      "finishedAt": "2026-11-12T11:22:33.506Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:22:38.595Z",
+      "finishedAt": "2026-11-12T11:22:38.598Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:03.507Z",
+      "finishedAt": "2026-11-12T11:23:03.511Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:08.596Z",
+      "finishedAt": "2026-11-12T11:23:08.599Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:25.168Z",
+      "finishedAt": "2026-11-12T11:23:25.168Z"
+    },
+    {
+      "method": "GET",
+      "path": "/__verification/status",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:25.196Z",
+      "finishedAt": "2026-11-12T11:23:25.201Z"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:25.312Z",
+      "finishedAt": "2026-11-12T11:23:25.402Z"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/uploads/managed/content/pet/6af5a12f8852c71e63bcc46d",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:25.412Z",
+      "finishedAt": "2026-11-12T11:23:27.330Z"
+    },
+    {
+      "method": "GET",
+      "path": "/__verification/status",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:27.341Z",
+      "finishedAt": "2026-11-12T11:23:27.346Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:33.508Z",
+      "finishedAt": "2026-11-12T11:23:33.512Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:23:38.608Z",
+      "finishedAt": "2026-11-12T11:23:38.611Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/inbox",
+      "status": 200,
+      "startedAt": "2026-11-12T11:24:03.496Z",
+      "finishedAt": "2026-11-12T11:24:03.500Z"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "startedAt": "2026-11-12T11:24:08.598Z",
+      "finishedAt": "2026-11-12T11:24:08.601Z"
+    },
+    {
+      "method": "GET",
+      "path": "/__verification/status",
+      "status": 200,
+      "startedAt": "2026-11-12T11:25:18.739Z",
+      "finishedAt": "2026-11-12T11:25:18.744Z"
+    }
+  ],
+  "records": {
+    "pets": [
+      "6af5a12f8852c71e63bcc46d"
+    ],
+    "straycomments": [],
+    "mediaassets": [
+      "6af5a12e8852c71e63bcc462"
+    ],
+    "users": [
+      "6af59f558852c71e63bcc423"
+    ],
+    "strays": [],
+    "mediauploadbudgets": [
+      "6af5a12ea45a6ab91900214f"
+    ],
+    "notifications": [],
+    "contentreports": [],
+    "savedstrays": [],
+    "messages": [],
+    "sightings": [],
+    "userblocks": []
+  },
+  "snapshots": [
+    {
+      "at": "2026-11-12T11:14:40.606Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 0,
+      "providerReadStarts": 0,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [],
+      "assets": [],
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/auth/register",
+          "status": 201,
+          "startedAt": "2026-11-12T11:13:25.737Z",
+          "finishedAt": "2026-11-12T11:13:25.843Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.591Z",
+          "finishedAt": "2026-11-12T11:14:40.591Z"
+        }
+      ],
+      "objects": []
+    },
+    {
+      "at": "2026-11-12T11:17:05.530Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 0,
+      "providerReadStarts": 0,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [],
+      "assets": [],
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/auth/register",
+          "status": 201,
+          "startedAt": "2026-11-12T11:13:25.737Z",
+          "finishedAt": "2026-11-12T11:13:25.843Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.591Z",
+          "finishedAt": "2026-11-12T11:14:40.591Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.606Z",
+          "finishedAt": "2026-11-12T11:14:40.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:05.510Z",
+          "finishedAt": "2026-11-12T11:17:05.510Z"
+        }
+      ],
+      "objects": []
+    },
+    {
+      "at": "2026-11-12T11:17:17.539Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 0,
+      "providerReadStarts": 0,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [],
+      "assets": [],
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/auth/register",
+          "status": 201,
+          "startedAt": "2026-11-12T11:13:25.737Z",
+          "finishedAt": "2026-11-12T11:13:25.843Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.591Z",
+          "finishedAt": "2026-11-12T11:14:40.591Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.606Z",
+          "finishedAt": "2026-11-12T11:14:40.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:05.510Z",
+          "finishedAt": "2026-11-12T11:17:05.510Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:05.530Z",
+          "finishedAt": "2026-11-12T11:17:05.535Z"
+        }
+      ],
+      "objects": []
+    },
+    {
+      "at": "2026-11-12T11:21:13.626Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 0,
+      "providerReadStarts": 0,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [],
+      "assets": [],
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/auth/register",
+          "status": 201,
+          "startedAt": "2026-11-12T11:13:25.737Z",
+          "finishedAt": "2026-11-12T11:13:25.843Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.591Z",
+          "finishedAt": "2026-11-12T11:14:40.591Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.606Z",
+          "finishedAt": "2026-11-12T11:14:40.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:05.510Z",
+          "finishedAt": "2026-11-12T11:17:05.510Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:05.530Z",
+          "finishedAt": "2026-11-12T11:17:05.535Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:17.539Z",
+          "finishedAt": "2026-11-12T11:17:17.545Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:41.229Z",
+          "finishedAt": "2026-11-12T11:17:41.239Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/login",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:16.693Z",
+          "finishedAt": "2026-11-12T11:18:16.791Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:16.813Z",
+          "finishedAt": "2026-11-12T11:18:16.824Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.824Z",
+          "finishedAt": "2026-11-12T11:18:21.830Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.839Z",
+          "finishedAt": "2026-11-12T11:18:21.846Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.851Z",
+          "finishedAt": "2026-11-12T11:18:21.856Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:46.810Z",
+          "finishedAt": "2026-11-12T11:18:46.815Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:51.875Z",
+          "finishedAt": "2026-11-12T11:18:51.879Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:16.813Z",
+          "finishedAt": "2026-11-12T11:19:16.817Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:21.874Z",
+          "finishedAt": "2026-11-12T11:19:21.878Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:46.817Z",
+          "finishedAt": "2026-11-12T11:19:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:51.865Z",
+          "finishedAt": "2026-11-12T11:19:51.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:16.814Z",
+          "finishedAt": "2026-11-12T11:20:16.820Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:21.871Z",
+          "finishedAt": "2026-11-12T11:20:21.874Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:46.816Z",
+          "finishedAt": "2026-11-12T11:20:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:51.865Z",
+          "finishedAt": "2026-11-12T11:20:51.870Z"
+        }
+      ],
+      "objects": []
+    },
+    {
+      "at": "2026-11-12T11:22:20.608Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 1,
+      "providerReadStarts": 2,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6af5a12f8852c71e63bcc46d",
+          "name": "Fictional photo verification dog",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15",
+          "reportedBy": "6af59f558852c71e63bcc423",
+          "imageIds": [
+            "6af5a12e8852c71e63bcc462"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6af5a12e8852c71e63bcc462",
+          "uploadedBy": "6af59f558852c71e63bcc423",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_9c1965d0fc9ce7d094314614b50d1bb5",
+          "expiresAt": "2026-11-13T11:21:18.020Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6af5a12f8852c71e63bcc46d"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/auth/register",
+          "status": 201,
+          "startedAt": "2026-11-12T11:13:25.737Z",
+          "finishedAt": "2026-11-12T11:13:25.843Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.591Z",
+          "finishedAt": "2026-11-12T11:14:40.591Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:14:40.606Z",
+          "finishedAt": "2026-11-12T11:14:40.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:05.510Z",
+          "finishedAt": "2026-11-12T11:17:05.510Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:05.530Z",
+          "finishedAt": "2026-11-12T11:17:05.535Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:17.539Z",
+          "finishedAt": "2026-11-12T11:17:17.545Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:41.229Z",
+          "finishedAt": "2026-11-12T11:17:41.239Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/login",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:16.693Z",
+          "finishedAt": "2026-11-12T11:18:16.791Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:16.813Z",
+          "finishedAt": "2026-11-12T11:18:16.824Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.824Z",
+          "finishedAt": "2026-11-12T11:18:21.830Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.839Z",
+          "finishedAt": "2026-11-12T11:18:21.846Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.851Z",
+          "finishedAt": "2026-11-12T11:18:21.856Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:46.810Z",
+          "finishedAt": "2026-11-12T11:18:46.815Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:51.875Z",
+          "finishedAt": "2026-11-12T11:18:51.879Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:16.813Z",
+          "finishedAt": "2026-11-12T11:19:16.817Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:21.874Z",
+          "finishedAt": "2026-11-12T11:19:21.878Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:46.817Z",
+          "finishedAt": "2026-11-12T11:19:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:51.865Z",
+          "finishedAt": "2026-11-12T11:19:51.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:16.814Z",
+          "finishedAt": "2026-11-12T11:20:16.820Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:21.871Z",
+          "finishedAt": "2026-11-12T11:20:21.874Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:46.816Z",
+          "finishedAt": "2026-11-12T11:20:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:51.865Z",
+          "finishedAt": "2026-11-12T11:20:51.870Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:13.626Z",
+          "finishedAt": "2026-11-12T11:21:13.631Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:16.815Z",
+          "finishedAt": "2026-11-12T11:21:16.819Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/uploads/managed",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:17.973Z",
+          "finishedAt": "2026-11-12T11:21:19.857Z",
+          "imageKey": "image_9c1965d0fc9ce7d094314614b50d1bb5"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pets/report",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:19.862Z",
+          "finishedAt": "2026-11-12T11:21:19.883Z",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:21.864Z",
+          "finishedAt": "2026-11-12T11:21:21.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/me",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.501Z",
+          "finishedAt": "2026-11-12T11:21:33.504Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.562Z",
+          "finishedAt": "2026-11-12T11:21:33.569Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/sightings/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.603Z",
+          "finishedAt": "2026-11-12T11:21:33.615Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.627Z",
+          "finishedAt": "2026-11-12T11:21:33.641Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.651Z",
+          "finishedAt": "2026-11-12T11:21:34.472Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.564Z",
+          "finishedAt": "2026-11-12T11:21:38.569Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.576Z",
+          "finishedAt": "2026-11-12T11:21:38.580Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.585Z",
+          "finishedAt": "2026-11-12T11:21:38.590Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.226Z",
+          "finishedAt": "2026-11-12T11:21:43.236Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d/sightings",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.257Z",
+          "finishedAt": "2026-11-12T11:21:43.272Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.261Z",
+          "finishedAt": "2026-11-12T11:21:43.434Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:03.502Z",
+          "finishedAt": "2026-11-12T11:22:03.508Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:08.609Z",
+          "finishedAt": "2026-11-12T11:22:08.613Z"
+        }
+      ],
+      "objects": [
+        {
+          "assetId": "6af5a12e8852c71e63bcc462",
+          "uploadStarted": true,
+          "uploadedAt": "2026-11-12T11:21:19.848Z",
+          "bytes": 17834
+        }
+      ]
+    },
+    {
+      "at": "2026-11-12T11:23:25.196Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 1,
+      "providerReadStarts": 2,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6af5a12f8852c71e63bcc46d",
+          "name": "Fictional photo verification dog",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15",
+          "reportedBy": "6af59f558852c71e63bcc423",
+          "imageIds": [
+            "6af5a12e8852c71e63bcc462"
+          ]
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6af5a12e8852c71e63bcc462",
+          "uploadedBy": "6af59f558852c71e63bcc423",
+          "purpose": "pet",
+          "state": "attached",
+          "idempotencyKey": "image_9c1965d0fc9ce7d094314614b50d1bb5",
+          "expiresAt": "2026-11-13T11:21:18.020Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6af5a12f8852c71e63bcc46d"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:17:41.229Z",
+          "finishedAt": "2026-11-12T11:17:41.239Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/login",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:16.693Z",
+          "finishedAt": "2026-11-12T11:18:16.791Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:16.813Z",
+          "finishedAt": "2026-11-12T11:18:16.824Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.824Z",
+          "finishedAt": "2026-11-12T11:18:21.830Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.839Z",
+          "finishedAt": "2026-11-12T11:18:21.846Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.851Z",
+          "finishedAt": "2026-11-12T11:18:21.856Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:46.810Z",
+          "finishedAt": "2026-11-12T11:18:46.815Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:51.875Z",
+          "finishedAt": "2026-11-12T11:18:51.879Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:16.813Z",
+          "finishedAt": "2026-11-12T11:19:16.817Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:21.874Z",
+          "finishedAt": "2026-11-12T11:19:21.878Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:46.817Z",
+          "finishedAt": "2026-11-12T11:19:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:51.865Z",
+          "finishedAt": "2026-11-12T11:19:51.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:16.814Z",
+          "finishedAt": "2026-11-12T11:20:16.820Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:21.871Z",
+          "finishedAt": "2026-11-12T11:20:21.874Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:46.816Z",
+          "finishedAt": "2026-11-12T11:20:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:51.865Z",
+          "finishedAt": "2026-11-12T11:20:51.870Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:13.626Z",
+          "finishedAt": "2026-11-12T11:21:13.631Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:16.815Z",
+          "finishedAt": "2026-11-12T11:21:16.819Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/uploads/managed",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:17.973Z",
+          "finishedAt": "2026-11-12T11:21:19.857Z",
+          "imageKey": "image_9c1965d0fc9ce7d094314614b50d1bb5"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pets/report",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:19.862Z",
+          "finishedAt": "2026-11-12T11:21:19.883Z",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:21.864Z",
+          "finishedAt": "2026-11-12T11:21:21.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/me",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.501Z",
+          "finishedAt": "2026-11-12T11:21:33.504Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.562Z",
+          "finishedAt": "2026-11-12T11:21:33.569Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/sightings/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.603Z",
+          "finishedAt": "2026-11-12T11:21:33.615Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.627Z",
+          "finishedAt": "2026-11-12T11:21:33.641Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.651Z",
+          "finishedAt": "2026-11-12T11:21:34.472Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.564Z",
+          "finishedAt": "2026-11-12T11:21:38.569Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.576Z",
+          "finishedAt": "2026-11-12T11:21:38.580Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.585Z",
+          "finishedAt": "2026-11-12T11:21:38.590Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.226Z",
+          "finishedAt": "2026-11-12T11:21:43.236Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d/sightings",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.257Z",
+          "finishedAt": "2026-11-12T11:21:43.272Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.261Z",
+          "finishedAt": "2026-11-12T11:21:43.434Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:03.502Z",
+          "finishedAt": "2026-11-12T11:22:03.508Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:08.609Z",
+          "finishedAt": "2026-11-12T11:22:08.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:20.608Z",
+          "finishedAt": "2026-11-12T11:22:20.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:33.501Z",
+          "finishedAt": "2026-11-12T11:22:33.506Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:38.595Z",
+          "finishedAt": "2026-11-12T11:22:38.598Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:03.507Z",
+          "finishedAt": "2026-11-12T11:23:03.511Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:08.596Z",
+          "finishedAt": "2026-11-12T11:23:08.599Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.168Z",
+          "finishedAt": "2026-11-12T11:23:25.168Z"
+        }
+      ],
+      "objects": [
+        {
+          "assetId": "6af5a12e8852c71e63bcc462",
+          "uploadStarted": true,
+          "uploadedAt": "2026-11-12T11:21:19.848Z",
+          "bytes": 17834
+        }
+      ]
+    },
+    {
+      "at": "2026-11-12T11:23:27.341Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 1,
+      "providerReadStarts": 2,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6af5a12f8852c71e63bcc46d",
+          "name": "Fictional photo verification dog",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15",
+          "reportedBy": "6af59f558852c71e63bcc423",
+          "imageIds": []
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6af5a12e8852c71e63bcc462",
+          "uploadedBy": "6af59f558852c71e63bcc423",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_9c1965d0fc9ce7d094314614b50d1bb5",
+          "expiresAt": "2026-11-13T11:21:18.020Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6af5a12f8852c71e63bcc46d"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.824Z",
+          "finishedAt": "2026-11-12T11:18:21.830Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.839Z",
+          "finishedAt": "2026-11-12T11:18:21.846Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:21.851Z",
+          "finishedAt": "2026-11-12T11:18:21.856Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:46.810Z",
+          "finishedAt": "2026-11-12T11:18:46.815Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:18:51.875Z",
+          "finishedAt": "2026-11-12T11:18:51.879Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:16.813Z",
+          "finishedAt": "2026-11-12T11:19:16.817Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:21.874Z",
+          "finishedAt": "2026-11-12T11:19:21.878Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:46.817Z",
+          "finishedAt": "2026-11-12T11:19:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:51.865Z",
+          "finishedAt": "2026-11-12T11:19:51.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:16.814Z",
+          "finishedAt": "2026-11-12T11:20:16.820Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:21.871Z",
+          "finishedAt": "2026-11-12T11:20:21.874Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:46.816Z",
+          "finishedAt": "2026-11-12T11:20:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:51.865Z",
+          "finishedAt": "2026-11-12T11:20:51.870Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:13.626Z",
+          "finishedAt": "2026-11-12T11:21:13.631Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:16.815Z",
+          "finishedAt": "2026-11-12T11:21:16.819Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/uploads/managed",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:17.973Z",
+          "finishedAt": "2026-11-12T11:21:19.857Z",
+          "imageKey": "image_9c1965d0fc9ce7d094314614b50d1bb5"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pets/report",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:19.862Z",
+          "finishedAt": "2026-11-12T11:21:19.883Z",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:21.864Z",
+          "finishedAt": "2026-11-12T11:21:21.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/me",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.501Z",
+          "finishedAt": "2026-11-12T11:21:33.504Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.562Z",
+          "finishedAt": "2026-11-12T11:21:33.569Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/sightings/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.603Z",
+          "finishedAt": "2026-11-12T11:21:33.615Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.627Z",
+          "finishedAt": "2026-11-12T11:21:33.641Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.651Z",
+          "finishedAt": "2026-11-12T11:21:34.472Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.564Z",
+          "finishedAt": "2026-11-12T11:21:38.569Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.576Z",
+          "finishedAt": "2026-11-12T11:21:38.580Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.585Z",
+          "finishedAt": "2026-11-12T11:21:38.590Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.226Z",
+          "finishedAt": "2026-11-12T11:21:43.236Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d/sightings",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.257Z",
+          "finishedAt": "2026-11-12T11:21:43.272Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.261Z",
+          "finishedAt": "2026-11-12T11:21:43.434Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:03.502Z",
+          "finishedAt": "2026-11-12T11:22:03.508Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:08.609Z",
+          "finishedAt": "2026-11-12T11:22:08.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:20.608Z",
+          "finishedAt": "2026-11-12T11:22:20.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:33.501Z",
+          "finishedAt": "2026-11-12T11:22:33.506Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:38.595Z",
+          "finishedAt": "2026-11-12T11:22:38.598Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:03.507Z",
+          "finishedAt": "2026-11-12T11:23:03.511Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:08.596Z",
+          "finishedAt": "2026-11-12T11:23:08.599Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.168Z",
+          "finishedAt": "2026-11-12T11:23:25.168Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.196Z",
+          "finishedAt": "2026-11-12T11:23:25.201Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/login",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.312Z",
+          "finishedAt": "2026-11-12T11:23:25.402Z"
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/uploads/managed/content/pet/6af5a12f8852c71e63bcc46d",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.412Z",
+          "finishedAt": "2026-11-12T11:23:27.330Z"
+        }
+      ],
+      "objects": [
+        {
+          "assetId": "6af5a12e8852c71e63bcc462",
+          "uploadStarted": true,
+          "uploadedAt": "2026-11-12T11:21:19.848Z",
+          "bytes": 17834,
+          "deleteSource": "application",
+          "absentConfirmed": true
+        }
+      ]
+    },
+    {
+      "at": "2026-11-12T11:25:18.739Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 1,
+      "providerReadStarts": 2,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6af5a12f8852c71e63bcc46d",
+          "name": "Fictional photo verification dog",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15",
+          "reportedBy": "6af59f558852c71e63bcc423",
+          "imageIds": []
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6af5a12e8852c71e63bcc462",
+          "uploadedBy": "6af59f558852c71e63bcc423",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_9c1965d0fc9ce7d094314614b50d1bb5",
+          "expiresAt": "2026-11-13T11:21:18.020Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6af5a12f8852c71e63bcc46d"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:16.813Z",
+          "finishedAt": "2026-11-12T11:19:16.817Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:21.874Z",
+          "finishedAt": "2026-11-12T11:19:21.878Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:46.817Z",
+          "finishedAt": "2026-11-12T11:19:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:51.865Z",
+          "finishedAt": "2026-11-12T11:19:51.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:16.814Z",
+          "finishedAt": "2026-11-12T11:20:16.820Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:21.871Z",
+          "finishedAt": "2026-11-12T11:20:21.874Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:46.816Z",
+          "finishedAt": "2026-11-12T11:20:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:51.865Z",
+          "finishedAt": "2026-11-12T11:20:51.870Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:13.626Z",
+          "finishedAt": "2026-11-12T11:21:13.631Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:16.815Z",
+          "finishedAt": "2026-11-12T11:21:16.819Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/uploads/managed",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:17.973Z",
+          "finishedAt": "2026-11-12T11:21:19.857Z",
+          "imageKey": "image_9c1965d0fc9ce7d094314614b50d1bb5"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pets/report",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:19.862Z",
+          "finishedAt": "2026-11-12T11:21:19.883Z",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:21.864Z",
+          "finishedAt": "2026-11-12T11:21:21.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/me",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.501Z",
+          "finishedAt": "2026-11-12T11:21:33.504Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.562Z",
+          "finishedAt": "2026-11-12T11:21:33.569Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/sightings/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.603Z",
+          "finishedAt": "2026-11-12T11:21:33.615Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.627Z",
+          "finishedAt": "2026-11-12T11:21:33.641Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.651Z",
+          "finishedAt": "2026-11-12T11:21:34.472Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.564Z",
+          "finishedAt": "2026-11-12T11:21:38.569Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.576Z",
+          "finishedAt": "2026-11-12T11:21:38.580Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.585Z",
+          "finishedAt": "2026-11-12T11:21:38.590Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.226Z",
+          "finishedAt": "2026-11-12T11:21:43.236Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d/sightings",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.257Z",
+          "finishedAt": "2026-11-12T11:21:43.272Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.261Z",
+          "finishedAt": "2026-11-12T11:21:43.434Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:03.502Z",
+          "finishedAt": "2026-11-12T11:22:03.508Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:08.609Z",
+          "finishedAt": "2026-11-12T11:22:08.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:20.608Z",
+          "finishedAt": "2026-11-12T11:22:20.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:33.501Z",
+          "finishedAt": "2026-11-12T11:22:33.506Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:38.595Z",
+          "finishedAt": "2026-11-12T11:22:38.598Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:03.507Z",
+          "finishedAt": "2026-11-12T11:23:03.511Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:08.596Z",
+          "finishedAt": "2026-11-12T11:23:08.599Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.168Z",
+          "finishedAt": "2026-11-12T11:23:25.168Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.196Z",
+          "finishedAt": "2026-11-12T11:23:25.201Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/login",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.312Z",
+          "finishedAt": "2026-11-12T11:23:25.402Z"
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/uploads/managed/content/pet/6af5a12f8852c71e63bcc46d",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.412Z",
+          "finishedAt": "2026-11-12T11:23:27.330Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:27.341Z",
+          "finishedAt": "2026-11-12T11:23:27.346Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:33.508Z",
+          "finishedAt": "2026-11-12T11:23:33.512Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:38.608Z",
+          "finishedAt": "2026-11-12T11:23:38.611Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:24:03.496Z",
+          "finishedAt": "2026-11-12T11:24:03.500Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:24:08.598Z",
+          "finishedAt": "2026-11-12T11:24:08.601Z"
+        }
+      ],
+      "objects": [
+        {
+          "assetId": "6af5a12e8852c71e63bcc462",
+          "uploadStarted": true,
+          "uploadedAt": "2026-11-12T11:21:19.848Z",
+          "bytes": 17834,
+          "deleteSource": "application",
+          "absentConfirmed": true
+        }
+      ]
+    },
+    {
+      "at": "2026-11-12T11:27:18.534Z",
+      "database": "fyp_transactions_browser_bfd1406ee2c04285a5fc8e57d97d593f",
+      "providerUploadAttempts": 1,
+      "providerReadStarts": 2,
+      "users": [
+        {
+          "_id": "6af59f558852c71e63bcc423",
+          "name": "Manual Photo Owner"
+        }
+      ],
+      "pets": [
+        {
+          "_id": "6af5a12f8852c71e63bcc46d",
+          "name": "Fictional photo verification dog",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15",
+          "reportedBy": "6af59f558852c71e63bcc423",
+          "imageIds": []
+        }
+      ],
+      "assets": [
+        {
+          "_id": "6af5a12e8852c71e63bcc462",
+          "uploadedBy": "6af59f558852c71e63bcc423",
+          "purpose": "pet",
+          "state": "deleted",
+          "idempotencyKey": "image_9c1965d0fc9ce7d094314614b50d1bb5",
+          "expiresAt": "2026-11-13T11:21:18.020Z",
+          "attachedTo": {
+            "type": "pet",
+            "id": "6af5a12f8852c71e63bcc46d"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:21.874Z",
+          "finishedAt": "2026-11-12T11:19:21.878Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:46.817Z",
+          "finishedAt": "2026-11-12T11:19:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:19:51.865Z",
+          "finishedAt": "2026-11-12T11:19:51.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:16.814Z",
+          "finishedAt": "2026-11-12T11:20:16.820Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:21.871Z",
+          "finishedAt": "2026-11-12T11:20:21.874Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:46.816Z",
+          "finishedAt": "2026-11-12T11:20:46.822Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:20:51.865Z",
+          "finishedAt": "2026-11-12T11:20:51.870Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:13.626Z",
+          "finishedAt": "2026-11-12T11:21:13.631Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:16.815Z",
+          "finishedAt": "2026-11-12T11:21:16.819Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/uploads/managed",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:17.973Z",
+          "finishedAt": "2026-11-12T11:21:19.857Z",
+          "imageKey": "image_9c1965d0fc9ce7d094314614b50d1bb5"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pets/report",
+          "status": 201,
+          "startedAt": "2026-11-12T11:21:19.862Z",
+          "finishedAt": "2026-11-12T11:21:19.883Z",
+          "submissionId": "image_10263601da8a17ee481c7ba8c1297e15"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:21.864Z",
+          "finishedAt": "2026-11-12T11:21:21.868Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/me",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.501Z",
+          "finishedAt": "2026-11-12T11:21:33.504Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.562Z",
+          "finishedAt": "2026-11-12T11:21:33.569Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/sightings/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.603Z",
+          "finishedAt": "2026-11-12T11:21:33.615Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/mine",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.627Z",
+          "finishedAt": "2026-11-12T11:21:33.641Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:33.651Z",
+          "finishedAt": "2026-11-12T11:21:34.472Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/nearby",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.564Z",
+          "finishedAt": "2026-11-12T11:21:38.569Z"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/notifications/preferences",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.576Z",
+          "finishedAt": "2026-11-12T11:21:38.580Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:38.585Z",
+          "finishedAt": "2026-11-12T11:21:38.590Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.226Z",
+          "finishedAt": "2026-11-12T11:21:43.236Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/pets/6af5a12f8852c71e63bcc46d/sightings",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.257Z",
+          "finishedAt": "2026-11-12T11:21:43.272Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/uploads/managed/6af5a12e8852c71e63bcc462/content",
+          "status": 200,
+          "startedAt": "2026-11-12T11:21:43.261Z",
+          "finishedAt": "2026-11-12T11:21:43.434Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:03.502Z",
+          "finishedAt": "2026-11-12T11:22:03.508Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:08.609Z",
+          "finishedAt": "2026-11-12T11:22:08.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:20.608Z",
+          "finishedAt": "2026-11-12T11:22:20.613Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:33.501Z",
+          "finishedAt": "2026-11-12T11:22:33.506Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:22:38.595Z",
+          "finishedAt": "2026-11-12T11:22:38.598Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:03.507Z",
+          "finishedAt": "2026-11-12T11:23:03.511Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:08.596Z",
+          "finishedAt": "2026-11-12T11:23:08.599Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.168Z",
+          "finishedAt": "2026-11-12T11:23:25.168Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.196Z",
+          "finishedAt": "2026-11-12T11:23:25.201Z"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/login",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.312Z",
+          "finishedAt": "2026-11-12T11:23:25.402Z"
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/uploads/managed/content/pet/6af5a12f8852c71e63bcc46d",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:25.412Z",
+          "finishedAt": "2026-11-12T11:23:27.330Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:27.341Z",
+          "finishedAt": "2026-11-12T11:23:27.346Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:33.508Z",
+          "finishedAt": "2026-11-12T11:23:33.512Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:23:38.608Z",
+          "finishedAt": "2026-11-12T11:23:38.611Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/chat/inbox",
+          "status": 200,
+          "startedAt": "2026-11-12T11:24:03.496Z",
+          "finishedAt": "2026-11-12T11:24:03.500Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "status": 200,
+          "startedAt": "2026-11-12T11:24:08.598Z",
+          "finishedAt": "2026-11-12T11:24:08.601Z"
+        },
+        {
+          "method": "GET",
+          "path": "/__verification/status",
+          "status": 200,
+          "startedAt": "2026-11-12T11:25:18.739Z",
+          "finishedAt": "2026-11-12T11:25:18.744Z"
+        }
+      ],
+      "objects": [
+        {
+          "assetId": "6af5a12e8852c71e63bcc462",
+          "uploadStarted": true,
+          "uploadedAt": "2026-11-12T11:21:19.848Z",
+          "bytes": 17834,
+          "deleteSource": "application",
+          "absentConfirmed": true
+        }
+      ]
+    }
+  ],
+  "cleanupComplete": true,
+  "capacity": {
+    "checkedAt": "2026-11-12T11:13:19.529Z",
+    "plan": "Free",
+    "creditsUsed": 0.19,
+    "creditsLimit": 25,
+    "creditsRemaining": 24.81
+  },
+  "fixtureOwner": "6af59f558852c71e63bcc423",
+  "providerReadStarts": 2,
+  "localFixturesRemoved": true,
+  "replicaStopped": true,
+  "serversStopped": true
+}

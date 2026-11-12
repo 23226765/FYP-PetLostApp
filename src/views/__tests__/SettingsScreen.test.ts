@@ -243,7 +243,9 @@ describe('SettingsScreen contact privacy', () => {
     await wrapper.setProps({ user: { ...user, id: 'other-id', name: 'Other fictional user', avatar: '/avatar.svg' } })
     finish({ ...user, avatar: '/api/uploads/managed/' + 'f'.repeat(24) + '/content' }); await flushPromises()
     expect(wrapper.emitted('updated')).toBeUndefined()
-    expect(wrapper.get('.avatar-picker img').attributes('src')).toBe('/avatar.svg')
+    expect(wrapper.find('.avatar-picker img').exists()).toBe(false)
+    expect(wrapper.get('.avatar-picker .initials').text()).toBe('OU')
+    expect(wrapper.get('.avatar-picker .user-avatar').attributes('aria-label')).toContain('Other fictional user')
     wrapper.unmount()
   })
 

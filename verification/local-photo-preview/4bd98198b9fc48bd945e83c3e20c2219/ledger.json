@@ -1,0 +1,43 @@
+{
+  "run": "4bd98198b9fc48bd945e83c3e20c2219",
+  "database": "fyp_transactions_preview_4bd98198b9fc48bd945e83c3e20c2219",
+  "isolated": true,
+  "storageAttempts": 0,
+  "blockedProviderImports": 0,
+  "externalFetchAttempts": 0,
+  "records": {},
+  "cleanupComplete": false,
+  "verified": {
+    "health": true,
+    "viewerRadar": 2,
+    "viewerRescue": 2,
+    "mapReports": 2,
+    "detailPhotos": 4,
+    "localJpegs": 2,
+    "privateSightingProjection": true,
+    "uploadsDisabled": true,
+    "providerCalls": 0
+  },
+  "fixtures": {
+    "pets": [
+      {
+        "id": "6af5ae99c576eb7742da3524",
+        "name": "FICTIONAL Preview Dog"
+      },
+      {
+        "id": "6af5ae99c576eb7742da3525",
+        "name": "FICTIONAL Preview Cat"
+      }
+    ],
+    "strays": [
+      {
+        "id": "6af5ae99c576eb7742da3528",
+        "species": "Dog"
+      },
+      {
+        "id": "6af5ae99c576eb7742da3529",
+        "species": "Cat"
+      }
+    ]
+  }
+}

@@ -19,12 +19,28 @@ function login(id: string) { setSessionToken(`fixture-${id}`); activateSavedPets
 async function render(account?: string) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/saved', component: SavedScreen }] })
   await router.push('/saved'); await router.isReady()
-  return mount(SavedScreen, { props: { user: account ? user(account) : null }, global: { plugins: [router, i18n], stubs: { PetCard: { props: ['pet'], template: '<p class="saved-pet">{{ pet.name }}</p>' }, ManagedImage: true } } })
+  return mount(SavedScreen, { props: { user: account ? user(account) : null }, global: { plugins: [router, i18n], stubs: { PetCard: { props: ['pet'], emits: ['view-sightings', 'found'], template: '<div class="saved-pet">{{ pet.name }}<button class="saved-pet-history" @click="$emit(\'view-sightings\')">History</button><button class="saved-pet-report" @click="$emit(\'found\')">Report</button></div>' }, ManagedImage: true } } })
 }
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (error: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 
 describe('saved retrieval is scoped, retryable and accurately paged', () => {
   beforeEach(() => { localStorage.clear(); setSessionToken(null); vi.resetAllMocks(); i18n.global.locale.value = 'en'; api.getSavedStraysPage.mockResolvedValue(strayPage()) })
+
+  it('forwards saved-pet history and reporting separately without refetching cards', async () => {
+    store.toggleSave('saved-maple')
+    const saved = pet('saved-maple')
+    api.getPet.mockResolvedValue(saved)
+    const wrapper = await render(); await flushPromises()
+    await wrapper.get('.saved-pet-history').trigger('click')
+    expect(wrapper.emitted('view-sightings')).toEqual([[saved]])
+    expect(wrapper.emitted('found')).toBeUndefined()
+    await wrapper.get('.saved-pet-report').trigger('click')
+    expect(wrapper.emitted('found')).toEqual([[saved]])
+    expect(wrapper.emitted('open-pet')).toBeUndefined()
+    expect(api.getPet).toHaveBeenCalledTimes(1)
+    expect(api.getSavedStraysPage).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
 
   it('distinguishes genuinely empty guest saves from all-failed reads; preserves IDs on retry', async () => {
     const empty = await render(); await flushPromises()

@@ -5,6 +5,10 @@
     role="tabpanel"
     aria-labelledby="profile-tab-pets"
   >
+    <div class="panel-heading">
+      <h2>{{ t('profile.myPets') }}</h2>
+      <button type="button" @click="emit('add-pet')"><AppIcon name="plus" :size="17" />{{ t('profile.addPet') }}</button>
+    </div>
     <div v-if="loading && !pets.length" class="panel-state" role="status">
       <span class="spinner" aria-hidden="true" />{{ t('profile.loadingPets') }}
     </div>
@@ -15,32 +19,23 @@
       <span class="state-icon"><AppIcon name="paw" :size="30" /></span>
       <h2>{{ t('profile.noPetsTitle') }}</h2>
       <p>{{ t('profile.noReportedPets') }}</p>
-      <button type="button" @click="emit('add-pet')">{{ t('profile.addPet') }}</button>
     </div>
     <template v-else>
-      <div class="panel-heading">
-        <h2>{{ t('profile.myPets') }}</h2>
-        <button type="button" @click="emit('add-pet')"><AppIcon name="plus" :size="17" />{{ t('profile.addPet') }}</button>
-      </div>
-      <div class="my-pets-list">
-        <article
+      <div class="my-pets-list profile-post-grid">
+        <ProfilePhotoCard
           v-for="pet in pets"
           :key="pet.id"
           class="my-pet"
-          role="link"
-          tabindex="0"
-          :aria-label="t('profile.openPet', { name: pet.name })"
-          @click="openPet(pet, $event)"
-          @keydown.enter.prevent="openPet(pet, $event)"
-          @keydown.space.prevent="openPet(pet, $event)"
-        >
-          <span class="pet-photo">
-            <ManagedImage v-if="pet.photo && !failedImages.has(pet.id)" :src="pet.photo" :alt="t('pets.photoAlt', { name: pet.name })" @error="markImageFailed(pet.id)" />
-            <AppIcon v-else name="paw" :size="26" />
-          </span>
-          <div class="my-pet-info"><strong>{{ pet.name }}</strong><span>{{ pet.breed || pet.species }}</span></div>
-          <span class="status-badge" :class="pet.status">{{ petStatusLabel(pet.status) }}</span>
-        </article>
+          :title="pet.name"
+          :subtitle="pet.breed || speciesLabel(pet.species)"
+          :status="petStatusLabel(pet.status)"
+          :status-class="pet.status"
+          :accessible-label="t('profile.openPet', { name: pet.name })"
+          :photo-alt="t('pets.photoAlt', { name: pet.name })"
+          :photo="pet.photo"
+          :photos="pet.photos"
+          @open="emit('open-pet', pet.id)"
+        />
       </div>
       <p v-if="error" class="inline-error" role="alert">{{ error }}</p>
       <button v-if="hasMore" class="load-more" type="button" :disabled="loadingMore" @click="loadPage(page + 1)">
@@ -51,13 +46,13 @@
 </template>
 
 <script setup lang="ts">
-import ManagedImage from "../ManagedImage.vue"
+import ProfilePhotoCard from './ProfilePhotoCard.vue'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import AppIcon from '../AppIcon.vue'
 import { getMyPetsPage } from '../../services/api'
 import type { Pet } from '../../types/pet'
 import { translateApiError, useAppI18n } from '../../i18n'
-import { petStatusLabel } from '../../i18n/formatters'
+import { petStatusLabel, speciesLabel } from '../../i18n/formatters'
 
 const props = defineProps<{ userId: string; active: boolean; refreshKey: number }>()
 const emit = defineEmits<{
@@ -72,7 +67,6 @@ const loadingMore = ref(false)
 const error = ref('')
 const page = ref(1)
 const hasMore = ref(false)
-const failedImages = ref(new Set<string>())
 let sequence = 0
 let controller: AbortController | null = null
 
@@ -103,38 +97,14 @@ async function loadPage(nextPage: number) {
   }
 }
 
-function openPet(pet: Pet, event: MouseEvent | KeyboardEvent) {
-  const target = event.target
-  if (target instanceof Element && target.closest('button, a, input, select, textarea')) return
-  emit('open-pet', pet.id)
-}
-
-function markImageFailed(id: string) { failedImages.value = new Set([...failedImages.value, id]) }
-
 watch(() => props.userId, () => { pets.value = []; void loadPage(1) }, { immediate: true })
 watch(() => props.refreshKey, (value, previous) => { if (value !== previous && props.active) void loadPage(1) })
 onBeforeUnmount(() => { sequence += 1; controller?.abort() })
 </script>
 
+<style scoped src="./profileGrid.css"></style>
 <style scoped>
 .tab-panel { min-height: 230px; }
-.panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
-.panel-heading h2 { font-size: 16px; }
-.panel-heading button { min-height: 44px; display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; border-radius: 999px; background: var(--color-surface-selected); color: var(--color-text-accent); font-size: 13px; font-weight: 600; }
-.my-pets-list { display: flex; flex-direction: column; gap: 0; }
-.my-pet { display: flex; align-items: center; gap: 13px; padding: 12px 0; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: var(--color-surface); box-shadow: var(--shadow-card); cursor: pointer; transition: background-color .2s ease; }
-.my-pet:hover { background: var(--color-surface-subtle); }
-.my-pet:active { background: var(--color-surface-selected); }
-.my-pet:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
-.pet-photo { width: 56px; height: 56px; display: grid; place-items: center; flex: none; overflow: hidden; border-radius: 8px; background: var(--color-surface-selected); color: var(--color-icon-primary); }
-.pet-photo img { width: 100%; height: 100%; object-fit: cover; }
-.my-pet-info { min-width: 0; display: flex; flex: 1; flex-direction: column; }
-.my-pet-info strong, .my-pet-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.my-pet-info strong { font-size: 15px; }
-.my-pet-info span { color: var(--color-text-muted); font-size: 12px; }
-.status-badge { padding: 4px 9px; border-radius: 999px; background: var(--status-coral-bg); color: var(--color-text-urgent); font-size: 12px; font-weight: 600; }
-.status-badge.sighted { background: var(--color-surface-selected); color: var(--color-text-accent); }
-.status-badge.reunited { background: var(--teal); color: var(--color-text-on-accent); }
 .panel-state { min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 24px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); color: var(--color-text-muted); text-align: center; }
 .panel-state h2 { color: var(--color-text-primary); font-size: 17px; }
 .panel-state p { font-size: 13px; }
@@ -146,5 +116,5 @@ onBeforeUnmount(() => { sequence += 1; controller?.abort() })
 .inline-error, .panel-state.error { color: var(--color-text-urgent); }
 .inline-error { margin-top: 10px; font-size: 12px; text-align: center; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .my-pet { transition: none; } .spinner { animation-duration: 1.4s; } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1.4s; } }
 </style>

@@ -55,6 +55,19 @@ it('does not turn loading/loaded panel size changes into new searches or an endl
     map.setView([22.36, 114.16], 13, { animate: false })
     await vi.advanceTimersByTimeAsync(350); await flushPromises()
     const calls = fixture.getMapPets.mock.calls.length
+    const size = map.getSize().clone(), boundsBeforeSheet = map.getBounds().toBBoxString()
+    const invalidate = vi.spyOn(map, 'invalidateSize')
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await wrapper.get('.insights-trigger').trigger('click')
+      await vi.advanceTimersByTimeAsync(350)
+      await wrapper.get('.insights-close').trigger('click')
+      await vi.advanceTimersByTimeAsync(350)
+    }
+    expect(fixture.maps).toHaveLength(1)
+    expect(map.getSize()).toEqual(size)
+    expect(map.getBounds().toBBoxString()).toBe(boundsBeforeSheet)
+    expect(invalidate).not.toHaveBeenCalled()
+    expect(fixture.getMapPets).toHaveBeenCalledTimes(calls)
     // Insights expands after success, then shrinks during a request. Both change
     // the flex map's available height without any user pan or zoom.
     for (const height of [400, 580, 400, 580]) {

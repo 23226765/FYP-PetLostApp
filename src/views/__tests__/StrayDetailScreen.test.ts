@@ -4,7 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import type { StrayReport } from '../../types/stray'
 import StrayDetailScreen from '../StrayDetailScreen.vue'
 import { applyAccountPreferences } from '../../composables/usePreferences'
-import { useAppI18n } from '../../i18n'
+import { i18n, useAppI18n } from '../../i18n'
 
 const apiMocks = vi.hoisted(() => ({
   addStrayComment: vi.fn(), deleteStray: vi.fn(), getChatInbox: vi.fn(),
@@ -24,7 +24,7 @@ const post: StrayReport = {
   commentCount: 0, isSaved: false, canManage: true, canEdit: true, canDelete: true, canUpdateStatus: true,
 }
 
-async function render(query = '') {
+async function render(query = '', attached = false) {
   apiMocks.getStrayById.mockResolvedValue({ ...post })
   apiMocks.getStrayComments.mockResolvedValue({ comments: [], pagination: { page: 1, limit: 50, total: 0, hasMore: false } })
   const router = createRouter({ history: createMemoryHistory(), routes: [
@@ -32,6 +32,7 @@ async function render(query = '') {
   ] })
   await router.push('/strays/stray-one' + query); await router.isReady()
   const wrapper = mount(StrayDetailScreen, {
+    ...(attached ? { attachTo: document.body } : {}),
     props: { user: { id: 'owner-id', name: 'Owner', email: 'owner@example.test' } },
     global: { plugins: [router], stubs: { AppIcon: { template: '<span />' }, MapView: { template: '<div class="map-stub" />' } } },
   })
@@ -56,6 +57,58 @@ async function renderAsFinder(overrides: Partial<StrayReport> = {}, page = { com
 
 describe('StrayDetailScreen community actions', () => {
   beforeEach(() => { Object.values(apiMocks).forEach((mock) => mock.mockReset()); applyAccountPreferences({ language: 'en', theme: 'light' }) })
+
+  it.each(['en', 'zh-HK', 'zh-CN'] as const)('distinguishes viewing the thread and writing a comment in %s without submitting', async language => {
+    const scroll = vi.fn()
+    const previous = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scroll
+    const wrapper = await render('#comments', true)
+    try {
+      applyAccountPreferences({ language, theme: 'light' }); await flushPromises()
+      expect(document.activeElement).toBe(wrapper.get('#comments-title').element)
+      expect(wrapper.get('.comment-state').text()).toBe(i18n.global.t('feedUsability.noCommentsInvitation'))
+      expect(wrapper.findAll('.post-actions button')[0].text()).toBe(i18n.global.t('feedUsability.viewComments'))
+      expect(wrapper.get('.write-comment').text()).toBe(i18n.global.t('feedUsability.writeComment'))
+      await wrapper.get('.write-comment').trigger('click')
+      expect(document.activeElement).toBe(wrapper.get('.comment-form input').element)
+      await wrapper.findAll('.post-actions button')[0].trigger('click'); await flushPromises()
+      expect(document.activeElement).toBe(wrapper.get('#comments-title').element)
+      expect(apiMocks.getStrayById).toHaveBeenCalledTimes(1)
+      expect(apiMocks.getStrayComments).toHaveBeenCalledTimes(1)
+      expect(apiMocks.addStrayComment).not.toHaveBeenCalled()
+    } finally { wrapper.unmount(); HTMLElement.prototype.scrollIntoView = previous }
+  })
+
+  it('does not invite a blocked interaction or expose its comment composer', async () => {
+    const wrapper = await renderAsFinder()
+    expect(wrapper.find('.write-comment').exists()).toBe(false)
+    expect(wrapper.find('.comment-form').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain(i18n.global.t('feedUsability.noCommentsInvitation'))
+    wrapper.unmount()
+  })
+
+  it('focuses the existing composer from its write link and applies the existing guest login guard', async () => {
+    const previous = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = vi.fn()
+    const wrapper = await render('#write-comment', true)
+    try {
+      expect(document.activeElement).toBe(wrapper.get('.comment-form input').element)
+      expect(apiMocks.addStrayComment).not.toHaveBeenCalled()
+      await wrapper.setProps({ user: null }); await flushPromises()
+      expect(wrapper.emitted('auth-needed')).toHaveLength(1)
+      expect(document.activeElement).not.toBe(wrapper.get('.comment-form input').element)
+      expect(apiMocks.addStrayComment).not.toHaveBeenCalled()
+    } finally { wrapper.unmount(); HTMLElement.prototype.scrollIntoView = previous }
+  })
+
+  it('does not focus a composer or request login from a blocked write link', async () => {
+    const wrapper = await renderAsFinder()
+    await wrapper.vm.$router.push('/strays/stray-one#write-comment'); await flushPromises()
+    expect(wrapper.find('.comment-form').exists()).toBe(false)
+    expect(wrapper.emitted('auth-needed')).toBeUndefined()
+    expect(apiMocks.addStrayComment).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
 
   it.each(['en', 'zh-HK', 'zh-CN'] as const)('renders the stored observation instant in Hong Kong time in %s', async language => {
     const wrapper = await render()

@@ -10,8 +10,60 @@ vi.mock('../../services/api', () => api)
 const marker = (id: string) => ({ id, name: id, species: 'Dog', breed: '', status: 'lost', district: 'Sha Tin', photo: '', coordinates: [114.1, 22.3], locationPrecision: 'approximate', locationSource: 'stored_report' })
 const response = (ids: string[], page = 1, hasMore = false) => ({ markers: ids.map(marker), pagination: { page, limit: 100, total: 201, totalPages: 3, hasMore }, gridSizeMeters: 750, bounds: SUPPORTED_MAP_BOUNDS })
 const insights = (count: number): AreaInsights => ({ total: count, speciesCounts: { dog: count, cat: 0, other: 0 }, unclassifiedSpeciesCount: 0, topDistricts: ['Sha Tin'], topDistrictCount: count, unknownDistrictCount: 0, unknownIsTop: false, recentCount: count, unknownDateCount: 0, futureDateCount: 0, windowStart: '2026-10-21T12:00:00Z', windowEnd: '2026-10-28T12:00:00Z' })
-function render() { return mount(MapScreen, { props: { active: true }, global: { stubs: { MapView: { name: 'MapView', props: ['discoveryPets', 'center', 'initialZoom', 'initialBounds'], template: '<div class="map-stub" />' }, AppIcon: true } } }) }
+function render(attachTo?: HTMLElement) { return mount(MapScreen, { attachTo, props: { active: true }, global: { stubs: { MapView: { name: 'MapView', props: ['discoveryPets', 'center', 'initialZoom', 'initialBounds'], template: '<div class="map-stub" />' }, AppIcon: true } } }) }
 beforeEach(() => { vi.resetAllMocks(); setSessionToken(null); i18n.global.locale.value = 'en'; api.getMapPets.mockResolvedValue(response(['one'])) })
+
+it.each(['en', 'zh-HK', 'zh-CN'] as const)('%s opens insights on demand without refetching, aborting or recreating the map', async locale => {
+  i18n.global.locale.value = locale
+  let complete!: (value: unknown) => void
+  api.getMapPets.mockReturnValueOnce(new Promise(resolve => { complete = resolve }))
+  const wrapper = render(document.body)
+  try {
+    const map = wrapper.get('.map-stub').element
+    const signal = api.getMapPets.mock.calls[0][1] as AbortSignal
+    expect(wrapper.get('[role="dialog"]').isVisible()).toBe(false)
+    expect(wrapper.get('.insights-trigger').text()).toContain(i18n.global.t('areaInsights.title'))
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await wrapper.get('.insights-trigger').trigger('click')
+      expect(wrapper.get('[role="dialog"]').isVisible()).toBe(true)
+      expect(wrapper.get('[role="dialog"]').text()).toContain(i18n.global.t('areaInsights.loading'))
+      expect(document.activeElement).toBe(wrapper.get('.insights-close').element)
+      await wrapper.get('.insights-close').trigger('click')
+      expect(wrapper.get('[role="dialog"]').isVisible()).toBe(false)
+      expect(document.activeElement).toBe(wrapper.get('.insights-trigger').element)
+    }
+    expect(api.getMapPets).toHaveBeenCalledTimes(1)
+    expect(signal.aborted).toBe(false)
+    expect(wrapper.get('.map-stub').element).toBe(map)
+    complete({ ...response(['one']), insights: insights(201) }); await flushPromises()
+    await wrapper.get('.insights-trigger').trigger('click')
+    expect(wrapper.getComponent({ name: 'AreaInsightsCard' }).props('insights').total).toBe(201)
+    expect(wrapper.get('.map-stub').element).toBe(map)
+    expect(api.getMapPets).toHaveBeenCalledTimes(1)
+  } finally { wrapper.unmount() }
+})
+
+it('dismisses by Escape/scrim, contains keyboard focus and closes on account/navigation changes', async () => {
+  api.getMapPets.mockResolvedValueOnce({ ...response(['one']), insights: insights(201) })
+  const wrapper = render(document.body)
+  try {
+    await flushPromises(); await wrapper.get('.insights-trigger').trigger('click')
+    const close = wrapper.get('.insights-close').element
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }))
+    expect(document.activeElement).toBe(wrapper.get('summary').element)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
+    expect(document.activeElement).toBe(close)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); await flushPromises()
+    expect(wrapper.get('[role="dialog"]').isVisible()).toBe(false)
+    await wrapper.get('.insights-trigger').trigger('click'); await wrapper.get('.insights-scrim').trigger('click')
+    expect(wrapper.get('[role="dialog"]').isVisible()).toBe(false)
+    await wrapper.get('.insights-trigger').trigger('click'); await wrapper.setProps({ active: false })
+    expect(wrapper.get('[role="dialog"]').isVisible()).toBe(false)
+    await wrapper.setProps({ active: true }); await flushPromises()
+    await wrapper.get('.insights-trigger').trigger('click'); setSessionToken('new-map-context'); await flushPromises()
+    expect(wrapper.get('[role="dialog"]').isVisible()).toBe(false)
+  } finally { wrapper.unmount() }
+})
 it('uses the safe marker endpoint, preserves server totals, deduplicates pages, and opens by ID', async () => {
   api.getMapPets.mockResolvedValueOnce(response(['one'], 1, true)).mockResolvedValueOnce(response(['one', 'two'], 2))
   const wrapper = render(); await flushPromises()

@@ -156,21 +156,22 @@ describe('consistent neutral visual system', () => {
     expect(petCardSource).toContain('.card.feed-card {')
     expect(globalCss).toContain('.feed-theme .theme-segmented-control button.theme-segmented-option')
   })
-  it('does not crop feed photos or detail photos, and removes the detail sheet image overlap', () => {
-    expect(petCardSource).toMatch(/\.feed-card \.feed-photo img\s*\{[^}]*height: auto;[^}]*max-height: var\(--feed-media-max-height\);[^}]*object-fit: contain/)
-    expect(straySource).toMatch(/\.photo-wrap img\s*\{[^}]*object-fit: contain/)
+  it('uses matching 4:3 feed photo and fallback frames while preserving uncropped detail photos', () => {
+    expect(petCardSource).toContain('.feed-card .feed-photo { aspect-ratio: 4 / 3; }')
+    expect(straySource).toMatch(/\.photo-wrap\s*\{[^}]*position: relative;[^}]*aspect-ratio: 4 \/ 3;[^}]*overflow: hidden/)
+    for (const [source, selector] of [[petCardSource, '\\.feed-card \\.feed-photo'], [straySource, '\\.photo-wrap']]) {
+      expect(source).toMatch(new RegExp(selector + ' img\\s*\\{[^}]*position: absolute;[^}]*inset: 0;[^}]*width: 100%;[^}]*height: 100%;[^}]*object-fit: cover'))
+      expect(source).toMatch(/\.photo-placeholder\s*\{[^}]*position: absolute;[^}]*inset: 0;/)
+    }
     expect(petDetailSource).toMatch(/\.hero img\s*\{[^}]*height: auto;[^}]*object-fit: contain/)
     expect(petDetailSource).toMatch(/\.sheet\s*\{[^}]*margin-top: 0;/)
     expect(strayDetailSource).toMatch(/\.post-card \.hero\s*\{[^}]*aspect-ratio: auto/)
     expect(strayDetailSource).toMatch(/\.post-card \.hero img\s*\{[^}]*height: auto;[^}]*object-fit: contain/)
-    expect(petCardSource).toContain('.feed-card .feed-photo { aspect-ratio: auto; }')
-    expect(straySource).not.toContain('aspect-ratio: var(--feed-image-ratio)')
-    expect(straySource).toMatch(/\.photo-wrap img\s*\{[^}]*height: auto;[^}]*max-height: var\(--feed-media-max-height\)/)
-    for (const source of [petCardSource, straySource]) expect(source).toMatch(/\.photo-placeholder\s*\{[^}]*min-height: 128px/)
+    for (const source of [petCardSource, straySource]) expect(source).not.toMatch(/\.photo-placeholder\s*\{[^}]*min-height: 128px/)
     expect(petCardSource).toContain('.feed-card:focus-visible')
     expect(straySource).toContain('.stray-card:focus-visible')
   })
-  it('keeps edge-to-edge posts and navigation flat, with natural previews and static loading placeholders', () => {
+  it('keeps edge-to-edge posts and navigation flat, with static loading placeholders', () => {
     const block = (source: string, selector: string) => source.match(new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]+)\\}'))?.[1] || ''
     for (const [source, selector] of [[petCardSource, '.card.feed-card'], [straySource, '.stray-card']]) {
       expect(block(source, selector)).toContain('border-radius: 0')

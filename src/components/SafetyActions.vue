@@ -4,7 +4,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5 21V4a1 1 0 0 1 1-1h10l-1 4 3 3H6" />
       </svg>
-      {{ t('safety.report') }}
+      {{ reportLabel || t('safety.report') }}
     </button>
     <button v-if="!reportOnly && subjectUserId && !blocked" class="safety-link" type="button" @click="openBlock">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -78,6 +78,7 @@ const props = defineProps<{
   user?: User | null
   blocked?: boolean
   reportOnly?: boolean
+  reportLabel?: string
   compact?: boolean
 }>()
 const emit = defineEmits<{ 'auth-needed': []; blocked: [userId: string] }>()

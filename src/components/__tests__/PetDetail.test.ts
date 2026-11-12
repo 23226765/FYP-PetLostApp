@@ -2,7 +2,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Pet, Sighting } from '../../types/pet'
 import PetDetail from '../PetDetail.vue'
+import ContentImageEditor from '../ContentImageEditor.vue'
 import { i18n } from '../../i18n'
+import { formatDateTime } from '../../i18n/formatters'
 
 const apiMocks = vi.hoisted(() => ({
   getPetSightings: vi.fn(),
@@ -47,7 +49,132 @@ const sighting: Sighting = {
 }
 
 describe('PetDetail sighting history', () => {
-  beforeEach(() => { apiMocks.getPetSightings.mockReset(); i18n.global.locale.value = 'en' })
+  beforeEach(() => { apiMocks.getPetSightings.mockReset(); apiMocks.confirmSighting.mockReset(); i18n.global.locale.value = 'en' })
+
+  it('uses a genuinely attached photos entry when the primary photo is absent or a seed graphic', async () => {
+    apiMocks.getPetSightings.mockResolvedValue([])
+    const wrapper = mount(PetDetail, { props: { pet: { ...maple, photo: 'https://placehold.co/800x600?text=Demo', photos: ['/test-photos/dog.jpg'] }, user: null }, global: { stubs: { MapView: true, AppIcon: true, SafetyActions: true } } })
+    try {
+      await flushPromises()
+      expect(wrapper.get('.hero img').attributes('src')).toContain('/test-photos/dog.jpg')
+      expect(wrapper.find('.hero-placeholder').exists()).toBe(false)
+    } finally { wrapper.unmount() }
+  })
+
+  it.each(['en', 'zh-HK', 'zh-CN'] as const)('shows the permitted area first, then time, with separate approximation and moderation labels in %s', async language => {
+    i18n.global.locale.value = language
+    const publicSighting = { ...sighting, locationName: 'Sha Tin', locationPrecision: 'approximate' as const, reporterPhone: undefined, canViewContact: false }
+    apiMocks.getPetSightings.mockResolvedValue([publicSighting])
+    const wrapper = mount(PetDetail, { props: { pet: maple, user: null }, global: { stubs: { MapView: true, AppIcon: true } } })
+    await flushPromises()
+    const summary = wrapper.get('.sighting-summary')
+    expect(summary.element.firstElementChild?.querySelector('strong')?.textContent).toBe('Sha Tin')
+    expect(summary.get('.sighting-precision').text()).toBe(i18n.global.t('feedUsability.approximate'))
+    expect(summary.get('time').text()).toBe(formatDateTime(sighting.createdAt, 'Asia/Hong_Kong'))
+    expect(summary.get('time').attributes('datetime')).toBe(sighting.createdAt)
+    expect(summary.findAll('dt')).toHaveLength(0)
+    expect(wrapper.get('.sighting-note').text()).toBe('Near the fountain')
+    expect(wrapper.get('.timeline-content .safety-link').text()).toBe(i18n.global.t('feedUsability.reportThisSighting'))
+    expect(wrapper.get('.history-report').text()).toBe(i18n.global.t('feedUsability.reportSighting'))
+    expect(wrapper.get('.confirm-button').text()).toContain(i18n.global.t('sightings.sawToo'))
+    expect(wrapper.find('a[href^="tel:"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Exact fountain entrance')
+    expect(wrapper.text()).not.toContain('+852 5555 0102')
+    wrapper.unmount()
+  })
+
+  it.each([undefined, '', '   ', 'https://placehold.co/400x300?text=Demo'])('omits empty evidence and thumbnail tiles for a missing or demo photo (%s)', async photo => {
+    apiMocks.getPetSightings.mockResolvedValue([{ ...sighting, note: '   ', photo }])
+    const wrapper = mount(PetDetail, { props: { pet: maple, user: null }, global: { stubs: { MapView: true, AppIcon: true, SafetyActions: true } } })
+    try {
+      await flushPromises()
+      expect(wrapper.get('.sighting-area').text()).toBe(sighting.locationName)
+      expect(wrapper.find('.sighting-precision').exists()).toBe(false)
+      expect(wrapper.find('.sighting-evidence').exists()).toBe(false)
+      expect(wrapper.find('.sighting-thumbnail').exists()).toBe(false)
+      expect(wrapper.find('.timeline-content .photo-placeholder').exists()).toBe(false)
+      expect(wrapper.find('.confirm-button').exists()).toBe(true)
+    } finally { wrapper.unmount() }
+  })
+
+  it('removes a failed thumbnail without leaving a tile and preserves the available note', async () => {
+    apiMocks.getPetSightings.mockResolvedValue([{ ...sighting, photo: '/test-photos/sighting.jpg' }])
+    const wrapper = mount(PetDetail, { props: { pet: maple, user: null }, global: { stubs: { MapView: true, AppIcon: true, SafetyActions: true } } })
+    try {
+      await flushPromises()
+      expect(wrapper.get('.sighting-thumbnail img').attributes('src')).toContain('/test-photos/sighting.jpg')
+      await wrapper.get('.sighting-thumbnail img').trigger('error')
+      expect(wrapper.find('.sighting-thumbnail').exists()).toBe(false)
+      expect(wrapper.find('.timeline-content .photo-placeholder').exists()).toBe(false)
+      expect(wrapper.get('.sighting-note').text()).toBe(sighting.note)
+    } finally { wrapper.unmount() }
+  })
+
+  it('keeps the reporter photo editor without a thumbnail and displays a later explicit replacement', async () => {
+    apiMocks.getPetSightings.mockResolvedValue([{ ...sighting, note: undefined, photo: undefined, reportedBy: 'finder-id' }])
+    const wrapper = mount(PetDetail, { props: { pet: maple, user: { id: 'finder-id', name: 'Finder', email: 'finder@example.test' } }, global: { stubs: { MapView: true, AppIcon: true, SafetyActions: true, ContentImageEditor: true } } })
+    try {
+      await flushPromises()
+      const editor = wrapper.getComponent(ContentImageEditor)
+      expect(editor.props()).toMatchObject({ type: 'sighting', id: sighting.id })
+      expect(wrapper.find('.sighting-evidence').exists()).toBe(false)
+      editor.vm.$emit('updated', [{ url: '/test-photos/replaced.jpg' }])
+      await flushPromises()
+      expect(wrapper.get('.sighting-thumbnail img').attributes('src')).toContain('/test-photos/replaced.jpg')
+      expect(wrapper.find('.sighting-note').exists()).toBe(false)
+      await wrapper.setProps({ user: { id: 'other-id', name: 'Other', email: 'other@example.test' } })
+      await flushPromises()
+      expect(wrapper.findComponent(ContentImageEditor).exists()).toBe(false)
+    } finally { wrapper.unmount() }
+  })
+
+  it('keeps confirmation counts and disables another confirmation after I saw this too succeeds', async () => {
+    apiMocks.getPetSightings.mockResolvedValue([{ ...sighting, confirmationCount: 2, confirmedByMe: false }])
+    apiMocks.confirmSighting.mockResolvedValue({ confirmationCount: 3, confirmedByMe: true })
+    const wrapper = mount(PetDetail, { props: { pet: maple, user: { id: 'finder-id', name: 'Finder', email: 'finder@example.test' } }, global: { stubs: { MapView: true, AppIcon: true, SafetyActions: true } } })
+    try {
+      await flushPromises()
+      expect(wrapper.get('.confirmation-count').text()).toBe(i18n.global.t('sightings.confirmations', { count: 2 }, 2))
+      await wrapper.get('.confirm-button').trigger('click')
+      await flushPromises()
+      expect(apiMocks.confirmSighting).toHaveBeenCalledExactlyOnceWith(maple.id, sighting.id)
+      expect(wrapper.get('.confirmation-count').text()).toBe(i18n.global.t('sightings.confirmations', { count: 3 }, 3))
+      expect(wrapper.get('.confirm-button').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.get('.confirm-button').attributes('disabled')).toBeDefined()
+      expect(wrapper.get('.confirm-button').text()).toContain(i18n.global.t('sightings.confirmed'))
+    } finally { wrapper.unmount() }
+  })
+
+  it('focuses the existing history entry point without opening the report form or adding a request', async () => {
+    const scroll = vi.fn()
+    const previous = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scroll
+    apiMocks.getPetSightings.mockResolvedValue([])
+    const wrapper = mount(PetDetail, { attachTo: document.body, props: { pet: maple, user: null, focusSightings: true }, global: { stubs: { MapView: true, AppIcon: true } } })
+    try {
+      await flushPromises()
+      expect(document.activeElement).toBe(wrapper.get('#sighting-history-title').element)
+      expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+      expect(apiMocks.getPetSightings).toHaveBeenCalledTimes(1)
+      expect(wrapper.emitted('found')).toBeUndefined()
+      await wrapper.get('.history-report').trigger('click')
+      expect(wrapper.emitted('found')).toHaveLength(1)
+      expect(apiMocks.getPetSightings).toHaveBeenCalledTimes(1)
+    } finally { wrapper.unmount(); HTMLElement.prototype.scrollIntoView = previous }
+  })
+
+  it('does not cancel nested confirmation keyboard actions while keeping timeline keyboard focus', async () => {
+    apiMocks.getPetSightings.mockResolvedValue([sighting])
+    const wrapper = mount(PetDetail, { props: { pet: maple, user: null }, global: { stubs: { MapView: true, AppIcon: true, SafetyActions: true } } })
+    await flushPromises()
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    wrapper.get('.confirm-button').element.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
+    await wrapper.get('.timeline-item').trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect(wrapper.get('.timeline-item').classes()).toContain('focused')
+    wrapper.unmount()
+  })
 
   it.each([undefined, null, NaN, Infinity, -1, '2'])('omits an unavailable/invalid distance (%s), including its icon', async distance => {
     apiMocks.getPetSightings.mockResolvedValue([])

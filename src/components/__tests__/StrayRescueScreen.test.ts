@@ -72,10 +72,11 @@ describe('Stray community feed and report flow', () => {
     const { wrapper } = await render([{ ...stray, species: 'Other', animalType: 'Tiger', commentCount: 1 }])
     expect(wrapper.text()).toContain('Tiger')
     expect(wrapper.text()).toContain(i18n.global.t('strays.nearbyReports', { count: 1 }, 1))
-    expect(wrapper.get('.card-foot').text()).toBe(i18n.global.t('strays.commentsCount', { count: 1 }, 1))
+    expect(wrapper.get('.view-comments').text()).toBe(i18n.global.t('strays.commentsCount', { count: 1 }, 1))
+    expect(wrapper.get('.write-comment').text()).toBe(i18n.global.t('feedUsability.writeComment'))
     if (locale === 'en') {
       expect(wrapper.text()).toContain('1 nearby report')
-      expect(wrapper.get('.card-foot').text()).toBe('1 comment')
+      expect(wrapper.get('.view-comments').text()).toBe('1 comment')
       expect(wrapper.text()).not.toContain('1 nearby reports')
     }
     wrapper.unmount()
@@ -139,12 +140,44 @@ describe('Stray community feed and report flow', () => {
     wrapper.unmount()
   })
 
-  it('Comment opens the existing detail without share intent; Save retains its pressed state', async () => {
+  it('View comments opens the existing thread without share intent; Save retains its pressed state', async () => {
     const { wrapper, router } = await render()
+    expect(wrapper.findAll('.card-actions button')[0].text()).toBe(i18n.global.t('feedUsability.viewComments'))
     await wrapper.findAll('.card-actions button')[0].trigger('keydown', { key: 'Enter' })
     await wrapper.findAll('.card-actions button')[0].trigger('click'); await flushPromises()
-    expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one')
+    expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one#comments')
     expect(wrapper.findAll('.card-actions button')[1].attributes('aria-pressed')).toBe('false')
+    expect(apiMocks.getNearbyStrays).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('opens the same comment thread from the existing server count without loading per-card data', async () => {
+    const { wrapper, router } = await render()
+    expect(wrapper.get('.view-comments').text()).toBe('2 comments')
+    await wrapper.get('.view-comments').trigger('keydown', { key: 'Enter' })
+    expect(router.currentRoute.value.fullPath).toBe('/')
+    await wrapper.get('.view-comments').trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one#comments')
+    expect(apiMocks.getNearbyStrays).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('opens the existing composer from Write a comment without bubbling or submitting', async () => {
+    const { wrapper, router } = await render()
+    await wrapper.get('.write-comment').trigger('keydown', { key: 'Enter' })
+    expect(router.currentRoute.value.fullPath).toBe('/')
+    await wrapper.get('.write-comment').trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one#write-comment')
+    expect(apiMocks.getNearbyStrays).toHaveBeenCalledTimes(1)
+    expect(apiMocks.reportStray).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('keeps blocked reports readable without offering Write a comment', async () => {
+    const { wrapper, router } = await render([{ ...stray, interactionBlocked: true }])
+    expect(wrapper.find('.write-comment').exists()).toBe(false)
+    await wrapper.get('.view-comments').trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/strays/stray-one#comments')
     wrapper.unmount()
   })
 

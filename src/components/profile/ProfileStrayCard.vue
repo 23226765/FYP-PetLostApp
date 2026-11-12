@@ -1,5 +1,21 @@
 <template>
+  <ProfilePhotoCard
+    v-if="grid"
+    class="profile-stray-card"
+    :title="animalLabel"
+    :subtitle="districtLabel(stray.district)"
+    :status="rescueStatusLabel(stray.rescueStatus)"
+    :status-class="stray.rescueStatus"
+    :accessible-label="t('profile.openRescuePost', { animal: animalLabel })"
+    :photo-alt="t('strays.reportedAlt', { species: animalLabel })"
+    :photo="stray.photo"
+    :photos="stray.photos"
+    @open="emit('open', stray.id)"
+  >
+    <small v-if="hasCommentCount">{{ t('strays.commentsCount', { count: stray.commentCount }, stray.commentCount) }}</small>
+  </ProfilePhotoCard>
   <article
+    v-else
     class="profile-stray-card"
     role="link"
     tabindex="0"
@@ -39,20 +55,23 @@
 
 <script setup lang="ts">
 import ManagedImage from "../ManagedImage.vue"
+import ProfilePhotoCard from './ProfilePhotoCard.vue'
 import { computed, ref } from 'vue'
 import AppIcon from '../AppIcon.vue'
 import type { StrayReport } from '../../types/stray'
 import { useAppI18n } from '../../i18n'
 import { districtLabel, formatRelativeDate, rescueStatusLabel, strayAnimalLabel } from '../../i18n/formatters'
 
-const props = withDefaults(defineProps<{ stray: StrayReport; removable?: boolean; removing?: boolean }>(), {
+const props = withDefaults(defineProps<{ stray: StrayReport; removable?: boolean; removing?: boolean; grid?: boolean }>(), {
   removable: false,
   removing: false,
+  grid: false,
 })
 const emit = defineEmits<{ open: [id: string]; unsave: [id: string] }>()
 const { t } = useAppI18n()
 const imageFailed = ref(false)
 const animalLabel = computed(() => strayAnimalLabel(props.stray.species, props.stray.animalType))
+const hasCommentCount = computed(() => Number.isInteger(props.stray.commentCount) && props.stray.commentCount >= 0)
 
 function imageUrl(value: string) {
   try {
@@ -69,10 +88,10 @@ function openPost(event: MouseEvent | KeyboardEvent) {
 </script>
 
 <style scoped>
-.profile-stray-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); overflow: hidden; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: var(--color-surface); box-shadow: var(--shadow-card); cursor: pointer; transition: background-color .2s ease; }
-.profile-stray-card:hover { background: var(--color-surface-subtle); }
-.profile-stray-card:active { transform: scale(.985); }
-.profile-stray-card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.profile-stray-card:not(.profile-photo-card) { display: grid; grid-template-columns: 112px minmax(0, 1fr); overflow: hidden; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: var(--color-surface); box-shadow: var(--shadow-card); cursor: pointer; transition: background-color .2s ease; }
+.profile-stray-card:not(.profile-photo-card):hover { background: var(--color-surface-subtle); }
+.profile-stray-card:not(.profile-photo-card):active { transform: scale(.985); }
+.profile-stray-card:not(.profile-photo-card):focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 .photo-wrap { position: relative; min-height: 128px; overflow: hidden; background: var(--color-surface-selected); }
 .photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
 .photo-placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--color-icon-primary); }

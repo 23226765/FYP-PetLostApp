@@ -74,7 +74,7 @@
     <div v-else-if="view === 'list'" class="report-list">
       <article v-for="stray in strays" :key="stray.id" class="stray-card" tabindex="0" role="link" :aria-label="t('strays.openPost', { species: animalLabel(stray), author: stray.author.name })" @click="openStray(stray)" @keydown.enter.self="openStray(stray)">
         <div class="post-author">
-          <span class="author-avatar"><ManagedImage v-if="stray.author.avatar" :src="normalizedImageUrl(stray.author.avatar)" alt="" /><AppIcon v-else name="user" :size="17" /></span>
+          <UserAvatar class="author-avatar" :src="stray.author.avatar" :name="stray.author.name" />
           <span><strong>{{ stray.author.name }}</strong><small>{{ formatRelativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></span>
           <span class="rescue-status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
@@ -82,13 +82,13 @@
         <div v-for="(photo, index) in imageUrls(stray)" :key="photo || 'placeholder'" class="photo-slide">
         <div class="photo-wrap">
           <ManagedImage v-if="photo && !failedImages.has(stray.id + photo)" :src="photo" :alt="t('strays.reportedAlt', { species: animalLabel(stray) })" @error="markImageFailed(stray.id + photo)" />
-          <span v-else class="photo-placeholder"><AppIcon name="paw" :size="34" /></span>
+          <span v-else class="photo-placeholder"><AppIcon name="paw" :size="34" /><small>{{ t(photoFallbackKey(stray.photo, stray.photos)) }}</small></span>
         </div>
           <span v-if="imageUrls(stray).length > 1" class="photo-position">{{ index + 1 }} / {{ imageUrls(stray).length }}</span>
         </div>
         </div>
         <div class="card-actions">
-          <button type="button" @click.stop="openStray(stray)"><AppIcon name="message" :size="20" />{{ t('strays.comment') }}</button>
+          <button type="button" @click.stop="openComments(stray)"><AppIcon name="message" :size="20" />{{ t('feedUsability.viewComments') }}</button>
           <button type="button" :class="{ active: stray.isSaved }" :aria-pressed="stray.isSaved" @click.stop="toggleSave(stray)"><AppIcon name="bookmark" :size="20" />{{ stray.isSaved ? t('strays.unsave') : t('strays.save') }}</button>
           <button type="button" @click.stop="openStray(stray, true)"><AppIcon name="send" :size="20" />{{ t('strays.share') }}</button>
         </div>
@@ -99,7 +99,10 @@
           <p class="description">{{ stray.description }}</p>
           <button type="button" class="caption-more" @click.stop="openStray(stray)">{{ t('radar.viewDetails') }}</button>
           <p v-if="stray.commentPreview" class="comment-preview"><AppIcon name="message" :size="15" /> {{ stray.commentPreview }}</p>
-          <div class="card-foot"><span>{{ t('strays.commentsCount', { count: stray.commentCount }, stray.commentCount) }}</span></div>
+          <div class="card-foot">
+            <button class="view-comments" type="button" :aria-label="`${t('feedUsability.viewComments')}: ${t('strays.commentsCount', { count: stray.commentCount }, stray.commentCount)}`" @click.stop="openComments(stray)">{{ t('strays.commentsCount', { count: stray.commentCount }, stray.commentCount) }}</button>
+            <button v-if="!stray.interactionBlocked" class="write-comment" type="button" @click.stop="openCommentComposer(stray)">{{ t('feedUsability.writeComment') }}</button>
+          </div>
         </div>
       </article>
     </div>
@@ -150,6 +153,8 @@
 <script setup lang="ts">
 import { isValidDistance } from '../utils/distance'
 import ManagedImage from "./ManagedImage.vue"
+import UserAvatar from './UserAvatar.vue'
+import { attachedPhotoSources, photoFallbackKey } from '../utils/imagePresentation'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import { useRouter } from 'vue-router'
@@ -222,15 +227,7 @@ const initialPickerCenter = computed<[number, number] | null>(() => props.userLo
 const submitLabel = computed(() => uploadStage.value === 'uploading' ? t('strays.uploadingPhoto') : uploadStage.value === 'posting' ? t('strays.publishing') : t('strays.publish'))
 const uniqueId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-function normalizedImageUrl(value: string): string {
-  if (!value?.trim()) return ''
-  try {
-    const api = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin)
-    const resolved = new URL(value, `${api.origin}/`)
-    return ['http:', 'https:', 'data:', 'blob:'].includes(resolved.protocol) ? resolved.href : ''
-  } catch { return '' }
-}
-function imageUrls(stray: StrayReport) { const urls = [...new Set([stray.photo, ...(stray.photos || [])].map(normalizedImageUrl).filter(Boolean))]; return urls.length ? urls : [''] }
+function imageUrls(stray: StrayReport) { const urls = attachedPhotoSources(stray.photo, stray.photos); return urls.length ? urls : [''] }
 function markImageFailed(id: string) { failedImages.value = new Set([...failedImages.value, id]) }
 function conditionLabel(value: StrayCondition) {
   return strayConditionLabel(value)
@@ -278,6 +275,8 @@ function openReportForm() {
 }
 
 function openStray(stray: StrayReport, share = false) { void router.push({ path: `/strays/${stray.id}`, query: share ? { share: '1' } : undefined }) }
+function openComments(stray: StrayReport) { void router.push({ path: `/strays/${stray.id}`, hash: '#comments' }) }
+function openCommentComposer(stray: StrayReport) { void router.push({ path: `/strays/${stray.id}`, hash: '#write-comment' }) }
 
 async function toggleSave(stray: StrayReport) {
   if (!props.user) { emit('auth-needed'); return }
@@ -402,23 +401,27 @@ select:focus, input:focus, textarea:focus { border-color: var(--color-border-acc
 .photo-carousel { display: flex; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; }
 .photo-carousel:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
 .photo-slide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
-.photo-wrap { position: relative; overflow: hidden; background: var(--color-surface-subtle); }
+.photo-wrap { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--color-surface-subtle); }
 .photo-position { display: block; padding: 5px 16px; background: var(--color-surface); color: var(--color-text-secondary); font-size: 13px; text-align: right; }
-.photo-wrap img { display: block; width: 100%; height: auto; max-height: var(--feed-media-max-height); object-fit: contain; }
+.photo-wrap img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 .photo-button img { width: 100%; height: 100%; object-fit: cover; }
-.photo-placeholder { min-height: 128px; display: grid; place-items: center; color: var(--color-icon-primary); background: var(--color-surface-subtle); }
+.photo-placeholder { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 8px; color: var(--color-icon-primary); background: var(--color-surface-subtle); }
+.photo-placeholder small { color: var(--color-text-secondary); font-size: 12px; padding: 0 12px; text-align: center; }
 .condition { padding: 5px 9px; border-radius: 999px; background: var(--color-surface-subtle); color: var(--color-text-secondary); font-size: 13px; font-weight: 600; }
 .condition.injured, .condition.critical { background: var(--status-coral-bg); color: var(--color-text-urgent); }
 .card-body { min-width: 0; padding: var(--feed-space); }
 .card-title { flex-wrap: wrap; }
 .card-title strong { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
-.card-foot > span { color: var(--color-text-secondary); font-size: 13px; font-weight: 400; }
+.card-foot .view-comments { min-height: 44px; color: var(--color-text-accent); font-size: 13px; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.view-comments:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.card-foot .write-comment { min-height: 44px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--color-surface-selected); color: var(--color-text-accent); font-size: 13px; font-weight: 600; }
+.card-foot .write-comment:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 .card-body > p { margin-top: 6px; color: var(--ink-muted); font-size: 13px; font-weight: 400; }
 .card-body .description { font-size: 16px; font-weight: 400; color: var(--color-text-primary); line-height: 1.5; }
 .card-body .description { display: -webkit-box; margin-top: 8px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.5; }
 .caption-more { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-text-accent); font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .card-body .comment-preview { display: -webkit-box; margin-top: 7px; overflow: hidden; color: var(--ink); -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
-.card-foot { align-items: flex-end; margin-top: 11px; }
+.card-foot { flex-wrap: wrap; align-items: center; margin-top: 11px; }
 .card-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 12px; }
 .card-actions button { min-height: 48px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; color: var(--color-text-accent); font-size: 14px; font-weight: 600; transition: transform .15s ease; }
 .card-actions button:active { transform: scale(.98); }

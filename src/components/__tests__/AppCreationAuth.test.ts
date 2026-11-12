@@ -59,7 +59,7 @@ const pet: Pet = {
 
 const RadarStub = defineComponent({
   props: ['pets', 'radiusKm'],
-  emits: ['found', 'notifications', 'radius-change'],
+  emits: ['found', 'view-sightings', 'notifications', 'radius-change'],
   setup(props, { emit }) {
     return () => h('div', [h('p', { class: 'stub-radar-results' }, (props.pets || []).map((item: Pet) => item.id).join(',')), h('button', { class: 'stub-radar-radius', onClick: () => emit('radius-change', 20) }, String(props.radiusKm)), h('button', { class: 'stub-found', onClick: () => emit('found', pet) }, 'Found'), h('button', { class: 'stub-notifications', onClick: () => emit('notifications') }, 'Notifications')])
   },
@@ -102,6 +102,7 @@ async function renderApp(token?: string, realMap = false) {
       { path: '/map', name: 'map', component: { template: '<div />' } },
       { path: '/pets/:id', name: 'pet-detail', component: { template: '<div />' } },
       { path: '/profile', name: 'profile', component: { template: '<div />' } },
+      { path: '/saved', name: 'saved', component: { name: 'SavedRouteStub', emits: ['view-sightings'], template: '<div class="stub-saved-route" />' } },
       { path: '/settings', name: 'settings', component: { name: 'SettingsRouteStub', props: ['user'], emits: ['logout', 'privacy-updated'], template: '<div><button class="stub-logout" @click="$emit(\'logout\')">Logout</button><button class="stub-privacy" @click="$emit(\'privacy-updated\', {userId: user.id, privacy: {contactVisibility: \'authenticated\'}})">Privacy</button></div>' } },
     ],
   })
@@ -119,7 +120,7 @@ async function renderApp(token?: string, realMap = false) {
         PostPetScreen: { template: '<div data-testid="post-pet" />' },
         ChatInboxScreen: { template: '<div />' },
         ProfileScreen: { props: ['user'], template: '<p class="stub-profile-id">{{ user?.id }}</p>' },
-        PetDetail: { template: '<div />' },
+        PetDetail: { name: 'PetDetail', props: ['pet', 'focusSightings'], emits: ['close'], template: '<div class="stub-pet-detail"><button class="stub-close-pet" @click="$emit(\'close\')">Close</button></div>' },
         AuthScreen: AuthStub,
         SmartMatchScreen: { template: '<div />' },
         PosterModal: { template: '<div />' },
@@ -152,6 +153,34 @@ describe('authenticated creation entry points', () => {
     apiMocks.getNotifications.mockResolvedValue([])
     apiMocks.getChatInbox.mockResolvedValue([])
     apiMocks.updateNotificationPreferences.mockResolvedValue(undefined)
+  })
+
+  it('opens existing sighting history for a guest while keeping reporting behind the existing login gate', async () => {
+    const { wrapper, router } = await renderApp()
+    await wrapper.get('.stub-guest').trigger('click'); await flushPromises()
+    wrapper.getComponent(RadarStub).vm.$emit('view-sightings', pet); await flushPromises()
+    expect(wrapper.getComponent({ name: 'PetDetail' }).props('focusSightings')).toBe(true)
+    expect(wrapper.getComponent({ name: 'PetDetail' }).props('pet').id).toBe(pet.id)
+    expect(wrapper.find('.sheet').exists()).toBe(false)
+    expect(router.currentRoute.value.name).toBe('home')
+    await wrapper.get('.stub-close-pet').trigger('click'); await flushPromises()
+    await wrapper.get('.stub-found').trigger('click'); await flushPromises()
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(apiMocks.reportSighting).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('opens saved-pet sighting history through the existing detail overlay without fetching another card', async () => {
+    const { wrapper, router } = await renderApp()
+    await wrapper.get('.stub-guest').trigger('click'); await flushPromises()
+    await router.push('/saved'); await flushPromises()
+    wrapper.getComponent({ name: 'SavedRouteStub' }).vm.$emit('view-sightings', pet); await flushPromises()
+    expect(wrapper.getComponent({ name: 'PetDetail' }).props('focusSightings')).toBe(true)
+    expect(wrapper.getComponent({ name: 'PetDetail' }).props('pet').id).toBe(pet.id)
+    expect(router.currentRoute.value.name).toBe('saved')
+    expect(apiMocks.getPet).not.toHaveBeenCalled()
+    expect(apiMocks.reportSighting).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('assistant keeps six destinations and Radar state, hides on overlays/routes and uses the existing guest Report gate', async () => {

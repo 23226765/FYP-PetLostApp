@@ -42,6 +42,7 @@
           :key="pet.id"
           :pet="pet"
           @open="emit('open-pet', pet)"
+          @view-sightings="emit('view-sightings', pet)"
           @found="emit('found', pet)"
         />
         <p v-if="petTotal" class="pet-count">{{ t('savedRepair.petCount', { shown: savedPets.length, total: petTotal }) }}</p>
@@ -96,7 +97,7 @@ import { translateApiError, useAppI18n } from '../i18n'
 import { districtLabel, formatRelativeDate, strayAnimalLabel } from '../i18n/formatters'
 
 const props = defineProps<{ user?: User | null }>()
-const emit = defineEmits<{ 'open-pet': [pet: Pet]; found: [pet: Pet]; 'open-stray': [strayId: string] }>()
+const emit = defineEmits<{ 'open-pet': [pet: Pet]; 'view-sightings': [pet: Pet]; found: [pet: Pet]; 'open-stray': [strayId: string] }>()
 const router = useRouter()
 const { t } = useAppI18n()
 const { savedContext } = useSavedPets()

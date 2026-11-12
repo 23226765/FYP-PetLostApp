@@ -60,10 +60,11 @@ function moveFocus(event: KeyboardEvent) {
 </script>
 
 <style scoped>
-.profile-tabs { position: sticky; top: calc(var(--safe-top) + 64px); z-index: 4; margin: 0 0 16px; padding: 0; border-bottom: 1px solid var(--color-border); background: var(--page-bg); }
+.profile-tabs { position: sticky; top: var(--safe-top); z-index: 4; margin: 0 0 16px; padding: 0; border-bottom: 1px solid var(--color-border); background: var(--page-bg); }
 .tab-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 button { position: relative; min-width: 0; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 5px 10px; color: var(--color-nav-inactive); font-size: 13px; font-weight: 600; transition: color .2s ease, background-color .2s ease, transform .2s ease; }
 button span { overflow-wrap: anywhere; }
+button svg { flex-shrink: 0; }
 button::after { content: ''; position: absolute; right: 12px; bottom: 2px; left: 12px; height: 2px; border-radius: 999px; background: transparent; transform: scaleX(.35); transition: background-color .2s ease, transform .2s ease; }
 button.active { color: var(--color-nav-active); font-weight: 650; }
 button.active::after { background: var(--color-border-accent); transform: scaleX(1); }
