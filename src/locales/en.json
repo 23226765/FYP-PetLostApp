@@ -1,4 +1,9 @@
 {
+  "sightingPrivacy": {
+    "options": "Sighting options",
+    "yourSighting": "Your sighting",
+    "sharingWarning": "Avoid names, phone numbers and other identifying details in notes or photos. PawRadar cannot anonymize details you choose to share."
+  },
   "assistant": {
     "title": "PawRadar Assistant",
     "open": "Open PawRadar Assistant",
@@ -248,6 +253,10 @@
     "signInHelp": "Your alert radius and account preferences are linked to your PawRadar profile."
   },
   "profile": {
+    "sightingsSummary": "You've submitted {count} sightings. | You've submitted {count} sighting. | You've submitted {count} sightings.",
+    "openReportsSummary": "{count} open lost-pet reports | {count} open lost-pet report | {count} open lost-pet reports",
+    "reunitedSummary": "{count} reunited",
+    "petReportsSummary": "{open} · {reunited}",
     "noPhoto": "No photo",
     "newRescuePost": "New rescue post",
     "myPets": "My pets",

@@ -151,7 +151,6 @@
         @found="openSighting(selectedPet)"
         @poster="posterPet = selectedPet"
         @chat="openChat(selectedPet)"
-        @chat-reporter="openReporterChat"
         @auth-needed="openLogin"
         @status-updated="handlePetStatusUpdated"
       />
@@ -224,9 +223,11 @@
               <textarea
                 v-model="sightingNote"
                 rows="3"
+                aria-describedby="sighting-sharing-warning"
                 :placeholder="t('sightings.notePlaceholder')"
               />
             </label>
+            <p id="sighting-sharing-warning" class="sighting-sharing-warning">{{ t('sightingPrivacy.sharingWarning') }}</p>
             <SightingLocationPicker
               v-model="sightingCoordinates"
               :initial-center="sightingPet.coordinates ?? null"
@@ -1001,19 +1002,6 @@ async function openChatByPetId(petId: string) {
   }
 }
 
-function openReporterChat(participantId: string, participantName?: string) {
-  if (!selectedPet.value || !currentUser.value) {
-    openLogin()
-    return
-  }
-  if (participantId === currentUser.value.id) return
-  chatPet.value = {
-    ...selectedPet.value,
-    participantId,
-    participantName: participantName || t('messages.finder'),
-  }
-}
-
 function openChatFromInbox(pet: ChatPet) {
   openChat(pet)
 }
@@ -1619,6 +1607,8 @@ main {
   font-weight: 600;
   line-height: 1.4;
 }
+
+.sighting-sharing-warning { color: var(--color-text-secondary); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 
 .sighting-photo-preview {
   display: block;

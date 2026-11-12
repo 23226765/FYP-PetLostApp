@@ -6,7 +6,15 @@
     aria-labelledby="profile-tab-pets"
   >
     <div class="panel-heading">
-      <h2>{{ t('profile.myPets') }}</h2>
+      <div class="heading-copy">
+        <h2>{{ t('profile.myPets') }}</h2>
+        <p v-if="summary" class="pet-summary">
+          {{ t('profile.petReportsSummary', {
+            open: t('profile.openReportsSummary', { count: summary.active }, summary.active),
+            reunited: t('profile.reunitedSummary', { count: summary.reunited }, summary.reunited),
+          }) }}
+        </p>
+      </div>
       <button type="button" @click="emit('add-pet')"><AppIcon name="plus" :size="17" />{{ t('profile.addPet') }}</button>
     </div>
     <div v-if="loading && !pets.length" class="panel-state" role="status">
@@ -58,10 +66,10 @@ const props = defineProps<{ userId: string; active: boolean; refreshKey: number 
 const emit = defineEmits<{
   'open-pet': [id: string]
   'add-pet': []
-  stats: [value: { total: number; reunited: number; active: number }]
 }>()
 const { t } = useAppI18n()
 const pets = ref<Pet[]>([])
+const summary = ref<{ active: number; reunited: number } | null>(null)
 const loading = ref(false)
 const loadingMore = ref(false)
 const error = ref('')
@@ -78,6 +86,8 @@ function mergeUnique(current: Pet[], incoming: Pet[]) {
 
 async function loadPage(nextPage: number) {
   const currentSequence = ++sequence
+  const userId = props.userId
+  summary.value = null
   controller?.abort()
   controller = new AbortController()
   error.value = ''
@@ -85,15 +95,15 @@ async function loadPage(nextPage: number) {
   loadingMore.value = nextPage > 1
   try {
     const result = await getMyPetsPage({ page: nextPage, limit: 20 }, controller.signal)
-    if (currentSequence !== sequence) return
+    if (currentSequence !== sequence || userId !== props.userId) return
     pets.value = nextPage === 1 ? result.pets : mergeUnique(pets.value, result.pets)
     page.value = result.pagination.page
     hasMore.value = result.pagination.hasMore
-    emit('stats', result.summary)
+    if (result.summary && [result.summary.active, result.summary.reunited].every(value => Number.isSafeInteger(value) && value >= 0)) summary.value = result.summary
   } catch (cause) {
-    if (currentSequence === sequence) error.value = translateApiError(cause, 'errors.loadPosts')
+    if (currentSequence === sequence && userId === props.userId) error.value = translateApiError(cause, 'errors.loadPosts')
   } finally {
-    if (currentSequence === sequence) { loading.value = false; loadingMore.value = false }
+    if (currentSequence === sequence && userId === props.userId) { loading.value = false; loadingMore.value = false }
   }
 }
 
@@ -105,6 +115,9 @@ onBeforeUnmount(() => { sequence += 1; controller?.abort() })
 <style scoped src="./profileGrid.css"></style>
 <style scoped>
 .tab-panel { min-height: 230px; }
+.panel-heading { align-items: flex-start; }
+.heading-copy { flex: 1 1 160px; min-width: 0; }
+.pet-summary { margin-top: 5px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 .panel-state { min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 24px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); color: var(--color-text-muted); text-align: center; }
 .panel-state h2 { color: var(--color-text-primary); font-size: 17px; }
 .panel-state p { font-size: 13px; }

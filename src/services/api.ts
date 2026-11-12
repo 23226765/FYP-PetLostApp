@@ -221,6 +221,7 @@ export interface MySightingPet {
 
 export interface MySighting {
   _id: string
+  canEdit: boolean
   pet: MySightingPet | null
   locationName: string
   locationPrecision: 'exact' | 'approximate'
@@ -256,6 +257,7 @@ export async function getPetSightings(petId: string): Promise<Sighting[]> {
 export interface SightingConfirmation {
   confirmationCount: number
   confirmedByMe: boolean
+  canEdit: boolean
 }
 
 export async function confirmSighting(

@@ -145,6 +145,7 @@
                   {{ formatDateTime(sighting.sightedAt || sighting.createdAt, REPORT_TIME_ZONE) }}
                 </time>
                 <span v-else class="sighting-time">{{ t('common.unknown') }}</span>
+                <span v-if="user && sighting.canEdit === true" class="your-sighting">{{ t('sightingPrivacy.yourSighting') }}</span>
               </div>
               <div v-if="sighting.note?.trim() || sightingPhotoUrl(sighting)" class="sighting-evidence">
                 <p v-if="sighting.note?.trim()" class="sighting-note">{{ sighting.note }}</p>
@@ -158,40 +159,14 @@
                   />
                 </div>
               </div>
-              <ContentImageEditor v-if="user && sighting.reportedBy === user.id" class="sighting-photo-editor" type="sighting" :id="sighting.id" @updated="images => updateSightingImage(sighting.id, images)" />
-              <div
-                v-if="sighting.reporterName || sighting.reporterPhone"
-                class="reporter-details"
-              >
-                <span>{{ t('sightings.reportedBy', { name: sighting.reporterName || t('sightings.communityMember') }) }}</span>
-                <div class="reporter-actions">
-                  <button
-                    v-if="canMessageReporter(sighting)"
-                    type="button"
-                    @click="emit('chat-reporter', sighting.reportedBy!, sighting.reporterName)"
-                  >
-                    {{ t('sightings.messageReporter') }}
-                  </button>
-                  <a
-                    v-if="reporterCallHref(sighting)"
-                    :href="reporterCallHref(sighting)"
-                    @click.stop
-                  >
-                    {{ t('sightings.callReporter') }}
-                  </a>
-                </div>
-              </div>
               <div v-if="sighting.id" class="verification-row">
-                <span class="confirmation-count">
-                  {{ t('sightings.confirmations', { count: sighting.confirmationCount || 0 }, sighting.confirmationCount || 0) }}
-                </span>
                 <button
                   class="confirm-button"
                   :class="{ confirmed: sighting.confirmedByMe }"
                   type="button"
                   :disabled="sighting.confirmedByMe || confirmingSightings.has(sighting.id)"
                   :aria-pressed="Boolean(sighting.confirmedByMe)"
-                  @click="confirmSightingEntry(sighting)"
+                  @click.stop="confirmSightingEntry(sighting)"
                 >
                   <AppIcon name="check" :size="15" />
                   {{
@@ -202,6 +177,33 @@
                         : t('sightings.sawToo')
                   }}
                 </button>
+                <span v-if="(sighting.confirmationCount || 0) > 0" class="confirmation-count">
+                  {{ t('sightings.confirmations', { count: sighting.confirmationCount }, sighting.confirmationCount!) }}
+                </span>
+                <details
+                  :key="`${user?.id || 'guest'}-${sighting.id}`"
+                  class="sighting-menu"
+                  @click.stop
+                  @keydown.stop
+                  @keydown.esc.prevent="closeSightingMenu"
+                >
+                  <summary :aria-label="t('sightingPrivacy.options')" :title="t('sightingPrivacy.options')">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+                  </summary>
+                  <div class="sighting-menu-panel">
+                    <ContentImageEditor v-if="user && sighting.canEdit === true" class="sighting-photo-editor" type="sighting" :id="sighting.id" @updated="images => updateSightingImage(sighting.id, images)" />
+                    <p v-if="user && sighting.canEdit === true" class="sharing-warning">{{ t('sightingPrivacy.sharingWarning') }}</p>
+                    <SafetyActions
+                      compact
+                      report-only
+                      target-type="sighting"
+                      :report-label="t('feedUsability.reportThisSighting')"
+                      :target-id="sighting.id"
+                      :user="user"
+                      @auth-needed="emit('auth-needed')"
+                    />
+                  </div>
+                </details>
               </div>
               <p
                 v-if="sighting.id && confirmationErrors[sighting.id]"
@@ -210,16 +212,6 @@
               >
                 {{ confirmationErrors[sighting.id] }}
               </p>
-              <SafetyActions
-                v-if="sighting.id"
-                compact
-                report-only
-                target-type="sighting"
-                :report-label="t('feedUsability.reportThisSighting')"
-                :target-id="sighting.id"
-                :user="user"
-                @auth-needed="emit('auth-needed')"
-              />
             </div>
           </li>
         </ol>
@@ -383,7 +375,6 @@ const emit = defineEmits<{
   found: []
   poster: []
   chat: []
-  'chat-reporter': [participantId: string, participantName?: string]
   'auth-needed': []
   'status-updated': [pet: Pet]
 }>()
@@ -412,6 +403,7 @@ function updatePetImages(images: ManagedImageData[]) {
   emit('status-updated', { ...props.pet, photo: images[0]?.url || '', photos: images.map((image) => image.url) })
 }
 function updateSightingImage(id: string, images: ManagedImageData[]) {
+  if (!props.user || !sightings.value.some(sighting => sighting.id === id && sighting.canEdit === true)) return
   sightings.value = sightings.value.map((sighting) => sighting.id === id ? { ...sighting, photo: images[0]?.url || '' } : sighting)
   failedSightingPhotos.value = new Set()
 }
@@ -497,13 +489,10 @@ function sightingImageKey(sighting: Sighting): string {
   return sighting.id
 }
 
-function reporterCallHref(sighting: Sighting): string {
-  if (!sighting.canViewContact) return ''
-  return createContactActions(sighting.reporterPhone, '')?.callHref || ''
-}
-
-function canMessageReporter(sighting: Sighting): boolean {
-  return Boolean(isOwner.value && sighting.reportedBy && sighting.reportedBy !== props.user?.id)
+function closeSightingMenu(event: KeyboardEvent) {
+  const menu = event.currentTarget as HTMLDetailsElement
+  menu.open = false
+  menu.querySelector('summary')?.focus()
 }
 
 async function confirmSightingEntry(sighting: Sighting) {
@@ -516,6 +505,9 @@ async function confirmSightingEntry(sighting: Sighting) {
     return
   }
 
+  const request = sightingsRequestSequence, userId = props.user.id
+  const active = () => request === sightingsRequestSequence && userId === props.user?.id
+
   confirmingSightings.value = new Set([...confirmingSightings.value, sightingId])
   const nextErrors = { ...confirmationErrors.value }
   delete nextErrors[sightingId]
@@ -523,17 +515,21 @@ async function confirmSightingEntry(sighting: Sighting) {
 
   try {
     const result = await confirmSighting(props.pet.id, sightingId)
+    if (!active()) return
     sighting.confirmationCount = result.confirmationCount
     sighting.confirmedByMe = result.confirmedByMe
   } catch (error) {
+    if (!active()) return
     confirmationErrors.value = {
       ...confirmationErrors.value,
       [sightingId]: translateApiError(error, 'errors.confirmSighting'),
     }
   } finally {
-    const next = new Set(confirmingSightings.value)
-    next.delete(sightingId)
-    confirmingSightings.value = next
+    if (active()) {
+      const next = new Set(confirmingSightings.value)
+      next.delete(sightingId)
+      confirmingSightings.value = next
+    }
   }
 }
 
@@ -903,16 +899,14 @@ h2 {
 }
 
 .timeline-item:focus-visible {
-  outline: 3px solid rgba(29, 99, 96, 0.22);
+  outline: 3px solid var(--color-focus);
   outline-offset: 3px;
   border-radius: 14px;
 }
 
 .timeline-item.focused .timeline-content {
-  outline: 3px solid rgba(239, 99, 81, 0.3);
-  box-shadow:
-    0 0 0 1px #ef6351,
-    var(--shadow-card);
+  background: var(--color-surface-selected);
+  box-shadow: inset 3px 0 var(--color-border-accent);
 }
 
 .timeline-item:not(:last-child)::before {
@@ -937,10 +931,11 @@ h2 {
 
 .timeline-content {
   min-width: 0;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 .sighting-history-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
@@ -954,54 +949,25 @@ h2 {
 .sighting-time { color: var(--color-text-muted); font-size: 11.5px; line-height: 1.4; }
 .sighting-evidence { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; }
 .sighting-evidence .sighting-note { flex: 1; min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.sighting-photo-editor { margin-top: 8px; padding: 0 8px; }
-.sighting-photo-editor :deep(summary) { min-height: 36px; font-size: 12px; }
+.your-sighting { color: var(--color-text-accent); font-size: 12px; font-weight: 600; }
+.sighting-menu { position: relative; margin-left: auto; }
+.sighting-menu[open] { z-index: 10; }
+.sighting-menu > summary { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer; list-style: none; }
+.sighting-menu > summary::-webkit-details-marker { display: none; }
+.sighting-menu > summary:hover, .sighting-menu[open] > summary { background: var(--color-surface-selected); color: var(--color-text-accent); }
+.sighting-menu > summary:focus-visible, .confirm-button:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.sighting-menu-panel { position: absolute; right: 0; top: calc(100% + 4px); width: min(280px, calc(100vw - 72px)); max-height: 60dvh; overflow-y: auto; padding: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-elevated); box-shadow: var(--shadow-card); }
+.sighting-photo-editor { padding: 0 8px; }
+.sighting-photo-editor :deep(summary) { min-height: 44px; font-size: 12px; }
+.sighting-menu-panel :deep(.safety-actions) { justify-content: flex-start; }
+.sighting-menu-panel :deep(.safety-link) { min-height: 44px; text-align: left; white-space: normal; }
+.sighting-menu-panel .sharing-warning { padding: 0 8px 6px; font-size: 12px; }
 
 .timeline-content p {
   margin-top: 5px;
   color: var(--ink-muted);
   font-size: 13px;
   line-height: 1.45;
-}
-
-.reporter-details {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 9px;
-  padding: 9px 10px;
-  border-radius: 10px;
-  background: rgba(29, 99, 96, 0.08);
-  color: var(--color-text-accent);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.reporter-details a {
-  flex-shrink: 0;
-  color: var(--color-icon-primary);
-  font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.reporter-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.reporter-actions button,
-.reporter-actions a {
-  min-height: 32px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: #1d6360;
-  color: #fff;
-  font-size: 11.5px;
-  font-weight: 800;
-  text-decoration: none;
 }
 
 .sighting-thumbnail {
@@ -1023,11 +989,9 @@ h2 {
 .verification-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 6px;
 }
 
 .confirmation-count {
@@ -1044,8 +1008,8 @@ h2 {
   gap: 6px;
   padding: 0 13px;
   border-radius: 999px;
-  background: rgba(29, 99, 96, 0.1);
-  color: var(--color-text-accent);
+  background: var(--button-primary);
+  color: var(--button-primary-text);
   font-size: 12px;
   font-weight: 800;
   transition:
@@ -1091,8 +1055,10 @@ h3 {
 
 .owner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 10px 12px;
   background: var(--surface);
   border-radius: var(--radius-md);
   padding: 14px 16px;
@@ -1103,7 +1069,7 @@ h3 {
 .owner-info {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 140px;
   min-width: 0;
   padding: 0;
   background: transparent;
@@ -1113,10 +1079,11 @@ h3 {
 
 .contact-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-left: 12px;
-  flex-shrink: 0;
+  max-width: 100%;
+  flex-shrink: 1;
 }
 
 .contact-action.message {
@@ -1174,14 +1141,46 @@ h3 {
 }
 
 .contact-unavailable {
-  max-width: 82px;
-  margin-left: 12px;
+  flex: 1 0 100%;
+  min-width: 0;
   color: var(--ink-muted);
   font-size: 11.5px;
   font-weight: 700;
-  line-height: 1.25;
-  text-align: right;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
+
+/* Dark-only card grouping; the existing light layout and distance badge stay unchanged. */
+html[data-theme='dark'] .facts,
+html[data-theme='dark'] .owner {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-elevated) !important;
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .facts { gap: 0; }
+html[data-theme='dark'] .fact {
+  display: grid;
+  grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr);
+  align-items: start;
+  gap: 12px;
+  padding: 10px 0;
+  background-color: transparent !important;
+}
+html[data-theme='dark'] .fact:first-child { padding-top: 0; }
+html[data-theme='dark'] .fact:last-child { padding-bottom: 0; }
+html[data-theme='dark'] .fact + .fact { border-top: 1px solid var(--divider); }
+html[data-theme='dark'] .fact .label,
+html[data-theme='dark'] .fact .value {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+html[data-theme='dark'] .owner-info { gap: 4px; overflow-wrap: anywhere; }
+html[data-theme='dark'] .contact-action.message { max-width: 100%; padding: 10px 14px; white-space: normal; line-height: 1.4; }
 
 .reunited-cta {
   width: 100%;

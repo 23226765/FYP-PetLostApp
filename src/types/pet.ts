@@ -102,8 +102,5 @@ export interface Sighting {
   createdAt?: string
   confirmationCount?: number
   confirmedByMe?: boolean
-  reportedBy?: string
-  reporterName?: string
-  reporterPhone?: string
-  canViewContact: boolean
+  canEdit: boolean
 }

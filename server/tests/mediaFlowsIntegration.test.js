@@ -150,6 +150,8 @@ test('sighting: attaches once, owner/reporter delivery succeeds and unrelated/ad
     assert.equal(history.status, 200)
     const entry = (await history.json()).sightings[0]
     const permitted = actor === owner || actor === finder
+    assert.equal(entry.canEdit, actor === finder)
+    for (const field of ['reportedBy', 'reporterName', 'reporterPhone', 'canViewContact', 'confirmedBy']) assert.equal(field in entry, false, field)
     assert.equal('note' in entry, permitted); assert.equal('photo' in entry, permitted)
     assert.equal(entry.locationPrecision, permitted ? 'exact' : 'approximate')
     if (permitted) { assert.equal(entry.note, body.note); assert.match(entry.photo, new RegExp(imageId)) }
@@ -157,6 +159,12 @@ test('sighting: attaches once, owner/reporter delivery succeeds and unrelated/ad
   const publicHistory = await request(`/pets/${petId}/sightings?view=public`, owner, undefined, 'GET')
   assert.equal('note' in (await publicHistory.json()).sightings[0], false)
   assert.equal(tables.get(Sighting).size, 1)
+  const imageUpdate = `/uploads/managed/content/sighting/${sightingId}`
+  assert.equal((await request(imageUpdate, owner, { imageIds: [imageId] }, 'PATCH')).status, 403)
+  for (const actor of [unrelated, admin]) assert.equal((await request(imageUpdate, actor, { imageIds: [imageId] }, 'PATCH')).status, 404)
+  const ownUpdate = await request(imageUpdate, finder, { imageIds: [imageId] }, 'PATCH')
+  assert.equal(ownUpdate.status, 200)
+  assert.deepEqual(await ownUpdate.json(), { success: true, id: sightingId, images: [{ id: imageId, url: `/api/uploads/managed/${imageId}/content` }] })
 })
 
 test('photo-free HTTP submissions are idempotent; legacy photo references obey the same role projection', async () => {

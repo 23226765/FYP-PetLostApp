@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { compileStyle, parse } from '@vue/compiler-sfc'
 import appSource from '../../App.vue?raw'
 import settingsSource from '../../views/SettingsScreen.vue?raw'
 import appIconSource from '../AppIcon.vue?raw'
@@ -10,6 +11,8 @@ import petDetailSource from '../PetDetail.vue?raw'
 import strayDetailSource from '../../views/StrayDetailScreen.vue?raw'
 
 const globalCss = readFileSync(`${process.cwd()}/src/style.css`, 'utf8')
+
+const pressRule = globalCss.match(/^(:where\(button,[^\n]+):active\s*\{([^}]+)\}/m)
 
 type Rgb = [number, number, number]
 
@@ -97,6 +100,53 @@ describe('semantic theme contrast', () => {
 })
 
 describe('shared navigation and option state styling', () => {
+  it('shares background-only press feedback across text, icon, navigation and contact buttons', () => {
+    expect(pressRule).not.toBeNull()
+    const selector = pressRule![1]!
+    const styles = pressRule![2]!
+    const fixture = document.createElement('div')
+    fixture.innerHTML = `<button class="primary">Send</button><button class="icon-button" aria-label="Close"><svg /></button><button class="nav-item active" aria-current="page">Radar</button><a class="contact-action" href="tel:000">Call</a><a class="contact-btn" href="https://example.test/">Contact</a><div class="leaflet-control-zoom"><a href="#">+</a><a class="leaflet-disabled" href="#">−</a></div><details><summary>Options</summary></details><button disabled>Disabled</button><button aria-busy="true">Sending</button><a class="contact-btn" href="#" aria-disabled="true">Disabled link</a><fieldset disabled><button>Disabled preference</button></fieldset><div aria-busy="true"><button class="stop">Stop</button></div><a class="ordinary-link" href="#">Attribution</a>`
+    for (const control of fixture.querySelectorAll('.primary, .icon-button, .nav-item, .contact-action, .contact-btn:not([aria-disabled]), .leaflet-control-zoom a:not(.leaflet-disabled), summary, .stop')) expect(control.matches(selector)).toBe(true)
+    for (const control of fixture.querySelectorAll('[disabled], [aria-disabled], [aria-busy], .leaflet-disabled, fieldset button, .ordinary-link')) expect(control.matches(selector)).toBe(false)
+    expect(styles).toContain('background-image: linear-gradient(var(--control-press-tint), var(--control-press-tint)) !important')
+    expect(styles).not.toMatch(/(?:^|[;\n])\s*(?:opacity|filter|color|outline|border|transform|box-shadow)\s*:/)
+    expect(globalCss).toContain('button:has(img):not(:disabled, [disabled], [aria-disabled=\'true\'], [aria-busy=\'true\']):active:not(:focus-visible)')
+  })
+
+  it('keeps representative pressed text, icon and bottom navigation colours readable in both themes', () => {
+    const alpha = 0.08
+    expect(globalCss).toContain('--control-press-tint: color-mix(in srgb, currentColor 8%, transparent)')
+    for (const theme of [themeBlock(':root'), themeBlock(":root[data-theme='dark']")]) {
+      const base = themeBlock(':root')
+      for (const [foreground, background, minimum] of [
+        [hexToken(base, 'button-primary-text'), hexToken(base, 'button-primary'), 4.5],
+        [hexToken(theme, 'color-icon-primary'), hexToken(theme, 'color-surface'), 3],
+        [hexToken(theme, 'color-nav-inactive'), hexToken(theme, 'color-surface'), 4.5],
+        [hexToken(theme, 'color-nav-active'), hexToken(theme, 'color-surface'), 4.5],
+      ] as const) {
+        const backgroundRgb = rgb(background)
+        const pressed = '#' + rgb(foreground).map((channel, index) => Math.round(channel * alpha + backgroundRgb[index]! * (1 - alpha)).toString(16).padStart(2, '0')).join('')
+        expect(contrast(foreground, pressed)).toBeGreaterThanOrEqual(minimum)
+      }
+    }
+  })
+
+  it('compiles dark-only detail cards without leaking their layout onto html or light mode', () => {
+    const { descriptor } = parse(petDetailSource)
+    const result = compileStyle({ source: descriptor.styles[0]!.content, filename: 'PetDetail.vue', id: 'data-v-card-check', scoped: true })
+    expect(result.errors).toEqual([])
+    const darkStyles = result.code.split('/* Dark-only card grouping;')[1]!.split('.reunited-cta')[0]!
+    expect(darkStyles).toContain("html[data-theme='dark'] .facts[data-v-card-check]")
+    expect(darkStyles).toContain("html[data-theme='dark'] .owner[data-v-card-check]")
+    expect(darkStyles).not.toMatch(/html\[data-theme='dark'\]\s*\{/)
+    expect(darkStyles).toContain('border: 1px solid var(--color-border)')
+    expect(darkStyles).toContain('border-radius: var(--radius-lg)')
+    expect(darkStyles).toContain('background-color: var(--color-surface-elevated) !important')
+    expect(darkStyles).toContain('grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr)')
+    expect(darkStyles).toContain('white-space: normal')
+    expect(darkStyles).toContain('overflow-wrap: anywhere')
+    expect(darkStyles).not.toContain('.distance')
+  })
   it('uses semantic active/inactive tokens in the mounted bottom navigation source', () => {
     expect(appSource).toContain('var(--color-nav-active)')
     expect(appSource).toContain('var(--color-nav-inactive)')

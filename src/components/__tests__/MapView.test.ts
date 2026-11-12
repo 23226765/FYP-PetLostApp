@@ -205,7 +205,7 @@ function report(id: string, coordinates: [number, number], sightedAt: string): S
     locationName: id,
     sightedAt,
     createdAt: sightedAt,
-    canViewContact: false,
+    canEdit: false,
   }
 }
 

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import { connectDatabase, DATABASE_NAME, disconnectDatabase } from '../config/database.js'
 import Message from '../models/Message.js'
+import Sighting from '../models/Sighting.js'
 import User from '../models/User.js'
 
 const SEED_BATCH = 'fyp-demo-v1'
@@ -198,12 +199,19 @@ async function run() {
   assertContactVisible(findPet(finderMatches, 'Maple'), 'ownerPhone', seededUsers.owner.phone)
 
   currentScenario = 'sighting history'
+  const seededSighting = await Sighting.findOne({
+    pet: maple.id, reportedBy: seededUsers.finder._id, seedBatch: SEED_BATCH,
+  }).select('_id')
+  assert.ok(seededSighting, 'Expected a seeded finder sighting for Maple')
   const ownerSightings = await api(`/pets/${maple.id}/sightings`, { token: owner.token })
   const finderSighting = ownerSightings.sightings.find(
-    (sighting) => sighting.reportedBy === String(seededUsers.finder._id),
+    (sighting) => sighting.id === String(seededSighting._id),
   )
   assert.ok(finderSighting, 'Expected a finder sighting for Maple')
-  assertContactHidden(finderSighting, 'reporterPhone', seededUsers.finder.phone)
+  for (const field of ['reportedBy', 'reporterName', 'reporterPhone', 'canViewContact', 'confirmedBy']) {
+    assert.equal(Object.hasOwn(finderSighting, field), false, `Unexpected sighting identity field: ${field}`)
+  }
+  assert.equal(finderSighting.canEdit, false)
 
   currentScenario = 'stray reports'
   const anonymousStrays = await api('/strays')

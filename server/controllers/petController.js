@@ -21,6 +21,7 @@ import {
   projectPetLocation,
   projectedDistanceKm,
   projectSightingLocation,
+  sameId,
   setLocationPrivacyHeaders,
 } from '../services/locationPrivacy.js'
 import { blockedUserIdsFor } from '../services/trustSafety.js'
@@ -368,6 +369,7 @@ export async function listMySightings(req, res, next) {
         )
         return {
           _id: String(sighting._id),
+          canEdit: sameId(req.user, sighting.reportedBy),
           pet: pet
             ? {
                 _id: String(pet._id),
@@ -621,19 +623,15 @@ export async function listSightings(req, res, next) {
         sightingTime(left) - sightingTime(right) ||
         String(left._id).localeCompare(String(right._id)),
     )
-    const reporters = await loadContactOwners(uniqueDocs)
-    const blockedUserIds = req.user ? await blockedUserIdsFor(req.user._id) : new Set()
     const sightings = uniqueDocs.map((sighting) => {
       const confirmedBy = Array.isArray(sighting.confirmedBy) ? sighting.confirmedBy : []
-      const reporterId = sighting.reportedBy ? String(sighting.reportedBy) : null
       const options = { forcePublic: forcePublicProjection(req) }
       const canViewContent = canViewExactSightingLocation(req.user, pet, sighting, options)
-      const canViewReporter = canViewContent
       const projectedLocation = projectSightingLocation(sighting, pet, req.user, options)
-      const contactOwner = contactOwnerFrom(reporters, sighting.reportedBy)
       const serialized = {
         id: String(sighting._id),
         petId: String(sighting.pet),
+        canEdit: sameId(req.user, sighting.reportedBy),
         coordinates: projectedLocation.coordinates,
         locationName: projectedLocation.location,
         locationPrecision: projectedLocation.locationPrecision,
@@ -642,20 +640,10 @@ export async function listSightings(req, res, next) {
         confirmationCount: confirmedBy.length,
         confirmedByMe:
           Boolean(currentUserId) && confirmedBy.some((id) => String(id) === currentUserId),
-        ...serializeContact({
-          requester: req.user,
-          contactOwner,
-          phoneField: 'reporterPhone',
-          contextAllowed: canViewReporter && !blockedUserIds.has(String(sighting.reportedBy || '')),
-        }),
       }
       if (canViewContent) {
         serialized.note = normalizedText(sighting.note, 2000)
         serialized.photo = typeof sighting.photo === 'string' ? sighting.photo : ''
-      }
-      if (canViewReporter) {
-        serialized.reportedBy = reporterId || undefined
-        serialized.reporterName = contactOwner?.name || sighting.reporterName || undefined
       }
       return serialized
     })
@@ -689,6 +677,7 @@ export async function confirmSighting(req, res, next) {
     res.json({
       confirmationCount: sighting.confirmedBy?.length || 0,
       confirmedByMe: true,
+      canEdit: sameId(req.user, sighting.reportedBy),
     })
   } catch (err) {
     next(err)
@@ -869,6 +858,7 @@ export async function submitSighting(req, res, next) {
       sighting: {
         id: String(sighting._id),
         petId: String(pet._id),
+        canEdit: sameId(req.user, sighting.reportedBy),
         coordinates: projectedLocation.coordinates,
         locationName: projectedLocation.location,
         locationPrecision: projectedLocation.locationPrecision,

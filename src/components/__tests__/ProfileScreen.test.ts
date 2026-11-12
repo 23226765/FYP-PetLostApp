@@ -104,7 +104,7 @@ describe('ProfileScreen My pets navigation', () => {
       expect(wrapper.get('.head .avatar').text()).toBe('FO')
       expect(wrapper.get('.head .area').text()).toBe(user.email)
       expect(wrapper.get('.head .phone').text()).toBe(user.phone)
-      expect(wrapper.findAll('.stats .stat')).toHaveLength(3)
+      expect(wrapper.find('.stats').exists()).toBe(false)
       expect(wrapper.get('.menu-button').attributes('aria-label')).toBeTruthy()
       await wrapper.get('.menu-button').trigger('click')
       await flushPromises()

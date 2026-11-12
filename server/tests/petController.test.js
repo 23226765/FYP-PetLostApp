@@ -10,8 +10,10 @@ import {
   getPet,
   getNearbyPets,
   listMyPets,
+  listMySightings,
   listPets,
   listSightings,
+  confirmSighting,
   reportPet,
   smartMatch,
   submitSighting,
@@ -208,7 +210,7 @@ test('authenticated nearby radar applies the same owner and status exclusion', a
   }
 })
 
-test('pet owner and reporter can see reporter contact while unrelated users cannot', async () => {
+test('sightings hide reporter identity for every viewer while preserving content and submitter edit access', async () => {
   const originalFindOne = Pet.findOne
   const originalFind = Sighting.find
   const originalUserFind = User.find
@@ -227,7 +229,7 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
     photo: 'https://example.test/private-sighting.jpg',
     reporterName: 'FYP Finder',
     reporterPhone: '+852 5555 0102',
-    confirmedBy: [],
+    confirmedBy: [reporterId],
     createdAt: new Date('2026-09-18T08:00:00.000Z'),
   }
 
@@ -236,23 +238,18 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
       select: async () => ({ _id: petId, reportedBy: ownerId, district: 'Sha Tin' }),
     })
     Sighting.find = () => ({ sort: async () => [sighting, { ...sighting }] })
-    User.find = () => ({
-      select: async () => [
-        {
-          _id: reporterId,
-          name: 'FYP Finder',
-          phone: '+852 5555 0102',
-          privacy: { contactVisibility: 'authenticated' },
-        },
-      ],
-    })
+    User.find = () => { throw new Error('Sighting history must not load reporter contact profiles') }
 
     for (const userId of [ownerId, reporterId]) {
       const response = responseRecorder()
       await listSightings({ params: { id: String(petId) }, user: { _id: userId } }, response, failOnNext)
       assert.equal(response.payload.sightings[0].id, String(sightingId))
-      assert.equal(response.payload.sightings[0].reporterName, 'FYP Finder')
-      assert.equal(response.payload.sightings[0].reporterPhone, '+852 5555 0102')
+      for (const field of ['reportedBy', 'reporterName', 'reporterPhone', 'canViewContact', 'confirmedBy']) {
+        assert.equal(field in response.payload.sightings[0], false, field)
+      }
+      assert.equal(response.payload.sightings[0].canEdit, String(userId) === String(reporterId))
+      assert.equal(response.payload.sightings[0].confirmationCount, 1)
+      assert.equal(response.payload.sightings[0].confirmedByMe, String(userId) === String(reporterId))
       assert.equal(response.payload.sightings[0].locationPrecision, 'exact')
       assert.deepEqual(response.payload.sightings[0].coordinates, [114.19, 22.38])
       assert.equal(response.payload.sightings.length, 1)
@@ -267,6 +264,7 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
       failOnNext,
     )
     assert.equal(unrelatedResponse.payload.sightings[0].id, String(sightingId))
+    assert.equal(unrelatedResponse.payload.sightings[0].canEdit, false)
     assert.equal('reporterName' in unrelatedResponse.payload.sightings[0], false)
     assert.equal('reporterPhone' in unrelatedResponse.payload.sightings[0], false)
     assert.equal(unrelatedResponse.payload.sightings[0].locationPrecision, 'approximate')
@@ -288,20 +286,80 @@ test('pet owner and reporter can see reporter contact while unrelated users cann
     assert.equal('reporterName' in adminResponse.payload.sightings[0], false)
     assert.equal('note' in adminResponse.payload.sightings[0], false)
     assert.equal('photo' in adminResponse.payload.sightings[0], false)
+    assert.equal(adminResponse.payload.sightings[0].canEdit, false)
 
     const guestResponse = responseRecorder()
     await listSightings({ params: { id: String(petId) } }, guestResponse, failOnNext)
     const guestSighting = guestResponse.payload.sightings[0]
     assert.equal(guestSighting.locationPrecision, 'approximate')
     assert.equal(guestSighting.locationName, 'Sha Tin')
-    for (const forbidden of ['note', 'photo', 'reportedBy', 'reporterName', 'reporterPhone']) {
+    assert.equal(guestSighting.canEdit, false)
+    for (const forbidden of ['note', 'photo', 'reportedBy', 'reporterName', 'reporterPhone', 'canViewContact', 'confirmedBy']) {
       assert.equal(forbidden in guestSighting, false)
+    }
+
+    for (const userId of [ownerId, reporterId]) {
+      const response = responseRecorder()
+      await listSightings({ params: { id: String(petId) }, query: { view: 'public' }, user: { _id: userId } }, response, failOnNext)
+      assert.equal(response.payload.sightings[0].canEdit, String(userId) === String(reporterId))
+      assert.equal(response.payload.sightings[0].locationPrecision, 'approximate')
+      for (const field of ['note', 'photo', 'reportedBy', 'reporterName', 'reporterPhone', 'canViewContact', 'confirmedBy']) {
+        assert.equal(field in response.payload.sightings[0], false, field)
+      }
     }
   } finally {
     Pet.findOne = originalFindOne
     Sighting.find = originalFind
     User.find = originalUserFind
   }
+})
+
+test('my sightings retain exact details and editable status without reporter identity', async () => {
+  const originalFind = Sighting.find, originalUserFind = User.find
+  const reporterId = new mongoose.Types.ObjectId(), ownerId = new mongoose.Types.ObjectId()
+  const sighting = {
+    _id: new mongoose.Types.ObjectId(), reportedBy: reporterId,
+    reporterName: 'Private Reporter', reporterPhone: '+852 5555 0188', confirmedBy: [reporterId],
+    pet: petRecord({ reportedBy: ownerId }),
+    location: { type: 'Point', coordinates: [114.19, 22.38] }, locationName: 'Exact place',
+    note: 'User-written note', photo: '/api/uploads/managed/fixture/content', createdAt: new Date(),
+  }
+  try {
+    Sighting.find = (filter) => {
+      assert.equal(String(filter.reportedBy), String(reporterId))
+      return { populate: async () => [sighting] }
+    }
+    User.find = () => ({ select: async () => [] })
+    const response = responseRecorder()
+    await listMySightings({ user: { _id: reporterId } }, response, failOnNext)
+    const entry = response.payload.sightings[0]
+    assert.equal(entry.canEdit, true)
+    assert.equal(entry.locationPrecision, 'exact')
+    assert.deepEqual(entry.coordinates, sighting.location.coordinates)
+    assert.equal(entry.note, sighting.note)
+    assert.equal(entry.photo, sighting.photo)
+    for (const field of ['reportedBy', 'reporterName', 'reporterPhone', 'canViewContact', 'confirmedBy']) {
+      assert.equal(field in entry, false, field)
+    }
+  } finally { Sighting.find = originalFind; User.find = originalUserFind }
+})
+
+test('confirmation responses expose counts and viewer capabilities without confirmer or reporter IDs', async () => {
+  const originalExists = Pet.exists, originalUpdate = Sighting.findOneAndUpdate
+  const reporterId = new mongoose.Types.ObjectId(), ownerId = new mongoose.Types.ObjectId()
+  const petId = new mongoose.Types.ObjectId(), sightingId = new mongoose.Types.ObjectId()
+  try {
+    Pet.exists = async () => ({ _id: petId })
+    Sighting.findOneAndUpdate = async (_filter, update) => ({
+      reportedBy: reporterId, reporterName: 'Private Reporter', reporterPhone: '+852 5555 0188',
+      confirmedBy: [reporterId, update.$addToSet.confirmedBy],
+    })
+    for (const viewer of [reporterId, ownerId, new mongoose.Types.ObjectId()]) {
+      const response = responseRecorder()
+      await confirmSighting({ params: { id: String(petId), sightingId: String(sightingId) }, user: { _id: viewer } }, response, failOnNext)
+      assert.deepEqual(response.payload, { confirmationCount: 2, confirmedByMe: true, canEdit: viewer === reporterId })
+    }
+  } finally { Pet.exists = originalExists; Sighting.findOneAndUpdate = originalUpdate }
 })
 
 test('forced-public pet detail remains approximate and contact-free for its owner', async () => {
@@ -544,6 +602,10 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
     const firstResponse = responseRecorder()
     await submitSighting(request, firstResponse, failOnNext)
     assert.equal(firstResponse.statusCode, 201)
+    assert.equal(firstResponse.payload.sighting.canEdit, true)
+    for (const field of ['reportedBy', 'reporterName', 'reporterPhone', 'canViewContact', 'confirmedBy']) {
+      assert.equal(field in firstResponse.payload.sighting, false, field)
+    }
     assert.deepEqual(storedSighting.location.toObject(), {
       type: 'Point',
       coordinates: [114.1694, 22.3193],
@@ -557,6 +619,10 @@ test('valid selected coordinates preserve lng/lat order and retries create one s
     await submitSighting(request, retryResponse, failOnNext)
     assert.equal(retryResponse.statusCode, 200)
     assert.equal(retryResponse.payload.duplicate, true)
+    assert.equal(retryResponse.payload.sighting.canEdit, true)
+    for (const field of ['reportedBy', 'reporterName', 'reporterPhone', 'canViewContact', 'confirmedBy']) {
+      assert.equal(field in retryResponse.payload.sighting, false, field)
+    }
     assert.equal(createCount, 1)
     assert.equal(saveCount, 1)
   } finally {

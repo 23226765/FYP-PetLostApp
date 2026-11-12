@@ -45,20 +45,9 @@
       </button>
     </header>
 
-    <div class="stats">
-      <div class="stat">
-        <span class="num">{{ sightingCount }}</span>
-        <span class="lbl">{{ t('profile.sightingsReported') }}</span>
-      </div>
-      <div class="stat highlight">
-        <span class="num">{{ reunitedCount }}</span>
-        <span class="lbl">{{ t('profile.petsReunited') }}</span>
-      </div>
-      <div class="stat">
-        <span class="num">{{ activePostCount }}</span>
-        <span class="lbl">{{ t('profile.activeReports') }}</span>
-      </div>
-    </div>
+    <p v-if="user && sightingCount !== null" class="sighting-summary">
+      {{ t('profile.sightingsSummary', { count: sightingCount }, sightingCount) }}
+    </p>
 
     <ProfileContentTabs :model-value="activeTab" @update:model-value="selectTab" />
 
@@ -73,7 +62,6 @@
         :user-id="user.id"
         :active="profileVisible && activeTab === 'pets'"
         :refresh-key="refreshKey"
-        @stats="petStats = $event"
         @open-pet="openPet"
         @add-pet="emit('add-pet')"
       />
@@ -125,10 +113,7 @@ const emit = defineEmits<{
 const router = useRouter()
 const route = useRoute()
 const { t } = useAppI18n()
-const sightingCount = ref(0)
-const petStats = ref({ total: 0, reunited: 0, active: 0 })
-const reunitedCount = computed(() => petStats.value.reunited)
-const activePostCount = computed(() => petStats.value.active)
+const sightingCount = ref<number | null>(null)
 const validTabs = new Set<ProfileTab>(['pets', 'rescue', 'saved'])
 const activeTab = computed<ProfileTab>(() => {
   const value = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
@@ -147,9 +132,13 @@ const userHandle = computed(() => {
 let sightingsRequest = 0
 async function loadSightingCount() {
   const current = ++sightingsRequest
-  if (!props.user) { sightingCount.value = 0; return }
-  try { const sightings = await getMySightings(); if (current === sightingsRequest) sightingCount.value = sightings.length }
-  catch { if (current === sightingsRequest) sightingCount.value = 0 }
+  const userId = props.user?.id
+  sightingCount.value = null
+  if (!userId) return
+  try {
+    const sightings = await getMySightings()
+    if (current === sightingsRequest && userId === props.user?.id && Array.isArray(sightings)) sightingCount.value = sightings.length
+  } catch { /* Unavailable counts remain unknown rather than implying zero. */ }
 }
 
 function selectTab(tab: ProfileTab) {
@@ -159,7 +148,7 @@ function selectTab(tab: ProfileTab) {
 function openPet(id: string) { void router.push({ name: 'pet-detail', params: { id }, query: { from: 'profile', tab: 'pets' } }) }
 function openStray(id: string) { void router.push({ name: 'stray-detail', params: { id }, query: { from: 'profile', tab: activeTab.value } }) }
 
-watch(() => props.user?.id, () => { petStats.value = { total: 0, reunited: 0, active: 0 }; void loadSightingCount() }, { immediate: true })
+watch(() => props.user?.id, () => { void loadSightingCount() }, { immediate: true })
 watch(activeTab, (tab) => { loadedTabs.value = new Set([...loadedTabs.value, tab]) }, { immediate: true })
 watch(() => route.name, (name, previous) => { if (name === 'profile' && previous && previous !== 'profile') refreshKey.value += 1 })
 </script>
@@ -178,12 +167,7 @@ h1 { grid-column: 2; font-size: var(--page-title-size); font-weight: var(--page-
 .area svg { color: var(--color-text-accent); flex-shrink: 0; }
 .auth-btn { grid-column: 2; margin-top: 10px; min-height: 44px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; }
 .auth-btn.primary { background: var(--teal); color: var(--color-text-on-accent); }
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px 0; margin-bottom: 12px; border-block: 1px solid var(--color-border); }
-.stat { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 6px; text-align: center; }
-.stat + .stat { border-left: 1px solid var(--color-border); }
-.num { font-size: 20px; font-weight: 650; color: var(--color-text-primary); }
-.stat.highlight .num { color: var(--color-text-accent); }
-.lbl { font-size: 12px; color: var(--ink-muted); line-height: 1.4; }
+.sighting-summary { margin: -4px 0 16px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 .profile-auth-state { min-height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; color: var(--color-text-muted); text-align: center; }
 .profile-auth-state > svg { color: var(--color-icon-primary); }
 .profile-auth-state button { min-height: 44px; padding: 0 18px; border-radius: var(--radius-sm); background: var(--teal); color: var(--color-text-on-accent); font-weight: 600; }

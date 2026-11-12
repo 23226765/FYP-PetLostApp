@@ -51,6 +51,7 @@
   --input-bg: var(--color-surface);
   --button-primary: #1d6360;
   --button-primary-text: #ffffff;
+  --control-press-tint: color-mix(in srgb, currentColor 8%, transparent);
   --focus-ring: var(--color-focus);
   --option-surface: var(--color-surface);
   --option-selected-surface: var(--color-surface-selected);
@@ -367,6 +368,20 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
 
 [data-theme='dark'] .leaflet-bar a:hover {
   background: var(--surface-soft) !important;
+}
+
+/* Shared pressed feedback: soften only the background, leaving text, icons,
+   focus outlines and selected indicators at full contrast. !important keeps
+   the wash above existing scoped and dark-mode background shorthand rules. */
+:where(button, a.contact-action[href], a.contact-btn[href], .leaflet-control-zoom a, summary):not(:disabled, [disabled], [aria-disabled='true'], [aria-busy='true'], .leaflet-disabled):active {
+  background-image: linear-gradient(var(--control-press-tint), var(--control-press-tint)) !important;
+}
+
+/* Photos retain their original colours. Photo-filled buttons additionally get
+   a pointer-press outline; keyboard focus keeps its existing outline. */
+button:has(img):not(:disabled, [disabled], [aria-disabled='true'], [aria-busy='true']):active:not(:focus-visible) {
+  outline: 2px solid var(--color-border-accent);
+  outline-offset: 0;
 }
 
 @media print {

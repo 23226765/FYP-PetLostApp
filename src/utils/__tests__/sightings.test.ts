@@ -10,7 +10,7 @@ function sighting(id: string, createdAt: string): Sighting {
     locationPrecision: 'exact',
     locationName: 'Test location',
     createdAt,
-    canViewContact: false,
+    canEdit: false,
   }
 }
 
