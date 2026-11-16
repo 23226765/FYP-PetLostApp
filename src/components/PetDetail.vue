@@ -658,6 +658,7 @@ onBeforeUnmount(() => {
   height: 44px;
   display: grid;
   place-items: center;
+  border: 1px solid var(--control-outline);
   border-radius: 50%;
   background: var(--color-surface);
   color: var(--color-icon-primary);
@@ -705,7 +706,9 @@ onBeforeUnmount(() => {
 }
 
 .badge.sighted {
-  background: var(--status-teal-bg);
+  border: 1px solid var(--sighted-outline);
+  background: var(--sighted-fill);
+  color: var(--sighted-ink);
 }
 
 .badge.reunited {
@@ -763,10 +766,14 @@ onBeforeUnmount(() => {
 
 .title-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 8px 12px;
   margin-bottom: 18px;
 }
+
+.title-row > div { min-width: 0; overflow-wrap: anywhere; }
 
 h2 {
   font-size: 26px;
@@ -783,13 +790,15 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 7px 13px;
+  max-width: 100%;
+  padding: 5px 9px;
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--teal-soft);
-  color: var(--color-text-accent);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
   font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .facts {
@@ -938,9 +947,28 @@ h2 {
   box-shadow: none;
 }
 
-.sighting-history-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.sighting-history-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+}
 .sighting-history-heading h3 { scroll-margin-top: 20px; }
-.history-report { min-height: 44px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--teal-soft); color: var(--color-text-accent); font-size: 13px; font-weight: 700; }
+.history-report {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px 14px;
+  border: 1px solid var(--action-fill);
+  border-radius: var(--radius-sm);
+  background: var(--action-fill);
+  color: var(--action-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 .history-report:focus-visible, .sighting-history-heading h3:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 .sighting-summary { display: grid; gap: 3px; }
 .sighting-area-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; }
@@ -952,7 +980,7 @@ h2 {
 .your-sighting { color: var(--color-text-accent); font-size: 12px; font-weight: 600; }
 .sighting-menu { position: relative; margin-left: auto; }
 .sighting-menu[open] { z-index: 10; }
-.sighting-menu > summary { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--radius-sm); color: var(--color-text-secondary); cursor: pointer; list-style: none; }
+.sighting-menu > summary { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--control-outline); border-radius: var(--radius-sm); background-color: var(--color-surface-elevated); color: var(--color-text-primary); cursor: pointer; list-style: none; }
 .sighting-menu > summary::-webkit-details-marker { display: none; }
 .sighting-menu > summary:hover, .sighting-menu[open] > summary { background: var(--color-surface-selected); color: var(--color-text-accent); }
 .sighting-menu > summary:focus-visible, .confirm-button:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
@@ -1007,9 +1035,10 @@ h2 {
   justify-content: center;
   gap: 6px;
   padding: 0 13px;
+  border: 1px solid var(--control-outline);
   border-radius: 999px;
-  background: var(--button-primary);
-  color: var(--button-primary-text);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 800;
   transition:
@@ -1089,6 +1118,7 @@ h3 {
 .contact-action.message {
   min-width: 92px;
   padding: 0 14px;
+  border: 1px solid var(--control-outline);
   border-radius: 999px;
   background: #1d6360;
   color: #fff;
@@ -1128,6 +1158,7 @@ h3 {
 
 .call {
   width: 46px;
+  border: 1px solid var(--control-outline);
   background: var(--teal);
   color: #fff;
   box-shadow: 0 5px 14px rgba(29, 99, 96, 0.2);
@@ -1135,9 +1166,9 @@ h3 {
 
 .whatsapp {
   padding: 0 13px;
-  border: 1px solid rgba(29, 99, 96, 0.18);
-  background: rgba(29, 99, 96, 0.1);
-  color: var(--color-text-accent);
+  border: 1px solid var(--control-outline);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
 }
 
 .contact-unavailable {
@@ -1190,7 +1221,7 @@ html[data-theme='dark'] .contact-action.message { max-width: 100%; padding: 10px
   justify-content: center;
   gap: 8px;
   margin-bottom: 10px;
-  border: 1px solid rgba(29, 99, 96, 0.2);
+  border: 1px solid var(--control-outline);
   border-radius: var(--radius-md);
   background: rgba(29, 99, 96, 0.1);
   color: var(--color-icon-primary);

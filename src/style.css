@@ -51,6 +51,12 @@
   --input-bg: var(--color-surface);
   --button-primary: #1d6360;
   --button-primary-text: #ffffff;
+  --action-fill: #145754;
+  --action-text: #ffffff;
+  --control-outline: #56746e;
+  --sighted-fill: #dcefeb;
+  --sighted-ink: #16453f;
+  --sighted-outline: #6e8b82;
   --control-press-tint: color-mix(in srgb, currentColor 8%, transparent);
   --focus-ring: var(--color-focus);
   --option-surface: var(--color-surface);
@@ -125,6 +131,12 @@
   --input-bg: var(--color-surface-elevated);
   --teal-soft: var(--color-surface-selected);
   --focus-ring: var(--color-focus);
+  --action-fill: #92e0d4;
+  --action-text: #112925;
+  --control-outline: #79958b;
+  --sighted-fill: #173a32;
+  --sighted-ink: #d7f8ef;
+  --sighted-outline: #769b8c;
   --radio-border: #91a49f;
   --radio-indicator: #82d7ce;
   --overlay: rgba(0, 0, 0, 0.72);

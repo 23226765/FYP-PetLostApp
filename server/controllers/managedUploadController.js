@@ -4,7 +4,7 @@ import { createImageStorage } from '../services/storage/index.js'
 import { createImageLifecycle } from '../services/imageLifecycle.js'
 import { imageError, imageErrorResponse } from '../services/imageErrors.js'
 import { attachedImageForViewer, authorizeMediaDestination, mediaModels } from '../services/mediaAccess.js'
-import { commitContentImages } from '../services/mediaAttachments.js'
+import { commitContentImages, contentImageReferences } from '../services/mediaAttachments.js'
 import { sameId } from '../services/locationPrivacy.js'
 
 export async function streamManagedImage(asset, res, storageFactory = createImageStorage) {
@@ -38,16 +38,18 @@ export function createManagedUploadController({ storageFactory = createImageStor
     async replaceContentImages(req, res, next) {
       try {
         const { type, id } = req.params
-        if (!req.body || Object.keys(req.body).length !== 1 || !Object.hasOwn(req.body, 'imageIds')) throw imageError('IMAGE_REQUEST_INVALID')
+        if (!req.body || Object.keys(req.body).length !== 1
+          || !['imageIds', 'attachments'].some((key) => Object.hasOwn(req.body, key))
+          || (Object.hasOwn(req.body, 'attachments') && !['pet', 'stray'].includes(type))) throw imageError('IMAGE_REQUEST_INVALID')
         const doc = await authorizeMediaDestination(type, id, req.user)
         const owner = type === 'user' ? doc._id : type === 'message' ? doc.sentBy : doc.reportedBy
         if (!sameId(req.user, owner)) throw imageError('IMAGE_ATTACHMENT_FORBIDDEN')
         if (type === 'message' && !doc.text && !doc.sharedStray && !req.body.imageIds?.length) throw imageError('IMAGE_REQUEST_INVALID')
         const purpose = type === 'user' ? 'avatar' : type
         const result = await commitContentImages({ Model: mediaModels[type], userId: req.user._id, type, purpose,
-          existingId: id, imageIds: req.body.imageIds, minimum: type === 'stray' ? 1 : 0,
+          existingId: id, imageIds: req.body.imageIds, attachments: req.body.attachments, minimum: type === 'stray' ? 1 : 0,
           authorize: (session) => authorizeMediaDestination(type, id, req.user, { session }) })
-        res.json({ success: true, id: String(result.doc._id), images: (result.doc.imageIds || []).map((assetId) => ({ id: String(assetId), url: `/api/uploads/managed/${assetId}/content` })) })
+        res.json({ success: true, id: String(result.doc._id), images: contentImageReferences(result.doc, type) })
       } catch (error) { imageErrorResponse(error, res, next) }
     },
     async uploadManagedImage(req, res, next) {
