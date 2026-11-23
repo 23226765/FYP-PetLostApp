@@ -24,10 +24,19 @@ PawRadar's normal lost-pet form. Do not paste these local paths through public
 write endpoints or alter existing Atlas reports. The separate disposable harness
 creates no pet report automatically and limits provider uploads to one attempt.
 
-## 25 November demo covers
+## 25 November fictional demo galleries
 
-These photographs illustrate fictional PawRadar reports. Each cover is attached
-to its named report through PawRadar’s managed-image service.
+Pixel and Nimbus are fictional. The paired photographs illustrate those reports.
+PawRadar used resized copies and re-encoded them as WebP for display.
+
+| Fictional report | Position | Subject and source | Photographer | Reuse terms |
+| --- | --- | --- | --- | --- |
+| Pixel | Cover | [Feronia, 25 September 2021](https://commons.wikimedia.org/wiki/File:Feronia_(British_Shorthair)_on_September_25,_2021.jpg) | George E. Koronaios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), including the displayed copy |
+| Pixel | Second | [Feronia, 21 March 2021](https://commons.wikimedia.org/wiki/File:British_Shorthair_Cat_(Feronia)_on_March_21,_2021.jpg) | George E. Koronaios | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), including the displayed copy |
+| Nimbus | Cover | [Socks lying on the South Lawn](https://commons.wikimedia.org/wiki/File:Socks_the_Cat.jpg) | Barbara Kinney, Clinton Presidential Library & Museum | Public domain, official U.S. federal government work |
+| Nimbus | Second | [Socks’ official portrait](https://commons.wikimedia.org/wiki/File:Socks_the_Cat_Official_Portrait.jpg) | Sharon Farmer, Clinton Presidential Library & Museum | Public domain, official U.S. federal government work |
+
+### Previous demo covers
 
 | Fictional report | Photograph | Creator | Licence |
 | --- | --- | --- | --- |
