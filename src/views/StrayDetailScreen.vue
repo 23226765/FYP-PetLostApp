@@ -22,11 +22,11 @@
           <span class="status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
         <div class="hero">
-          <ManagedImage v-if="detailPhoto && !imageFailed" :src="detailPhoto" :alt="t('strays.reportedIn', { species: animalLabel, district: districtLabel(stray.district) })" @error="imageFailed = true" />
-          <span v-else class="photo-state"><AppIcon name="paw" :size="42" /><small>{{ t(photoFallbackKey(stray.photo, stray.photos)) }}</small></span>
+          <PostPhotoGallery :key="stray.id" :photo="stray.photo" :photos="stray.photos" :alt="animalLabel" />
         </div>
         <div class="post-copy">
           <p class="species">{{ animalLabel }} · {{ conditionLabel(stray.condition) }}</p>
+          <PostPhotoEditor v-if="canEdit" type="stray" :id="stray.id" :photos="storedPostPhotos(stray.photo, stray.photos)" @updated="updatePhotos" />
           <p>{{ stray.description }}</p>
           <p class="location"><AppIcon name="pin" :size="15" />{{ stray.location }}, {{ districtLabel(stray.district) }}</p>
           <time :datetime="stray.observedAt">{{ t('strays.observed', { date: formatDateTime(stray.observedAt, REPORT_TIME_ZONE) }) }}</time>
@@ -43,7 +43,6 @@
       </section>
 
       <section v-if="canEdit || canDelete || canUpdateStatus" class="manage-card" :aria-busy="manageBusy">
-        <ContentImageEditor v-if="canEdit" type="stray" :id="stray.id" :allow-remove="false" @updated="updatePhotos" />
         <h2>{{ t('strays.managePost') }}</h2>
         <div v-if="canUpdateStatus" class="status-buttons">
           <button v-for="option in rescueOptions" :key="option.value" type="button" :class="{ active: stray.rescueStatus === option.value }" :disabled="manageBusy" @click="changeStatus(option.value)">{{ option.label }}</button>
@@ -120,9 +119,9 @@
 import { REPORT_TIME_ZONE } from '../utils/hongKongDateTime'
 import ManagedImage from "../components/ManagedImage.vue"
 import UserAvatar from '../components/UserAvatar.vue'
-import { attachedPhotoSources, photoFallbackKey } from '../utils/imagePresentation'
-import ContentImageEditor from '../components/ContentImageEditor.vue'
-import type { ManagedImage as ManagedImageData } from '../services/api'
+import PostPhotoGallery from '../components/PostPhotoGallery.vue'
+import { storedPostPhotos } from '../utils/imagePresentation'
+import PostPhotoEditor from '../components/PostPhotoEditor.vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
@@ -145,7 +144,7 @@ const route = useRoute(); const router = useRouter()
 const { t } = useAppI18n()
 const stray = ref<StrayReport | null>(null); const comments = ref<StrayComment[]>([])
 const loading = ref(true); const commentsLoading = ref(false); const error = ref(''); const commentError = ref('')
-const draft = ref(''); const commenting = ref(false); const commentInput = ref<HTMLInputElement | null>(null); const imageFailed = ref(false)
+const draft = ref(''); const commenting = ref(false); const commentInput = ref<HTMLInputElement | null>(null)
 const commentsHeading = ref<HTMLElement | null>(null)
 const editCaption = ref(''); const editAnimalType = ref(''); const savingStatus = ref(false)
 const savingEdit = ref(false); const deleting = ref(false)
@@ -164,17 +163,14 @@ const rescueOptions = computed(() => ([{ value: 'reported' as const, label: resc
 const uniqueId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 function id() { const value = route.params.id; return Array.isArray(value) ? value[0] : String(value || '') }
-function updatePhotos(images: ManagedImageData[]) {
+function updatePhotos(images: {url:string}[]) {
   if (!stray.value) return
   stray.value.photo = images[0]?.url || ''; stray.value.photos = images.map((image) => image.url)
-  imageFailed.value = false
 }
 function imageUrl(value: string) { try { const api = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin); return new URL(value, `${api.origin}/`).href } catch { return '' } }
 function statusLabel(value: RescueStatus) { return rescueStatusLabel(value) }
 function conditionLabel(value: StrayReport['condition']) { return strayConditionLabel(value) }
 const animalLabel = computed(() => stray.value ? strayAnimalLabel(stray.value.species, stray.value.animalType) : '')
-const detailPhoto = computed(() => stray.value ? attachedPhotoSources(stray.value.photo, stray.value.photos)[0] || '' : '')
-watch(detailPhoto, () => { imageFailed.value = false })
 const relativeDate = formatRelativeDate
 function requireUser() { if (props.user) return true; emit('auth-needed'); return false }
 

@@ -1,4 +1,20 @@
 {
+  "postPhotos": {
+    "gallery": "帖子照片",
+    "edit": "编辑照片",
+    "saved": "照片已更新",
+    "save": "保存更改",
+    "counter": "已选 {count} 张照片（上限 4 张）",
+    "older": "{count} 张照片 · 旧帖子",
+    "cover": "封面",
+    "earlier": "将第 {n} 张照片前移",
+    "later": "将第 {n} 张照片后移",
+    "remove": "移除第 {n} 张照片",
+    "limit": "最多可选 4 张照片。",
+    "invalid": "请选择 JPEG、PNG 或 WebP 照片，每张不能超过 {mb} MB。",
+    "prev": "上一张照片",
+    "next": "下一张照片"
+  },
   "sightingPrivacy": {
     "options": "目击记录选项",
     "yourSighting": "你的目击记录",

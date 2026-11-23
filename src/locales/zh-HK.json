@@ -1,4 +1,20 @@
 {
+  "postPhotos": {
+    "gallery": "帖文相片",
+    "edit": "編輯相片",
+    "saved": "相片已更新",
+    "save": "儲存更改",
+    "counter": "已選 {count} 張相片（上限 4 張）",
+    "older": "{count} 張相片 · 舊帖文",
+    "cover": "封面",
+    "earlier": "將第 {n} 張相片向前移",
+    "later": "將第 {n} 張相片向後移",
+    "remove": "移除第 {n} 張相片",
+    "limit": "最多可選 4 張相片。",
+    "invalid": "請選擇 JPEG、PNG 或 WebP 相片，每張不可超過 {mb} MB。",
+    "prev": "上一張相片",
+    "next": "下一張相片"
+  },
   "sightingPrivacy": {
     "options": "目擊紀錄選項",
     "yourSighting": "你的目擊紀錄",

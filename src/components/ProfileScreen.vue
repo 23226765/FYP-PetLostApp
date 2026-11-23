@@ -2,7 +2,7 @@
   <div class="profile">
     <header class="profile-topbar">
       <section class="head">
-        <UserAvatar
+        <UserAvatar priority
           class="avatar"
           :src="user?.avatar"
           :name="user?.name"

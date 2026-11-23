@@ -69,15 +69,14 @@ it('a failed protected read becomes a card fallback instead of a blank image', a
   } finally { card.unmount() }
 })
 
-it('handles a blob decoding failure and tries another actually attached photo', async () => {
+it('keeps the feed cover-only when its protected image fails to decode', async () => {
   api.readManagedImage.mockResolvedValue(new Blob(['safe'], { type: 'image/webp' }))
   const card = mount(PetCard, { props: { pet: { ...pet, photo: assetPath, photos: [assetPath, secondAsset] }, feed: true } })
   try {
     await flushPromises()
     expect(card.get('img').attributes('src')).toBe('blob:actual-permission-checked-image')
     await card.get('img').trigger('error'); await flushPromises()
-    expect(api.readManagedImage).toHaveBeenLastCalledWith(`/uploads/managed/${'b'.repeat(24)}/content`, expect.any(AbortSignal))
-    await card.get('img').trigger('error'); await flushPromises()
+    expect(api.readManagedImage).toHaveBeenCalledTimes(1)
     expect(card.find('.photo-placeholder').exists()).toBe(true)
     await card.setProps({ pet: { ...pet, photo: '/test-photos/dog.jpg' } })
     expect(card.get('img').attributes('src')).toContain('/test-photos/dog.jpg')

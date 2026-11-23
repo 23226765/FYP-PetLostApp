@@ -14,6 +14,7 @@
 
     <main :key="authViewKey">
       <RadarScreen
+        :active="tab === 'radar' && !selectedPet && route.name !== 'pet-detail'"
         v-show="tab === 'radar'"
         :pets="pets"
         :loading="loading"

@@ -47,6 +47,7 @@ const operations = {
   deleteStray: () => api.deleteStray('stray'),
   uploadManagedImage: () => api.uploadManagedImage(new Blob(['synthetic']), 'pet', 'retry-fixture'),
   discardManagedImage: () => api.discardManagedImage('image'),
+  replacePostImages: () => api.replacePostImages('pet','pet',[{existingUrl:'/test-photos/dog.jpg'}]),
   replaceContentImages: () => api.replaceContentImages('stray', 'stray', ['image']),
   readManagedImage: () => api.readManagedImage('/uploads/legacy/fixture.webp', new AbortController().signal),
   register: () => api.register({ name: 'Synthetic', email: 'synthetic@example.test', password: 'synthetic-fixture' }),

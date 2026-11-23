@@ -1,6 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ManagedImage from '../ManagedImage.vue'
+import { setSessionToken } from '../../services/authSession'
+import UserAvatar from '../UserAvatar.vue'
 import { moderationEvidencePath } from '../../utils/managedImages'
 const mocks = vi.hoisted(() => ({ readManagedImage: vi.fn() }))
 vi.mock('../../services/api', () => mocks)
@@ -18,6 +20,50 @@ describe('permission-checked managed image rendering', () => {
     mocks.readManagedImage.mockReset()
     URL.createObjectURL = vi.fn(() => 'blob:permission-checked')
     URL.revokeObjectURL = vi.fn()
+  })
+  it('shares a pending transfer until the last consumer leaves, then rechecks later reads', async () => {
+    let finish!: (blob: Blob) => void
+    mocks.readManagedImage.mockImplementation(() => new Promise(resolve => { finish = resolve }))
+    const props = { src: '/uploads/shared.webp', priority: true }
+    const first = mount(ManagedImage, { props })
+    const second = mount(ManagedImage, { props })
+    expect(mocks.readManagedImage).toHaveBeenCalledTimes(1)
+    const signal = mocks.readManagedImage.mock.calls[0][1]
+    first.unmount()
+    expect(signal.aborted).toBe(false)
+    finish(new Blob(['fixture']))
+    await flushPromises()
+    expect(second.get('img').attributes('src')).toBe('blob:permission-checked')
+    const third = mount(ManagedImage, { props })
+    expect(mocks.readManagedImage).toHaveBeenCalledTimes(2)
+    third.unmount()
+    expect(mocks.readManagedImage.mock.calls[1][1].aborted).toBe(true)
+    second.unmount()
+  })
+  it('shows initials until image load and rejects late shared reads after an account switch', async () => {
+    let old!: (blob: Blob) => void, replacement!: (blob: Blob) => void
+    mocks.readManagedImage.mockReturnValueOnce(new Promise(resolve => { old = resolve }))
+      .mockReturnValueOnce(new Promise(resolve => { replacement = resolve }))
+    const props = { name: 'Test Viewer', src: '/uploads/avatar.webp', priority: true }
+    const first = mount(UserAvatar, { props })
+    const second = mount(UserAvatar, { props })
+    try {
+      expect(first.text()).toBe('TV')
+      expect(first.get('img').attributes('aria-busy')).toBe('true')
+      setSessionToken('replacement-fixture')
+      await flushPromises()
+      expect(mocks.readManagedImage.mock.calls[0][1].aborted).toBe(true)
+      expect(mocks.readManagedImage).toHaveBeenCalledTimes(2)
+      old(new Blob(['obsolete']))
+      await flushPromises()
+      expect(URL.createObjectURL).not.toHaveBeenCalled()
+      replacement(new Blob(['new']))
+      await flushPromises()
+      expect(first.text()).toBe('TV')
+      await first.get('img').trigger('load')
+      expect(first.find('.initials').exists()).toBe(false)
+      expect(first.get('img').attributes('aria-busy')).toBe('false')
+    } finally { first.unmount(); second.unmount(); setSessionToken(null) }
   })
   it('leaves external and Base64 sources unchanged', async () => {
     for (const src of ['https://example.test/photo.jpg', 'data:image/png;base64,AAAA']) {

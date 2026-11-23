@@ -23,3 +23,13 @@ For the single authorized real-provider verification, select **one** file using
 PawRadar's normal lost-pet form. Do not paste these local paths through public
 write endpoints or alter existing Atlas reports. The separate disposable harness
 creates no pet report automatically and limits provider uploads to one attempt.
+
+## 25 November demo covers
+
+These photographs illustrate fictional PawRadar reports. Each cover is attached
+to its named report through PawRadar’s managed-image service.
+
+| Fictional report | Photograph | Creator | Licence |
+| --- | --- | --- | --- |
+| Pixel | [Cute gray cat sitting in bed](https://commons.wikimedia.org/wiki/File:Cute_gray_cat_sitting_in_bed.jpg) | Aleenamustlive | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| Nimbus | [The black and white cat](https://commons.wikimedia.org/wiki/File:The_black_and_white_cat.jpg) | Khidoyatxon | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |

@@ -115,10 +115,11 @@
     <template v-else-if="view === 'list'">
       <div class="feed">
         <PetCard
-          v-for="pet in pets"
+          v-for="(pet, index) in pets"
           :key="pet.id"
           :pet="pet"
           :feed="true"
+          :priority="active !== false && index === 0"
           @open="emit('open', pet)"
           @view-sightings="emit('view-sightings', pet)"
           @found="emit('found', pet)"
@@ -175,7 +176,8 @@ import FilterSheet from './FilterSheet.vue'
 import { translateApiError, useAppI18n } from '../i18n'
 import { districtLabel, speciesLabel } from '../i18n/formatters'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
+  active?: boolean
   pets: Pet[]
   loading?: boolean
   error?: string
@@ -185,7 +187,7 @@ const props = defineProps<{
   district: string
   unreadCount: number
   userLocation: { lat: number; lng: number } | null
-}>()
+}>(), { active: true })
 
 const emit = defineEmits<{
   open: [pet: Pet]

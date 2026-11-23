@@ -307,3 +307,58 @@ test('failed avatar replacement preserves the original; hidden targets and forei
   assert.equal((await request(`/uploads/managed/content/pet/${petId}`, owner, { imageIds: [] }, 'PATCH')).status, 404)
   assert.equal((await request(`/uploads/managed/content/sighting/${sightingId}`, finder, { imageIds: [] }, 'PATCH')).status, 404)
 })
+
+for (const [type, collection, Model] of [['pet', 'pets', Pet], ['stray', 'strays', Stray]]) {
+  test(`${type}: four-photo HTTP creation, detail reopening and cover reorder use protected references`, async () => {
+    const imageIds = Array.from({ length: 4 }, () => asset(owner, type))
+    const body = { name: 'Fictional four-photo pet', species: 'Dog', condition: 'healthy', district: 'Sha Tin', locationName: 'Fictional park',
+      description: 'Fictional multi-photo fixture', coordinates: [114.18, 22.3], imageIds, submissionId: `fictional_four_${type}` }
+    const first = await request(`/${collection}/report`, owner, body), created = await first.json()
+    assert.equal(first.status, 201)
+    const record = created[type], imageUrls = imageIds.map(imageId => `/api/uploads/managed/${imageId}/content`)
+    assert.deepEqual(record.photos, imageUrls)
+    assert.equal(record.photo, imageUrls[0])
+    const reopened = await request(`/${collection}/${record.id}`, owner, undefined, 'GET')
+    assert.equal(reopened.status, 200)
+    assert.deepEqual((await reopened.json())[type].photos, imageUrls)
+    const duplicate = await request(`/${collection}/report`, owner, body)
+    assert.equal(duplicate.status, 200)
+    assert.equal((await duplicate.json())[type].id, record.id)
+    const fifth = asset(owner, type)
+    const rejected = await request(`/${collection}/report`, owner, { ...body, submissionId: `fictional_five_${type}`, imageIds: [...imageIds, fifth] })
+    assert.equal(rejected.status, 400)
+    assert.equal(tables.get(MediaAsset).get(fifth).state, 'pending')
+    assert.equal([...tables.get(Model).values()].filter(row => row.submissionId === `fictional_five_${type}`).length, 0)
+    const target = `/uploads/managed/content/${type}/${record.id}`
+    const attachments = [...imageUrls].reverse().map(existingUrl => ({ existingUrl }))
+    assert.equal((await request(target, unrelated, { attachments }, 'PATCH')).status, 403)
+    assert.equal((await request(target, undefined, { attachments }, 'PATCH')).status, 401)
+    const updated = await request(target, owner, { attachments }, 'PATCH')
+    assert.equal(updated.status, 200)
+    assert.deepEqual((await updated.json()).images.map(image => image.url), [...imageUrls].reverse())
+    const refreshed = await request(`/${collection}/${record.id}`, owner, undefined, 'GET')
+    assert.equal((await refreshed.json())[type].photo, imageUrls.at(-1))
+  })
+
+  test(`${type}: older six legacy photos can be reordered and reduced through HTTP without accepting arbitrary URLs`, async () => {
+    const photos = Array.from({ length: 6 }, (_, index) => `/uploads/fictional-${type}-${index}.jpg`)
+    const doc = put(Model, { name: 'Fictional older post', species: 'Dog', district: 'Sha Tin', locationName: 'Fictional park',
+      description: 'Fictional legacy fixture', reporterName: 'Fictional owner', reportedBy: owner,
+      location: { type: 'Point', coordinates: [114.18, 22.3] }, photo: photos[0], photos })
+    const target = `/uploads/managed/content/${type}/${doc._id}`
+    const reordered = [...photos].reverse()
+    const update = await request(target, owner, { attachments: reordered.map(existingUrl => ({ existingUrl })) }, 'PATCH')
+    assert.equal(update.status, 200)
+    assert.deepEqual((await update.json()).images, reordered.map(url => ({ url })))
+    assert.deepEqual(tables.get(Model).get(String(doc._id)).photos, reordered)
+    const reduced = await request(target, owner, { attachments: reordered.slice(0, 5).map(existingUrl => ({ existingUrl })) }, 'PATCH')
+    assert.equal(reduced.status, 200)
+    assert.equal((await reduced.json()).images.length, 5)
+    const invalid = await request(target, owner, { attachments: [{ existingUrl: '/uploads/another-users-photo.jpg' }] }, 'PATCH')
+    assert.equal(invalid.status, 403)
+    assert.equal(tables.get(Model).get(String(doc._id)).photos.length, 5)
+    if (type === 'stray') assert.equal((await request(target, owner, { attachments: [] }, 'PATCH')).status, 400)
+    const row = tables.get(Model).get(String(doc._id)); row.moderationStatus = 'hidden'
+    assert.equal((await request(target, owner, { attachments: [] }, 'PATCH')).status, 404)
+  })
+}

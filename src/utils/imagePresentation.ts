@@ -17,6 +17,10 @@ export function displayImageUrl(value: unknown): string {
   } catch { return '' }
 }
 
+export function storedPostPhotos(photo?: string, photos?: string[]): string[] {
+  return [...new Set([photo, ...(photos || [])].filter((url): url is string => typeof url === 'string' && Boolean(url.trim())))]
+}
+
 export function attachedPhotoSources(photo?: string, photos?: string[]): string[] {
   return [...new Set([photo, ...(photos || [])].map(displayImageUrl).filter(Boolean))]
 }

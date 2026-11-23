@@ -13,7 +13,6 @@ const apiMocks = vi.hoisted(() => ({
   discardManagedImage: vi.fn(),
 }))
 vi.mock('../../services/api', () => apiMocks)
-vi.mock('@capacitor/camera', () => ({ Camera: { getPhoto: vi.fn().mockResolvedValue({ dataUrl: 'data:image/png;base64,AAAA' }) }, CameraResultType: { DataUrl: 'dataUrl' } }))
 
 const stray: StrayReport = {
   id: 'stray-one', species: 'Cat', animalType: '', description: 'Calm ginger cat by the market',
@@ -48,6 +47,7 @@ async function render(initial: StrayReport[] = [stray], pending?: Promise<StrayR
 
 describe('Stray community feed and report flow', () => {
   beforeEach(() => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fixture')
     i18n.global.locale.value = 'en'
     Object.values(apiMocks).forEach((mock) => mock.mockReset())
     HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
@@ -121,14 +121,13 @@ describe('Stray community feed and report flow', () => {
     wrapper.unmount()
   })
 
-  it('puts actions before the caption, retains multiple photos, and does not navigate from nested keyboard actions', async () => {
+  it('puts actions before the caption, shows only the cover photo, and does not navigate from nested keyboard actions', async () => {
     apiMocks.setStraySaved.mockResolvedValue(true)
     const { wrapper, router } = await render([{ ...stray, photos: [stray.photo, 'https://example.test/cat-2.jpg'] }])
     const children = wrapper.get('.stray-card').element.children
-    expect([...children].map(element => element.className)).toEqual(['post-author', 'photo-carousel', 'card-actions', 'card-body'])
-    expect(wrapper.findAll('.photo-wrap')).toHaveLength(2)
-    expect(wrapper.get('.photo-carousel').attributes('tabindex')).toBe('0')
-    expect(wrapper.get('.photo-carousel').attributes('role')).toBe('region')
+    expect([...children].map(element => element.className)).toEqual(['post-author', 'photo-wrap', 'card-actions', 'card-body'])
+    expect(wrapper.findAll('.photo-wrap img')).toHaveLength(1)
+    expect(wrapper.get('.photo-wrap img').attributes('src')).toBe(stray.photo)
     expect(wrapper.find('.photo-wrap .condition').exists()).toBe(false)
     expect(wrapper.find('.photo-wrap .photo-position').exists()).toBe(false)
     const save = wrapper.findAll('.card-actions button')[1]
@@ -214,7 +213,9 @@ describe('Stray community feed and report flow', () => {
     apiMocks.reportStray.mockResolvedValue(stray)
     const { wrapper } = await render([])
     await wrapper.get('.report-button').trigger('click')
-    await wrapper.get('.photo-button').trigger('click'); await flushPromises()
+    const input = wrapper.get('input[type=file]')
+    Object.defineProperty(input.element, 'files', { value: [new File(['png'], 'test.png', { type:'image/png' })] })
+    await input.trigger('change')
     await wrapper.get('.location-stub').trigger('click')
     const selects = wrapper.findAll('.report-sheet select')
     await selects[0].setValue('Cat'); await selects[1].setValue('healthy')
@@ -235,14 +236,16 @@ describe('Stray community feed and report flow', () => {
     localStorage.setItem('token', 'fictional-time-validation')
     const { wrapper } = await render([])
     await wrapper.get('.report-button').trigger('click')
-    await wrapper.get('.photo-button').trigger('click'); await flushPromises()
+    const input = wrapper.get('input[type=file]')
+    Object.defineProperty(input.element, 'files', { value: [new File(['png'], 'test.png', { type:'image/png' })] })
+    await input.trigger('change')
     await wrapper.get('.location-stub').trigger('click')
     await wrapper.get('.report-sheet textarea').setValue('Preserved rescue draft')
     await wrapper.get('input[type="datetime-local"]').setValue(value)
     await wrapper.get('.report-sheet').trigger('submit'); await flushPromises()
     expect(wrapper.get('.form-error').text()).toBe(i18n.global.t('messageRepair.observedTime'))
     expect(wrapper.get('.report-sheet textarea').element).toHaveProperty('value', 'Preserved rescue draft')
-    expect(wrapper.find('.photo-button img').exists()).toBe(true)
+    expect(wrapper.find('.picker .thumb img').exists()).toBe(true)
     expect(apiMocks.uploadManagedImage).not.toHaveBeenCalled()
     expect(apiMocks.reportStray).not.toHaveBeenCalled()
     wrapper.unmount()

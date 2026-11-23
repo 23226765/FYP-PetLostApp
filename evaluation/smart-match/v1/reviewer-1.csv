@@ -1,95 +1,95 @@
 scenarioId,reportId,label,rationale
-Q02,P02,,
+Q02,P02,0,"Amber has a tan coat, curled tail and blue collar. The finder saw a tricolour dog with floppy ears and a green harness. The locations are also about 8.8 km apart."
 Q07,P05,,
 Q11,P05,,
-Q04,P14,,
+Q04,P14,2,"Slate has the round face, grey coat and yellow eyes described, is a British Shorthair, and was last seen in the same public cell two days earlier."
 Q09,P02,,
-Q01,P09,,
+Q01,P09,1,"Saffron was last seen in the same approximate area two days earlier, and a tan coat could look golden. The estimated breed differs, and the report gives no collar details to check against the red collar."
 Q07,P02,,
 Q11,P02,,
-Q03,P18,,
+Q03,P18,0,"Reed was described as long-haired and pale in Tai Po, unlike the short-haired grey cat in the observation."
 Q08,P09,,
-Q01,P06,,
+Q01,P06,0,"Ash’s black-and-white coat differs from the golden coat the finder saw. Ash was last seen about 22.2 km away, and the report gives no collar details to compare."
 Q06,P22,,
 Q10,P18,,
-Q03,P15,,
+Q03,P15,0,"Juniper has a cream coat with dark points and a pink collar, unlike the grey cat observed without a collar."
 Q08,P06,,
-Q01,P03,,
+Q01,P03,0,"Pip has a tricolour coat and a green harness; the report offers little to connect Pip to the golden dog at the Sha Tin park."
 Q05,P18,,
 Q10,P15,,
-Q02,P10,,
+Q02,P10,0,"Cloud is a small white dog with an orange harness. The finder saw a tricolour dog with a green harness. The coat and harness differ, and the locations are about 8.9 km apart."
 Q08,P03,,
 Q12,P23,,
 Q05,P15,,
 Q09,P10,,
-Q02,P07,,
+Q02,P07,0,"Snowdrop’s fluffy white coat is a clear mismatch with the small tricolour dog the finder saw. The missing coordinates prevent a distance comparison, but the coat description is enough to judge this candidate."
 Q07,P10,,
 Q11,P10,,
-Q04,P19,,
+Q04,P19,0,"Pearl is described as long-haired and white; the report does not support the grey coat and yellow eyes in the observation."
 Q09,P07,,
-Q02,P04,,
+Q02,P04,2,"Scout’s tricolour coat and floppy ears match what the finder saw, and the Beagle breed fits their estimate. Scout was reported about 2.9 km away the previous night. The report gives no harness details, so that clue is still unverified."
 Q07,P07,,
 Q11,P07,,
-Q04,P16,,
+Q04,P16,2,"Mist has the observed round face, grey coat and yellow eyes and was seen earlier the same day in the same approximate area."
 Q09,P04,,
-Q02,P01,,
+Q02,P01,0,"Cedar’s golden coat differs from the tricolour coat the finder saw. The report describes a Golden Retriever last seen about 8.8 km away, so I’d give it low priority."
 Q07,P04,,
 Q11,P04,,
-Q04,P13,,
+Q04,P13,1,"Pebble is a recently seen grey shorthair, but face shape and eye colour were not recorded and the report places the cat in Yau Tsim Mong."
 Q09,P01,,
-Q01,P08,,
+Q01,P08,0,"Wren is cream, but the report gives no red-collar or park clue and places the dog about 8.6 km away two days earlier."
 Q07,P01,,
 Q11,P01,,
-Q03,P17,,
+Q03,P17,1,"Stone has short grey fur and was seen about 1 km away earlier that day, but neither the white chest nor the absence of a collar can be checked."
 Q08,P08,,
-Q01,P05,,
+Q01,P05,0,"Fern has a black-and-white coat and was last seen in Yuen Long over three weeks earlier."
 Q06,P21,,
 Q10,P17,,
-Q03,P14,,
+Q03,P14,1,"Slate is grey and short-haired, but the report does not establish a white chest or absence of a collar, and the last sighting was in Sha Tin."
 Q08,P05,,
-Q01,P02,,
+Q01,P02,1,"Amber was seen that morning in the same public cell and tan could look golden, although the recorded blue collar differs from the red one observed."
 Q05,P17,,
 Q10,P14,,
-Q02,P09,,
+Q02,P09,0,"Saffron’s tan coat differs from the tricolour coat the finder saw. The report gives no accessory details to compare with the green harness, and Saffron was last seen two days earlier about 8.8 km away."
 Q08,P02,,
 Q12,P22,,
 Q05,P14,,
 Q09,P09,,
-Q02,P06,,
+Q02,P06,0,"Ash’s black-and-white coat differs from the tricolour coat the finder saw. Ash was last seen about 21.4 km away, and the report gives no harness details to compare."
 Q07,P09,,
 Q11,P09,,
-Q04,P18,,
+Q04,P18,0,"Reed was described as a long-haired pale cat in Tai Po, with no face or eye details supporting the Sha Tin sighting."
 Q09,P06,,
-Q02,P03,,
+Q02,P03,2,"Pip’s size, tricolour coat, floppy ears and green harness all match the sighting, and both locations fall in the same approximate area. The report is three days old, but those matching details make it worth checking first."
 Q07,P06,,
 Q11,P06,,
-Q04,P15,,
+Q04,P15,0,"Juniper has a cream coat with dark points and blue eyes, whereas the observed cat was grey with yellow eyes."
 Q09,P03,,
-Q01,P10,,
+Q01,P10,0,"Cloud is described as a small white poodle with an orange harness in Tsuen Wan; the report gives little support for the golden dog observation."
 Q07,P03,,
 Q11,P03,,
-Q03,P19,,
+Q03,P19,0,"Pearl has long white fur and a purple collar, which conflict with the short grey fur and absence of a collar in the sighting."
 Q08,P10,,
-Q01,P07,,
+Q01,P07,0,"Snowdrop is described as fluffy white with a purple collar; both visible details differ despite the shared district."
 Q06,P23,,
 Q10,P19,,
-Q03,P16,,
+Q03,P16,1,"Mist is a recently reported grey shorthair; the chest pattern and collar are unknown and the report puts the cat about 8.1 km away."
 Q08,P07,,
-Q01,P04,,
+Q01,P04,0,"Scout is described as tricolour rather than golden, and the report gives no collar detail to connect the dog with the sighting."
 Q05,P19,,
 Q10,P16,,
-Q03,P13,,
+Q03,P13,2,"Pebble has grey short fur, a white chest and no collar, and was last seen that morning in the same approximate area."
 Q08,P04,,
-Q01,P01,,
+Q01,P01,2,"Cedar has a golden coat and red collar and was last seen at a park entrance in the same public cell that morning."
 Q05,P16,,
 Q10,P13,,
-Q02,P08,,
+Q02,P08,0,"Wren was reported nearby, but the medium build and cream coat differ from the small tricolour dog the finder saw. The report gives no ear or harness details to support a match."
 Q08,P01,,
 Q12,P21,,
 Q05,P13,,
 Q09,P08,,
-Q02,P05,,
+Q02,P05,0,"Fern’s black-and-white coat differs from the tricolour coat the finder saw. Fern was also last seen over three weeks earlier, about 21.6 km away."
 Q07,P08,,
 Q11,P08,,
-Q04,P17,,
+Q04,P17,1,"Stone is grey and short-haired, but the report gives no face or eye details and places the cat about 7.2 km away."
 Q09,P05,,

@@ -457,3 +457,9 @@ img {
     opacity: 0;
   }
 }
+.feed-photo:has(img.image-pending),
+.stray-card .photo-wrap:has(img.image-pending),
+.profile-photo:has(img.image-pending),
+.gallery:has(img.image-pending) {
+  background: linear-gradient(115deg, var(--color-surface-subtle) 30%, var(--color-surface) 52%, var(--color-surface-subtle) 76%);
+}

@@ -6,24 +6,7 @@
     </header>
 
     <form v-if="!submitted" @submit.prevent="submit">
-      <button
-        type="button"
-        class="photo-drop"
-        :disabled="submitting"
-        :aria-label="t('pets.addPhotosA11y')"
-        @click="addPhoto"
-      >
-        <ManagedImage v-if="photo" class="photo-preview" :src="photo" :alt="t('pets.selectedPhotoAlt')" />
-        <template v-else>
-          <AppIcon name="camera" :size="26" />
-          <span>{{ t('pets.addPhotos') }}</span>
-          <span class="hint">{{ t('pets.photoHint') }}</span>
-        </template>
-      </button>
-
-      <input ref="photoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden @change="selectFile" />
-      <ImageUploadStatus :upload="imageUpload" />
-      <button v-if="photo" type="button" :disabled="submitting" @click="imageUpload.reset()">{{ t('media.remove') }}</button>
+      <PostPhotoPicker :draft="imageUpload" :disabled="submitting" />
 
       <label class="field">
         <span>{{ t('pets.nameLabel') }}</span>
@@ -127,11 +110,10 @@
 </template>
 
 <script setup lang="ts">
-import ManagedImage from "./ManagedImage.vue"
-import { computed, onBeforeUnmount, reactive, ref } from 'vue'
-import { useImageUpload, createImageRequestId } from '../composables/useImageUpload'
-import ImageUploadStatus from './ImageUploadStatus.vue'
-import { Camera, CameraResultType } from '@capacitor/camera'
+import { onBeforeUnmount, reactive, ref } from 'vue'
+import { createImageRequestId } from '../composables/useImageUpload'
+import PostPhotoPicker from './PostPhotoPicker.vue'
+import { usePostPhotos } from '../composables/usePostPhotos'
 import AppIcon from './AppIcon.vue'
 import SightingLocationPicker from './SightingLocationPicker.vue'
 import { reportLostPet } from '../services/api'
@@ -150,9 +132,7 @@ const species = ['Dog', 'Cat', 'Other'] as const
 const submitted = ref(false)
 const submitting = ref(false)
 const error = ref('')
-const imageUpload = useImageUpload('pet')
-const photo = computed(() => imageUpload.preview)
-const photoInput = ref<HTMLInputElement | null>(null)
+const imageUpload = usePostPhotos('pet')
 let submissionId = ''
 const confirmedCoordinates = ref<[number, number] | null>(null)
 const locationGeneration = ref(0)
@@ -188,28 +168,6 @@ function clearSessionForm(event: Event) {
 window.addEventListener('auth:changed', clearSessionForm)
 window.addEventListener('auth:unauthorized', clearSessionForm)
 window.addEventListener('storage', clearSessionForm)
-
-async function addPhoto() {
-  const context = captureAuthContext()
-  const active = () => !disposed && isAuthContextCurrent(context)
-  error.value = ''
-  try {
-    const image = await Camera.getPhoto({
-      resultType: CameraResultType.DataUrl,
-      quality: 85,
-      allowEditing: false,
-    })
-    if (active() && image.dataUrl) imageUpload.select(image.dataUrl)
-  } catch (e) {
-    if (active() && !/cancel/i.test(e instanceof Error ? e.message : '')) photoInput.value?.click()
-  }
-}
-function selectFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (file) imageUpload.select(file)
-}
 
 async function submit() {
   if (submitting.value) return
@@ -282,33 +240,6 @@ form {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.photo-drop {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 28px 0;
-  border-radius: var(--radius-lg);
-  border: 1px dashed var(--color-border-accent);
-  background: var(--color-surface-subtle);
-  color: var(--color-text-accent);
-  font-weight: 600;
-  font-size: 15px;
-}
-
-.photo-drop .hint {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-muted);
-}
-
-.photo-preview {
-  width: calc(100% - 24px);
-  max-height: 260px;
-  border-radius: var(--radius-md);
-  object-fit: cover;
 }
 
 .field {

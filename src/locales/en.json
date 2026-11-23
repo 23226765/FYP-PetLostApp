@@ -1,4 +1,20 @@
 {
+  "postPhotos": {
+    "gallery": "Post photos",
+    "edit": "Edit photos",
+    "saved": "Photos updated",
+    "save": "Save changes",
+    "counter": "{count} of 4 photos",
+    "older": "{count} photos · older post",
+    "cover": "Cover",
+    "earlier": "Move photo {n} earlier",
+    "later": "Move photo {n} later",
+    "remove": "Remove photo {n}",
+    "limit": "Choose up to four photos.",
+    "invalid": "Choose JPEG, PNG or WebP files up to {mb} MB each.",
+    "prev": "Previous photo",
+    "next": "Next photo"
+  },
   "sightingPrivacy": {
     "options": "Sighting options",
     "yourSighting": "Your sighting",

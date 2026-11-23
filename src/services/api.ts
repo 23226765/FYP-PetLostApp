@@ -563,6 +563,11 @@ export async function replaceContentImages(type: 'user' | 'pet' | 'sighting' | '
   const { data } = await http.patch<{ images: ManagedImage[] }>(`/uploads/managed/content/${type}/${id}`, { imageIds })
   return data.images
 }
+export type PostImageAttachment = { imageId: string } | { existingUrl: string }
+export async function replacePostImages(type: 'pet' | 'stray', id: string, attachments: PostImageAttachment[]): Promise<{ url: string }[]> {
+  const { data } = await http.patch<{ images: { url: string }[] }>(`/uploads/managed/content/${type}/${id}`, { attachments })
+  return data.images
+}
 export async function readManagedImage(path: string, signal: AbortSignal): Promise<Blob> {
   const { data } = await http.get<Blob>(path, { responseType: 'blob', signal })
   return data

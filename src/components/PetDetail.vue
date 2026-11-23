@@ -1,18 +1,7 @@
 <template>
   <div class="detail">
     <div class="hero">
-      <ManagedImage
-        v-if="heroPhotoUrl && !heroPhotoFailed"
-        :src="heroPhotoUrl"
-        alt=""
-        aria-hidden="true"
-        @error="heroPhotoFailed = true"
-      />
-      <div v-else class="photo-placeholder hero-placeholder" aria-hidden="true">
-        <AppIcon name="paw" :size="58" />
-        <small>{{ t(photoFallbackKey(pet.photo, pet.photos)) }}</small>
-      </div>
-      <span class="sr-only">{{ t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) }) }}</span>
+      <PostPhotoGallery class="pet-gallery" :key="pet.id" :photo="pet.photo" :photos="pet.photos" :alt="pet.name" />
       <button class="back" :aria-label="t('common.back')" @click="emit('close')">
         <AppIcon name="back" :size="20" />
       </button>
@@ -48,7 +37,6 @@
     </div>
 
     <div class="sheet">
-      <ContentImageEditor v-if="isOwner" type="pet" :id="pet.id" @updated="updatePetImages" />
       <div class="grab" />
       <div v-if="showCelebration" class="celebration-banner" role="status">
         <span aria-hidden="true">🎉</span>
@@ -60,6 +48,7 @@
       <div class="title-row">
         <div>
           <h2>{{ pet.name }}</h2>
+          <PostPhotoEditor v-if="isOwner" type="pet" :id="pet.id" :photos="storedPostPhotos(pet.photo, pet.photos)" @updated="updatePetImages" />
           <p class="sub"><template v-if="pet.breed">{{ pet.breed }} · </template>{{ speciesLabel(pet.species) }}</p>
         </div>
         <span v-if="isValidDistance(pet.distanceKm)" class="distance">
@@ -346,9 +335,11 @@
 
 <script setup lang="ts">
 import { isValidDistance } from '../utils/distance'
-import { attachedPhotoSources, displayImageUrl, photoFallbackKey } from '../utils/imagePresentation'
 import { REPORT_TIME_ZONE } from '../utils/hongKongDateTime'
 import ManagedImage from "./ManagedImage.vue"
+import { displayImageUrl, storedPostPhotos } from '../utils/imagePresentation'
+import PostPhotoEditor from './PostPhotoEditor.vue'
+import PostPhotoGallery from './PostPhotoGallery.vue'
 import ContentImageEditor from './ContentImageEditor.vue'
 import type { ManagedImage as ManagedImageData } from '../services/api'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
@@ -386,7 +377,6 @@ const sightings = ref<Sighting[]>([])
 const sightingHistoryHeading = ref<HTMLElement | null>(null)
 const sightingsLoading = ref(true)
 const sightingsError = ref('')
-const heroPhotoFailed = ref(false)
 const failedSightingPhotos = ref<Set<string>>(new Set())
 const confirmingSightings = ref<Set<string>>(new Set())
 const confirmationErrors = ref<Record<string, string>>({})
@@ -397,9 +387,7 @@ const reunionError = ref('')
 const showCelebration = ref(false)
 const blockedOwner = ref(Boolean(props.pet.interactionBlocked))
 const activeSightingId = ref<string | undefined>(props.focusSightingId)
-const heroPhotoUrl = computed(() => attachedPhotoSources(props.pet.photo, props.pet.photos)[0] || '')
-function updatePetImages(images: ManagedImageData[]) {
-  heroPhotoFailed.value = false
+function updatePetImages(images: {url:string}[]) {
   emit('status-updated', { ...props.pet, photo: images[0]?.url || '', photos: images.map((image) => image.url) })
 }
 function updateSightingImage(id: string, images: ManagedImageData[]) {
@@ -431,9 +419,6 @@ const contactActions = computed(() => {
 })
 const canMessageOwner = computed(() => !isOwner.value && !blockedOwner.value)
 
-watch(heroPhotoUrl, () => {
-  heroPhotoFailed.value = false
-})
 
 watch(
   () => props.pet.status,
@@ -631,10 +616,21 @@ onBeforeUnmount(() => {
   background: var(--color-surface-subtle);
 }
 
-.hero img {
+.pet-gallery {
+  box-sizing: border-box;
+  padding: 4px 12px 8px;
+}
+
+.pet-gallery :deep(img) {
   width: 100%;
   height: auto;
+  max-height: 65svh;
   object-fit: contain;
+}
+
+.pet-gallery :deep(nav) {
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border);
 }
 
 .photo-placeholder {

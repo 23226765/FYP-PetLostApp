@@ -54,7 +54,7 @@
         <span class="feed-status" :class="pet.status">{{ petStatusLabel(pet.status) }}</span>
       </header>
       <div class="photo-wrap feed-photo">
-        <ManagedImage v-if="photoUrl" :src="photoUrl" :alt="t('pets.photoAlt', { name: pet.name })" loading="lazy" referrerpolicy="no-referrer" @error="handleImageError" />
+        <ManagedImage :priority="priority" v-if="photoUrl" :src="photoUrl" :alt="t('pets.photoAlt', { name: pet.name })" loading="lazy" referrerpolicy="no-referrer" @error="handleImageError" />
         <div v-else class="photo-placeholder" :aria-label="t('pets.missingPhotoAlt', { name: pet.name, type: pet.breed || speciesLabel(pet.species) })" role="img"><AppIcon name="paw" :size="42" /><small>{{ t(photoFallbackKey(pet.photo, pet.photos)) }}</small></div>
       </div>
       <div class="feed-card-copy">
@@ -100,13 +100,16 @@ import AppIcon from './AppIcon.vue'
 import { useAppI18n } from '../i18n'
 import { districtLabel, formatRelativeDate, petStatusLabel, speciesLabel } from '../i18n/formatters'
 
-const props = withDefaults(defineProps<{ pet: Pet; feed?: boolean }>(), { feed: false })
+const props = withDefaults(defineProps<{ pet: Pet; feed?: boolean; priority?: boolean }>(), { feed: false })
 const emit = defineEmits<{ open: []; found: []; 'view-sightings': [] }>()
 const { isSaved, toggleSave } = useSavedPets()
 const { t } = useAppI18n()
 
 const failedPhotos = ref(new Set<string>())
-const sources = computed(() => attachedPhotoSources(props.pet.photo, props.pet.photos))
+const sources = computed(() => {
+  const photos = attachedPhotoSources(props.pet.photo, props.pet.photos)
+  return props.feed ? photos.slice(0, 1) : photos
+})
 const photoUrl = computed(() => sources.value.find(source => !failedPhotos.value.has(source)) || '')
 watch(sources, () => { failedPhotos.value = new Set() })
 function handleImageError() {
@@ -128,7 +131,7 @@ function handleImageError() {
 .feed-status { flex-shrink: 0; max-width: 45%; padding: 5px 9px; border-radius: 999px; background: var(--status-teal-bg); color: var(--color-text-accent); font-size: 13px; font-weight: 600; text-align: center; }
 .feed-status.lost { background: var(--status-coral-bg); color: var(--color-text-urgent); }
 .feed-card .feed-photo { aspect-ratio: 4 / 3; }
-.feed-card .feed-photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.feed-card .feed-photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
 .feed-card .feed-photo .photo-placeholder { position: absolute; inset: 0; background: var(--color-surface-subtle); }
 .feed-card-copy { padding: var(--feed-space); }
 .feed-location { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 13px; color: var(--color-text-secondary); }

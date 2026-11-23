@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
-import { commitContentImages, validateImageIds, rejectImageStrings, mediaContentUrl } from '../services/mediaAttachments.js'
+import { commitContentImages, validateImageIds, rejectImageStrings, mediaContentUrl, contentImageReferences } from '../services/mediaAttachments.js'
 import { assertMessageReplay } from '../services/submissionIdentity.js'
 
 const id = () => String(new mongoose.Types.ObjectId())
@@ -164,4 +164,89 @@ test('managed replay validates payload both directly and after a duplicate-key r
     assert.deepEqual([...f.assets], before); assert.deepEqual([...f.documents], documents)
     assert.deepEqual(f.retired, [])
   } finally { f.options.Model.findOne = originalFind }
+})
+
+for (const type of ['pet', 'stray']) {
+  test(`${type}: four attachments preserve order and replay; fifth creation is rejected before a transaction`, async () => {
+    const f = fixture(type, type)
+    const ids = [f.assetId, id(), id(), id()]
+    for (const imageId of ids.slice(1)) f.assets.set(imageId, { ...f.assets.get(f.assetId), _id: imageId })
+    const saved = await f.run({ imageIds: ids })
+    assert.deepEqual(saved.doc.photos, ids.map(mediaContentUrl))
+    assert.equal(saved.doc.photo, mediaContentUrl(ids[0]))
+    assert.deepEqual(contentImageReferences(saved.doc, type), ids.map(imageId => ({ id: imageId, url: mediaContentUrl(imageId) })))
+    assert.equal((await f.run({ imageIds: ids })).duplicate, true)
+    assert.equal(f.documents.size, 1)
+    const events = [...f.events]
+    await assert.rejects(f.run({ imageIds: [...ids, id()] }), { code: 'IMAGE_REQUEST_INVALID' })
+    assert.deepEqual(f.events, events)
+  })
+
+  test(`${type}: older six-photo posts retain mixed references, reorder the cover and remove without deleting legacy files`, async () => {
+    const f = fixture(type, type), original = await f.run()
+    const urls = [mediaContentUrl(f.assetId), '/uploads/fictional-old.jpg', 'https://example.test/fictional.jpg', 'data:image/png;base64,AAAA', '/test-photos/dog.jpg', '/test-photos/cat.jpg']
+    const doc = f.documents.get(String(original.doc._id))
+    doc.photo = urls[0]; doc.photos = urls
+    const reordered = [...urls].reverse()
+    const changes = { existingId: doc._id, imageIds: undefined, attachments: reordered.map(existingUrl => ({ existingUrl })) }
+    const result = await f.run(changes)
+    assert.deepEqual(result.doc.photos, reordered)
+    assert.equal(result.doc.photo, reordered[0])
+    assert.deepEqual(contentImageReferences(result.doc, type), reordered.map(url => url === urls[0] ? { id: f.assetId, url } : { url }))
+    assert.deepEqual((await f.run(changes)).doc.photos, reordered)
+    const reduced = await f.run({ ...changes, attachments: reordered.slice(0, 5).map(existingUrl => ({ existingUrl })) })
+    assert.equal(reduced.doc.photos.length, 5)
+    assert.equal(f.assets.get(f.assetId).state, 'delete_pending')
+    assert.deepEqual(f.retired, [f.assetId])
+    assert.deepEqual(reduced.doc.imageIds, [])
+  })
+
+  test(`${type}: additions require a final total of four and failed saving leaves old attachments and pending asset retryable`, async () => {
+    const f = fixture(type, type), original = await f.run()
+    const urls = Array.from({ length: 6 }, (_, index) => `/uploads/fictional-${index}.jpg`)
+    const doc = f.documents.get(String(original.doc._id))
+    doc.photo = urls[0]; doc.photos = urls; doc.imageIds = []
+    const newId = id()
+    f.assets.set(newId, { ...f.assets.get(f.assetId), _id: newId, state: 'pending', attachedTo: undefined })
+    const changes = { existingId: doc._id, imageIds: undefined }
+    await assert.rejects(f.run({ ...changes, attachments: [...urls.slice(0, 4).map(existingUrl => ({ existingUrl })), { imageId: newId }] }), { code: 'IMAGE_REQUEST_INVALID' })
+    assert.equal(f.assets.get(newId).state, 'pending')
+    const valid = { ...changes, attachments: [{ imageId: newId }, ...urls.slice(0, 3).map(existingUrl => ({ existingUrl }))] }
+    // Inject one destination-save failure after the pending asset has been claimed.
+    const save = f.options.Model.prototype.save
+    f.options.Model.prototype.save = async () => { throw new Error('Fictional edit failure') }
+    try { await assert.rejects(f.run(valid), { code: 'IMAGE_DATABASE_UNAVAILABLE' }) }
+    finally { f.options.Model.prototype.save = save }
+    assert.deepEqual(f.documents.get(String(doc._id)).photos, urls)
+    assert.equal(f.assets.get(newId).state, 'pending')
+    assert.deepEqual(f.retired, [])
+    const saved = await f.run(valid)
+    assert.equal(saved.doc.photo, mediaContentUrl(newId))
+    assert.deepEqual(saved.doc.photos, [mediaContentUrl(newId), ...urls.slice(0, 3)])
+    assert.deepEqual((await f.run(valid)).doc.photos, saved.doc.photos)
+    assert.equal(f.assets.get(newId).state, 'attached')
+  })
+
+  test(`${type}: retained URLs cannot inject foreign references or duplicate managed IDs`, async () => {
+    const f = fixture(type, type), original = await f.run()
+    const changes = { existingId: original.doc._id, imageIds: undefined }
+    for (const attachments of [
+      [{ existingUrl: '/uploads/unrelated.jpg' }],
+      [{ existingUrl: `https://example.test${mediaContentUrl(f.assetId)}` }],
+      [{ existingUrl: mediaContentUrl(f.assetId) }, { imageId: f.assetId }],
+      [{ existingUrl: mediaContentUrl(f.assetId), imageId: f.assetId }],
+    ]) await assert.rejects(f.run({ ...changes, attachments }))
+    assert.equal(f.documents.get(String(original.doc._id)).photo, mediaContentUrl(f.assetId))
+    const current = f.assets.get(f.assetId)
+    current.attachedTo.id = id()
+    await assert.rejects(f.run({ ...changes, attachments: [{ existingUrl: mediaContentUrl(f.assetId) }] }), { code: 'IMAGE_ATTACHMENT_FORBIDDEN' })
+    assert.deepEqual(f.retired, [])
+  })
+}
+
+test('rescue photo minimum and non-post attachment contracts remain enforced', async () => {
+  const f = fixture('stray', 'stray'), original = await f.run()
+  await assert.rejects(f.run({ existingId: original.doc._id, imageIds: undefined, attachments: [], minimum: 1 }), { code: 'IMAGE_REQUEST_INVALID' })
+  const sighting = fixture('sighting', 'sighting'), saved = await sighting.run()
+  await assert.rejects(sighting.run({ existingId: saved.doc._id, imageIds: undefined, attachments: [{ existingUrl: saved.doc.photo }] }), { code: 'IMAGE_REQUEST_INVALID' })
 })

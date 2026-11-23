@@ -209,11 +209,11 @@ describe('consistent neutral visual system', () => {
   it('uses matching 4:3 feed photo and fallback frames while preserving uncropped detail photos', () => {
     expect(petCardSource).toContain('.feed-card .feed-photo { aspect-ratio: 4 / 3; }')
     expect(straySource).toMatch(/\.photo-wrap\s*\{[^}]*position: relative;[^}]*aspect-ratio: 4 \/ 3;[^}]*overflow: hidden/)
-    for (const [source, selector] of [[petCardSource, '\\.feed-card \\.feed-photo'], [straySource, '\\.photo-wrap']]) {
-      expect(source).toMatch(new RegExp(selector + ' img\\s*\\{[^}]*position: absolute;[^}]*inset: 0;[^}]*width: 100%;[^}]*height: 100%;[^}]*object-fit: cover'))
+    for (const [source, selector, fit] of [[petCardSource, '\\.feed-card \\.feed-photo', 'contain'], [straySource, '\\.photo-wrap', 'cover']]) {
+      expect(source).toMatch(new RegExp(selector + ' img\\s*\\{[^}]*position: absolute;[^}]*inset: 0;[^}]*width: 100%;[^}]*height: 100%;[^}]*object-fit: ' + fit))
       expect(source).toMatch(/\.photo-placeholder\s*\{[^}]*position: absolute;[^}]*inset: 0;/)
     }
-    expect(petDetailSource).toMatch(/\.hero img\s*\{[^}]*height: auto;[^}]*object-fit: contain/)
+    expect(petDetailSource).toMatch(/\.pet-gallery :deep\(img\)\s*\{[^}]*height: auto;[^}]*object-fit: contain/)
     expect(petDetailSource).toMatch(/\.sheet\s*\{[^}]*margin-top: 0;/)
     expect(strayDetailSource).toMatch(/\.post-card \.hero\s*\{[^}]*aspect-ratio: auto/)
     expect(strayDetailSource).toMatch(/\.post-card \.hero img\s*\{[^}]*height: auto;[^}]*object-fit: contain/)

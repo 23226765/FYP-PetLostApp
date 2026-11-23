@@ -72,20 +72,15 @@
       <p>{{ t('strays.changeFilters') }}</p>
     </div>
     <div v-else-if="view === 'list'" class="report-list">
-      <article v-for="stray in strays" :key="stray.id" class="stray-card" tabindex="0" role="link" :aria-label="t('strays.openPost', { species: animalLabel(stray), author: stray.author.name })" @click="openStray(stray)" @keydown.enter.self="openStray(stray)">
+      <article v-for="(stray, index) in strays" :key="stray.id" class="stray-card" tabindex="0" role="link" :aria-label="t('strays.openPost', { species: animalLabel(stray), author: stray.author.name })" @click="openStray(stray)" @keydown.enter.self="openStray(stray)">
         <div class="post-author">
           <UserAvatar class="author-avatar" :src="stray.author.avatar" :name="stray.author.name" />
           <span><strong>{{ stray.author.name }}</strong><small>{{ formatRelativeDate(stray.createdAt) }} · {{ districtLabel(stray.district) }}</small></span>
           <span class="rescue-status" :class="stray.rescueStatus">{{ statusLabel(stray.rescueStatus) }}</span>
         </div>
-        <div class="photo-carousel" :tabindex="imageUrls(stray).length > 1 ? 0 : undefined" :role="imageUrls(stray).length > 1 ? 'region' : undefined" :aria-label="imageUrls(stray).length > 1 ? t('feedDesign.photos', { count: imageUrls(stray).length }) : undefined">
-        <div v-for="(photo, index) in imageUrls(stray)" :key="photo || 'placeholder'" class="photo-slide">
         <div class="photo-wrap">
-          <ManagedImage v-if="photo && !failedImages.has(stray.id + photo)" :src="photo" :alt="t('strays.reportedAlt', { species: animalLabel(stray) })" @error="markImageFailed(stray.id + photo)" />
+          <ManagedImage :priority="active && index === 0" v-if="cover(stray) && !failedImages.has(stray.id + cover(stray))" :src="cover(stray)" :alt="t('strays.reportedAlt', { species: animalLabel(stray) })" @error="markImageFailed(stray.id + cover(stray))" />
           <span v-else class="photo-placeholder"><AppIcon name="paw" :size="34" /><small>{{ t(photoFallbackKey(stray.photo, stray.photos)) }}</small></span>
-        </div>
-          <span v-if="imageUrls(stray).length > 1" class="photo-position">{{ index + 1 }} / {{ imageUrls(stray).length }}</span>
-        </div>
         </div>
         <div class="card-actions">
           <button type="button" @click.stop="openComments(stray)"><AppIcon name="message" :size="20" />{{ t('feedUsability.viewComments') }}</button>
@@ -123,13 +118,7 @@
             <div><p class="eyebrow">{{ t('strays.newReport') }}</p><h2>{{ t('strays.animalDetails') }}</h2></div>
             <button type="button" :aria-label="t('strays.closeForm')" @click="showReportForm = false"><AppIcon name="close" :size="20" /></button>
           </div>
-          <input ref="photoInput" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" @change="onPhotoSelected" />
-          <button class="photo-button" type="button" :disabled="submitting" @click="addPhoto">
-            <ManagedImage v-if="form.photo" :src="form.photo" :alt="t('strays.selectedAlt')" />
-            <template v-else><AppIcon name="camera" :size="25" /><span>{{ t('strays.addPhoto') }}</span></template>
-          </button>
-          <button v-if="form.photo" class="remove-photo" type="button" :disabled="submitting" @click="imageUpload.reset(); form.photo = ''">{{ t('strays.removePhoto') }}</button>
-          <ImageUploadStatus :upload="imageUpload" />
+          <PostPhotoPicker :draft="imageUpload" :disabled="submitting" />
           <div class="form-grid">
             <label><span>{{ t('strays.animal') }}</span><select v-model="form.species" required><option value="Dog">{{ speciesLabel('Dog') }}</option><option value="Cat">{{ speciesLabel('Cat') }}</option><option value="Other">{{ speciesLabel('Other') }}</option></select></label>
             <label><span>{{ t('strays.condition') }}</span><select v-model="form.condition" required><option value="unknown">{{ t('strays.unknownCondition') }}</option><option value="healthy">{{ t('strays.appearsHealthy') }}</option><option value="injured">{{ t('strays.injured') }}</option><option value="critical">{{ t('strays.critical') }}</option></select></label>
@@ -158,14 +147,13 @@ import { attachedPhotoSources, photoFallbackKey } from '../utils/imagePresentati
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { captureAuthContext, isAuthContextCurrent } from '../services/authSession'
 import { useRouter } from 'vue-router'
-import { Camera, CameraResultType } from '@capacitor/camera'
 import AppIcon from './AppIcon.vue'
 import MapView from './MapView.vue'
 import FilterSheet from './FilterSheet.vue'
 import SightingLocationPicker from './SightingLocationPicker.vue'
 import { getNearbyStrays, reportStray, setStraySaved } from '../services/api'
-import { useImageUpload } from '../composables/useImageUpload'
-import ImageUploadStatus from './ImageUploadStatus.vue'
+import PostPhotoPicker from './PostPhotoPicker.vue'
+import { usePostPhotos } from '../composables/usePostPhotos'
 import { HK_DISTRICTS } from '../types/pet'
 import type { User } from '../types/user'
 import type { RescueStatus, StrayCondition, StrayReport } from '../types/stray'
@@ -204,9 +192,8 @@ const showReportForm = ref(false)
 const submitting = ref(false)
 const reportError = ref('')
 const uploadStage = ref<'idle' | 'uploading' | 'posting'>('idle')
-const photoInput = ref<HTMLInputElement | null>(null)
-const imageUpload = useImageUpload('stray')
-watch(showReportForm, (open) => { if (!open && imageUpload.uploading) imageUpload.cancel() })
+const imageUpload = usePostPhotos('stray')
+watch(showReportForm, (open) => { if (!open && imageUpload.busy.value) imageUpload.cancel() })
 let requestSequence = 0
 let abortController: AbortController | null = null
 
@@ -217,7 +204,6 @@ const form = reactive({
   district: '',
   locationName: '',
   description: '',
-  photo: '',
   coordinates: null as [number, number] | null,
   observedAt: toHongKongDateTimeInput(new Date()),
   submissionId: '',
@@ -227,7 +213,7 @@ const initialPickerCenter = computed<[number, number] | null>(() => props.userLo
 const submitLabel = computed(() => uploadStage.value === 'uploading' ? t('strays.uploadingPhoto') : uploadStage.value === 'posting' ? t('strays.publishing') : t('strays.publish'))
 const uniqueId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-function imageUrls(stray: StrayReport) { const urls = attachedPhotoSources(stray.photo, stray.photos); return urls.length ? urls : [''] }
+function cover(stray: StrayReport) { return attachedPhotoSources(stray.photo, stray.photos)[0] || '' }
 function markImageFailed(id: string) { failedImages.value = new Set([...failedImages.value, id]) }
 function conditionLabel(value: StrayCondition) {
   return strayConditionLabel(value)
@@ -285,28 +271,6 @@ async function toggleSave(stray: StrayReport) {
   catch (cause) { reportError.value = translateApiError(cause, 'errors.updateSaved') }
 }
 
-async function addPhoto() {
-  reportError.value = ''
-  try {
-    const image = await Camera.getPhoto({ resultType: CameraResultType.DataUrl, quality: 82, allowEditing: false })
-    if (image.dataUrl) { imageUpload.select(image.dataUrl); form.photo = imageUpload.preview }
-  } catch (caught) {
-    const message = caught instanceof Error ? caught.message : ''
-    if (message.toLowerCase().includes('cancel')) return
-    photoInput.value?.click()
-  }
-}
-
-function onPhotoSelected(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-    reportError.value = t('validation.rescueImage'); input.value = ''; return
-  }
-  imageUpload.select(file); form.photo = imageUpload.preview; input.value = ''
-}
-
 async function submitReport() {
   if (submitting.value) return
   const context = captureAuthContext()
@@ -315,7 +279,7 @@ async function submitReport() {
   reportError.value = ''
   try {
     if (!props.user) { emit('auth-needed'); return }
-    if (!form.photo) throw new Error(t('validation.rescuePhotoRequired'))
+    if (!imageUpload.items.value.length) throw new Error(t('validation.rescuePhotoRequired'))
     if (!form.coordinates) throw new Error(t('validation.rescueLocationRequired'))
     if (form.species === 'Other' && !form.animalType.trim()) throw new Error(t('strayAnimal.typeRequired'))
     const observedAt = fromHongKongDateTimeInput(form.observedAt)
@@ -343,14 +307,13 @@ async function submitReport() {
     form.locationName = ''
     form.animalType = ''
     form.description = ''
-    form.photo = ''
     imageUpload.finish()
     form.coordinates = null
     form.observedAt = toHongKongDateTimeInput(new Date())
     form.submissionId = ''
     await router.push(`/strays/${created.id}`)
   } catch (caught) {
-    if (active()) reportError.value = translateApiError(caught, 'errors.submitStray')
+    if (active() && (caught as { apiCode?: string })?.apiCode !== 'IMAGE_CANCELLED') reportError.value = translateApiError(caught, 'errors.submitStray')
   } finally { if (active()) { submitting.value = false; uploadStage.value = 'idle' } }
 }
 
@@ -398,13 +361,8 @@ select:focus, input:focus, textarea:focus { border-color: var(--color-border-acc
 .post-author small { margin-top: 3px; color: var(--ink-muted); font-size: 13px; }
 .author-avatar { width: 34px; height: 34px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: var(--teal-soft); color: var(--color-icon-primary); }
 .author-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.photo-carousel { display: flex; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; }
-.photo-carousel:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
-.photo-slide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
 .photo-wrap { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--color-surface-subtle); }
-.photo-position { display: block; padding: 5px 16px; background: var(--color-surface); color: var(--color-text-secondary); font-size: 13px; text-align: right; }
 .photo-wrap img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
-.photo-button img { width: 100%; height: 100%; object-fit: cover; }
 .photo-placeholder { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 8px; color: var(--color-icon-primary); background: var(--color-surface-subtle); }
 .photo-placeholder small { color: var(--color-text-secondary); font-size: 12px; padding: 0 12px; text-align: center; }
 .condition { padding: 5px 9px; border-radius: 999px; background: var(--color-surface-subtle); color: var(--color-text-secondary); font-size: 13px; font-weight: 600; }
@@ -453,9 +411,6 @@ select:focus, input:focus, textarea:focus { border-color: var(--color-border-acc
 .status-actions button { min-height: 42px; margin: 0 6px 6px 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-muted); font-size: 12px; font-weight: 800; }
 .status-actions button.active { border-color: var(--teal); background: var(--teal); color: #fff; }
 .report-sheet { display: flex; flex-direction: column; gap: 13px; }
-.photo-button { position: relative; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; overflow: hidden; border: 2px dashed var(--color-border-accent); border-radius: var(--radius-lg); background: var(--teal-soft); color: var(--color-text-accent); font-weight: 800; }
-.photo-button img { position: absolute; inset: 0; }
-.remove-photo { align-self: flex-end; min-height: 36px; padding: 0 12px; border-radius: 999px; background: rgba(239,99,81,.1); color: var(--color-text-urgent); font-size: 12px; font-weight: 800; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .location-note { display: flex; align-items: center; gap: 5px; color: var(--ink-muted); font-size: 11.5px; font-weight: 650; }
 .form-error { color: var(--color-text-urgent); font-size: 12.5px; font-weight: 750; }
